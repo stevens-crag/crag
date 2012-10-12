@@ -27,4 +27,5 @@ Contacts
 For any questions and/or suggestions please contact:
 
 Alex Myasnikov: amyasnik@stevens.edu
+
 Alexander Ushakov: aushakov@stevens.edu
