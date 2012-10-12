@@ -7,7 +7,7 @@ The Cryptography And Groups (CRAG) Library provides an environment to test crypt
 Third party contributions and cooperation in the areas appropriate to the goals of the project are most welcome.
 
 Documentation
-===
+---
 [General information](http://www.stevens.edu/algebraic/GroupsSoft/Doc/README.php)
 
 [CRAG FAQs page](http://www.stevens.edu/algebraic/GroupsSoft/Doc/FAQ/)
@@ -15,7 +15,7 @@ Documentation
 [CRAG C++ Library Reference](http://www.stevens.edu/algebraic/GroupsSoft/Doc/html/)
 
 Copyright note
-===
+---
 Copyright (C) 2004-2009 The Algebraic Cryptography Center at Stevens.
 
 This library is free software; you can redistribute it and/or modify it under the terms of the GNU Lesser General Public License as published by the Free Software Foundation (see http://www.gnu.org/copyleft/.)
