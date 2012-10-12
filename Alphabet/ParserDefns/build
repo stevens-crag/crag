@@ -1,0 +1,11 @@
+bison -d WordBisonGrammar.y -o WordBisonGrammar.c
+bison -d -p aa  AlphabetBisonGrammar.y -o AlphabetBisonGrammar.c
+flex++  -oWordFlex.cpp WordFlex.l 
+flex++ -Paa -oAlphabetFlex.cpp AlphabetFlex.l 
+mv WordBisonGrammar.c ../src/WordBisonGrammar.cpp
+mv WordBisonGrammar.h ../include/WordBisonGrammar.h
+mv AlphabetBisonGrammar.c ../src/AlphabetBisonGrammar.cpp
+mv AlphabetBisonGrammar.h ../include/AlphabetBisonGrammar.h
+mv WordFlex.cpp ../src/WordFlex.cpp
+mv AlphabetFlex.cpp ../src/AlphabetFlex.cpp
+
