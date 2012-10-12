@@ -23,6 +23,7 @@ This library is free software; you can redistribute it and/or modify it under th
 This library is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; If you modify the source of the library we ask that you change the names of the modified classes/routines and comment the changes made to the original.
 
 Contacts
+---
 For any questions and/or suggestions please contact:
 
 Alex Myasnikov: amyasnik@stevens.edu
