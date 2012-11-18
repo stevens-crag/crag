@@ -47,27 +47,27 @@ lib:
 	cd TheGrigorchukGroup; $(MAKE) lib
 clean:
 	rm -f -R Release
-	cd ranlib; $(MAKE) clean
-	cd general; $(MAKE) clean
-	cd Elt; $(MAKE) clean
-	cd Alphabet; $(MAKE) clean
-	cd Graph; $(MAKE) clean
-	cd Group; $(MAKE) clean
-	cd SbgpFG; $(MAKE) clean
-	cd FreeGroup; $(MAKE) clean
-	cd HigmanGroup; $(MAKE) all
-	cd BraidGroup; $(MAKE) clean
-	cd CryptoKL; $(MAKE) clean
-	cd CryptoAAG; $(MAKE) clean
-	cd CryptoAE; $(MAKE) clean
-	cd CryptoShftConj; $(MAKE) clean
-	cd CryptoTripleDecomposition; $(MAKE) clean
-	cd Equation; $(MAKE) clean
-	cd Examples; $(MAKE) clean
-	cd Experiments; $(MAKE) clean
-	cd Maps; $(MAKE) clean
-	cd Examples; $(MAKE) clean
-	cd Graphics; $(MAKE) clean
-	cd StringSimilarity; $(MAKE) clean
-	cd TheGrigorchukGroup; $(MAKE) clean
-	cd python; $(MAKE) clean
+	if [ -d ranlib ]; then cd ranlib && $(MAKE) clean; fi
+	if [ -d general ]; then cd general && $(MAKE) clean; fi
+	if [ -d Elt ]; then cd Elt && $(MAKE) clean; fi
+	if [ -d Alphabet ]; then cd Alphabet && $(MAKE) clean; fi
+	if [ -d Graph ]; then cd Graph && $(MAKE) clean; fi
+	if [ -d Group ]; then cd Group && $(MAKE) clean; fi
+	if [ -d SbgpFG ]; then cd SbgpFG && $(MAKE) clean; fi
+	if [ -d FreeGroup ]; then cd FreeGroup && $(MAKE) clean; fi
+	if [ -d HigmanGroup ]; then cd HigmanGroup && $(MAKE) clean; fi
+	if [ -d BraidGroup ]; then cd BraidGroup && $(MAKE) clean; fi
+	if [ -d CryptoKL ]; then cd CryptoKL && $(MAKE) clean; fi
+	if [ -d CryptoAAG ]; then cd CryptoAAG && $(MAKE) clean; fi
+	if [ -d CryptoAE ]; then cd CryptoAE && $(MAKE) clean; fi
+	if [ -d CryptoShftConj ]; then cd CryptoShftConj && $(MAKE) clean; fi
+	if [ -d CryptoTripleDecomposition ]; then cd CryptoTripleDecomposition && $(MAKE) clean; fi
+	if [ -d Equation ]; then cd Equation && $(MAKE) clean; fi
+	if [ -d Examples ]; then cd Examples && $(MAKE) clean; fi
+	if [ -d Experiments ]; then cd Experiments && $(MAKE) clean; fi
+	if [ -d Maps ]; then cd Maps && $(MAKE) clean; fi
+	if [ -d Examples ]; then cd Examples && $(MAKE) clean; fi
+	if [ -d Graphics ]; then cd Graphics && $(MAKE) clean; fi
+	if [ -d StringSimilarity ]; then cd StringSimilarity && $(MAKE) clean; fi
+	if [ -d TheGrigorchukGroup ]; then cd TheGrigorchukGroup && $(MAKE) clean; fi
+	if [ -d python ]; then cd python && $(MAKE) clean; fi

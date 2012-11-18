@@ -75,7 +75,7 @@ $(LIB_DIR)/lib$(THISLIB).a : $(OBJFILES)
 
 # Compile the executable targets
 $(MAIN) : % :   $(OBJ_DIR)/%.o  $(LIB_DIR)/lib$(THISLIB).a $(DEPENDONLIBS)
-	if [ ! -d $(BIN_DIR) ]; then mkdir $(BIN_DIR); fi
+	if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
 	@echo "$(DEPENDONLIBS)"
 	$(CC) $(CFLAGS) $(INCLUDE) $< $(LDFLAGS) $(LIBS)    -o $(BIN_DIR)/$@
 	@echo
@@ -94,7 +94,7 @@ $(OBJ_DIR)/%.o : %.cpp
 
 ## Build dependencies
 $(OBJ_DIR)/%.d: %.cpp
-	if [ ! -d $(OBJ_DIR) ]; then mkdir $(OBJ_DIR); fi
+	if [ ! -d $(OBJ_DIR) ]; then mkdir -p $(OBJ_DIR); fi
 	$(SHELL) -ec '$(CC) -MM $(INCLUDE) $< | sed "s:$*.o:$(OBJ_DIR)/& $@:g"' > $@
 
 # Include all the dependency files, this will  automatically remake them if they are
