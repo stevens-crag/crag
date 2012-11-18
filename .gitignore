@@ -10,3 +10,9 @@
 *.lai
 *.la
 *.a
+
+# Binaries
+bin/
+
+# Dependencies
+*.d
