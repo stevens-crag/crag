@@ -17,6 +17,7 @@
 #include <list>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <unistd.h>
 #include "Sign.h"
 #include "PowerCircuit.h"
 
