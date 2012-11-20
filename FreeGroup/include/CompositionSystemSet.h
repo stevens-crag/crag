@@ -30,10 +30,23 @@ public:
   CompositionSystemSet();
 
   //! Default copy constructor
-  CompositionSystemSet(const CompositionSystemSet& other);
+  explicit CompositionSystemSet(const CompositionSystemSet& other);
 
   //! Default virtual destructor
   virtual ~CompositionSystemSet() {}
+
+  //! Compose current system with another one
+  /**
+   * Add all vertices from the other system to *this and connect \p$i\p$-th
+   * terminal of other system to \p$i\p$-th root of this. Trying not to connect
+   * to terminal, but combine them in one vertex, if possible.
+   *
+   * The root list is copied from the other system.
+   *
+   * @param other The composition system to combine with *this
+   * @return Modified *this
+   */
+  CompositionSystemSet& composeWith(const CompositionSystemSet& other);
 private:
 
   //! Struct representing one vertex in the compositions system. Internal.
@@ -44,6 +57,8 @@ private:
    *
    * TODO: check if we can gurantee that any non-terminal vertex has exactly
    * two children.
+   *
+   * TODO: maybe store the
    */
   struct Vertex {
     int left_child;                        //!< The index of the left vertex in vertices vector.
@@ -54,13 +69,19 @@ private:
     LongInteger right_child_right_boundary;
     bool inverted;                         //!< Produce \p$ C^{-1} B^{-1} \p$ instead od \p$ B C\p$
 
+    //! Get the length of the word produced by subtree with this vertex as a root.
+    inline LongInteger getLength() {
+      return left_child_right_boundary - left_child_left_boundary +
+              right_child_right_boundary - right_child_left_boundary;
+    }
+
     Vertex()
       : left_child(-1)
-      , left_child_left_boundary(0)
-      , left_child_right_boundary()
+      , left_child_left_boundary(-1)
+      , left_child_right_boundary(-1)
       , right_child(-1)
-      , right_child_left_boundary(0)
-      , right_child_right_boundary(0)
+      , right_child_left_boundary(-1)
+      , right_child_right_boundary(-1)
       , inverted(false)
     { }
   };
