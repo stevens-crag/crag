@@ -46,13 +46,23 @@ private:
    * two children.
    */
   struct Vertex {
-    bool inverted;                         //!< Produce \p$ C^{-1} B^{-1} \p$ instead od \p$ B C\p$
     int left_child;                        //!< The index of the left vertex in vertices vector.
     LongInteger left_child_left_boundary;  //!< The number of letters to throw from the beginning of the result. Use 0 to keep everything.
     LongInteger left_child_right_boundary; //!< The result will end just before getting to this boundary. If it is less that the left_boundary, then no limit is set. Use -1 to keep everything.
     int right_child;                       //!< The index of the right vertex in vertices vector.
     LongInteger right_child_left_boundary; 
     LongInteger right_child_right_boundary;
+    bool inverted;                         //!< Produce \p$ C^{-1} B^{-1} \p$ instead od \p$ B C\p$
+
+    Vertex()
+      : left_child(-1)
+      , left_child_left_boundary(0)
+      , left_child_right_boundary()
+      , right_child(-1)
+      , right_child_left_boundary(0)
+      , right_child_right_boundary(0)
+      , inverted(false)
+    { }
   };
 
   //! Container for all vertices of the graph.
