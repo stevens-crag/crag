@@ -40,7 +40,7 @@ vpath %.a $(LIB_DIR)
 ##
 
 CC      = g++   # 
-CFLAGS  = -g  -fpermissive # Compiler flags: -g for debug, -O for optimization
+CFLAGS  = -g -std=c++11 -fpermissive # Compiler flags: -g for debug, -O for optimization
 LDFLAGS = -L$(GSL_PATH) -L $(LIB_DIR)/  $(foreach dir,$(DEPEND_ON),-L../$(dir)/$(LIB_DIR))      # Linker flags
 LIBS    = -lm -lgsl -lgslcblas  -l$(THISLIB) $(foreach name,$(DEPEND_ON),-l$(name)) $(LOCAL_LIBS)
 INCLUDE = -I include/ $(foreach dir,$(DEPEND_ON),-I../$(dir)/include) $(LOCAL_INCLUDE)
