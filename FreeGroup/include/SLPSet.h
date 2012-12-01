@@ -52,6 +52,7 @@ struct SLPVertex {
   unsigned int terminal_symbol;          //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
   const unsigned int NON_TERMINAL = 0;   //!< Constant, meaning this vertex is non-terminal
   LongInteger length;                    //!< Length of word produced by the vertex
+  unsigned int height;                   //!< Height of subtree
   unsigned int parents_count;            //!< Number of parents
 
   SLPVertex()
@@ -59,6 +60,7 @@ struct SLPVertex {
     , right_child(CHILD_NOT_EXIST)
     , terminal_symbol(NON_TERMINAL)
     , length(0)
+    , height(0)
     , parents_count(0)
   { }
 };
@@ -150,15 +152,23 @@ private:
  */
 class SLPSet {
 public:
-  SLPSet(size_t terminals_count)
-    : vertices(terminals_count)
+  SLPSet(unsigned int terminals_count)
+    : vertices(2 * terminals_count)
     , roots(terminals_count)
+    , terminals_count(terminals_count)
   {
     for (size_t terminal_id = 0; terminal_id < terminals_count; ++terminal_id) {
       vertices[terminal_id].terminal_symbol = terminal_id + 1;
-      vertices[terminal_id].length = 1;
       vertices[terminal_id].parents_count = 1;
-      roots[terminal_id] = terminal_id;
+    }
+    
+    for (size_t terminal_id = terminals_count; 
+         terminal_id < 2 * terminals_count;
+         ++terminal_id) {
+      vertices[terminal_id].length = 1;
+      vertices[terminal_id].height = 1;
+      vertices[terminal_id].left_child = SignedVertex(terminal_id - terminals_count, false);
+      roots[terminal_id - terminals_count] = terminal_id;
     }
   }
 
@@ -172,31 +182,39 @@ public:
    * @param nontrivial_root The index of non-trivial root, starting from 1
    * @param rule_lhs The terminal index of the left part of the only non-trivial
    *                 production rule. If < 0, then terminal is reversed.
-   * @param rule_rhs The right side of prudction rule, see docs for rule_lhs
+   * @param rule_rhs The right side of prudction rule, see docs for rule_lhs.
+   *                 if rule_rhs == 0, then the second child is epsont.
    */
 
-  SLPSet(size_t terminals_count, size_t nontrivial_root, int rule_lhs, int rule_rhs)
+  SLPSet(unsigned int terminals_count, unsigned int nontrivial_root,
+         int rule_lhs, int rule_rhs)
     : SLPSet(terminals_count)
   {
     SLPVertex non_trivial();
 
     if (rule_lhs != -rule_rhs) {//If one vertex cancels another one, leave just root without any children
       non_trivial.left_child.index  = abs(rule_lhs) - 1;
-      non_trivial.right_child.index = abs(rule_rhs) - 1;
       non_trivial.left_child.is_negative = (rule_lhs < 0);
-      non_trivial.right_child.is_negative = (rule_rhs < 0);
-      non_trivial.length = 2;
+      non_trivial.height = 1;
+
+      if (rule_rhs != 0) {
+        non_trivial.right_child.index = abs(rule_rhs) - 1;
+        non_trivial.right_child.is_negative = (rule_rhs < 0);
+        non_trivial.length = 2;
+      } else {
+        non_trivial.length = 1;
+      }
+
       if (abs(rule_lhs) != nontrivial_root) {
         vertices[non_trivial.left_child.index].parents_count += 1;
       }
+
       if (abs(rule_rhs) != nontrivial_root) {
         vertices[non_trivial.right_child.index].parents_count += 1;
       }
     }
     
-    vertices.push_back(non_trivial);
-    roots[nontrivial_root - 1] = vertices.size() - 1;
-
+    vertices[nontrivial_root + terminals_count - 1] = non_trivial;
   }
 
   //! Compose current program with another one
@@ -242,7 +260,7 @@ private:
   //! Container for all vertices of the graph.
   std::vector< SLPVertex > vertices;
   std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array
-
+  unsigned int terminals_count; //!< The number of terminals in the system.
 };
 
 #endif	/* COMPOSITIONSYSTEMSET_H */
