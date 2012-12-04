@@ -10,10 +10,12 @@
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
+typedef unsigned int TerminalSymbol;
 
 #include <vector>
 #include <memory>
 #include <initializer_list>
+#include <iterator>
 
 //! Represents a vertex in program or the "inversed" vertex.
 struct SignedVertex {
@@ -26,13 +28,17 @@ struct SignedVertex {
           , is_negative(negative)
   { }
 
+  const size_t NULL_INDEX = -1; //!< Special value, which ignores sign while comparing
 };
 
 bool operator==(const SignedVertex& lhs, const SignedVertex& rhs) {
-  return lhs.index == rhs.index && lhs.is_negative == rhs.is_negative;
+  return lhs.index == rhs.index && 
+          (lhs.is_negative == rhs.is_negative || lhs.index == SignedVertex::NULL_INDEX);
 }
 
-
+bool operator!=(const SignedVertex& lhs, const SignedVertex& rhs) {
+  return !(lhs == rhs);
+}
 
 //! Struct representing one vertex in the SLP. Internal.
 /**
@@ -46,11 +52,11 @@ bool operator==(const SignedVertex& lhs, const SignedVertex& rhs) {
  */
 struct SLPVertex {
   //! Constant indicating that there is no such child.
-  const SignedVertex CHILD_NOT_EXIST = SignedVertex(-1, false); 
+  const SignedVertex CHILD_NOT_EXIST = SignedVertex(SignedVertex::NULL_INDEX, false);
   SignedVertex left_child;               //!< The index of the left vertex in vertices vector. Use CHILD_NOT_EXIST
   SignedVertex right_child;              //!< The index of the right vertex in vertices vector.
-  unsigned int terminal_symbol;          //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
-  const unsigned int NON_TERMINAL = 0;   //!< Constant, meaning this vertex is non-terminal
+  TerminalSymbol terminal_symbol;          //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
+  const TerminalSymbol NON_TERMINAL = 0;   //!< Constant, meaning this vertex is non-terminal
   LongInteger length;                    //!< Length of word produced by the vertex
   unsigned int height;                   //!< Height of subtree
   unsigned int parents_count;            //!< Number of parents
@@ -255,13 +261,212 @@ public:
    * @return The program which produce the freely reduced words.
    */
   SLPSet&& free_reduction() const;
+
+  //! Post-order SLP Inspector
+  /**
+   * This is an inspector which goes through the
+   * vertices of the SLP in the following orders: first, all left children,
+   * then all right children, and after that the vertex itself. Useful to
+   * produce the resulting words and also to compare SLPs
+   */
+  class ConstVerticesPostorderInspector
+  {
+  public:
+    ConstVerticesPostorderInspector()
+      : vertices(nullptr)
+    { }
+    //! Inspect the subtree of #root in #vertices
+    ConstVerticesPostorderInspector(const std::vector<SLPVertex>& vertices, const SignedVertex& root)
+      : vertices(&vertices)
+    {
+        this->current_path.push(root);
+        this->goto_leftmost_terminal();
+    }
+      
+    explicit ConstVerticesPostorderInspector(const ConstVerticesPostorderInspector& other)
+      : vertices(other.vertices)
+      , current_path(other.current_path)
+    { }
+
+    ConstVerticesPostorderInspector& operator=(const ConstVerticesPostorderInspector& other) {
+      this->vertices = other.vertices;
+      this->current_path = other.current_path;
+    }
+
+    //! Return the index of current vertex
+    const SignedVertex& current_vertex() const {
+      return current_path.top();
+    }
+
+    //! True if there are no more vertices, we have visited everything
+    bool inspection_ended() {
+      return this->current_path.empty();
+    }
+
+    //! Move inspector to the next vertex
+    void next_vertex() {
+      SignedVertex current = this->current_path.top();
+      this->current_path.pop();
+
+      if(this->inspection_ended()) {
+        return;
+      }
+      SignedVertex parent = this->current_path.top();
+      SignedVertex right_sibling = SLPSet::get_right_child(parent, this->vertices);
+      
+      if ( right_sibling == current || right_sibling == SLPVertex::CHILD_NOT_EXIST) {
+        //We have already visited all right children of the parent vertex, stop on parent
+      } else {
+        //We have visited all left children of parent, going to the right
+        this->current_path.push(right_sibling);
+        this->goto_leftmost_terminal();
+      }
+    }
+
+
+
+  private:
+    const std::vector< SLPVertex >* vertices;             //!< Pointer to vertices container
+    std::stack< SignedVertex > current_path; //!< Way to the current vertex in the container
+
+    //!Go from the current_path->top() to the leftmost terminal
+    void goto_leftmost_terminal() {
+        while (this->current_path.top() != SLPVertex::CHILD_NOT_EXIST) {
+          bool inversed = this->current_path.top().is_negative;
+          const SignedVertex& left_child = SLPSet::get_left_child(this->current_path.top(), this->vertices);
+          if (left_child != SLPVertex::CHILD_NOT_EXIST) {
+            this->current_path.push(left_child);
+          } else {
+            //Don't have any left children, then go right
+            this->current_path.push(SLPSet::get_right_child(this->current_path.top(), this->vertices));
+          }
+          
+          this->current_path.top().is_negative ^= inversed;
+        }
+
+        this->current_path.pop();
+    }
+  };
+
 private:
 
   //! Container for all vertices of the graph.
   std::vector< SLPVertex > vertices;
   std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array
   unsigned int terminals_count; //!< The number of terminals in the system.
+
+  //! Helper function to get left child with respect to the sign of vertex
+  static const SignedVertex& get_left_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
+    if (vertex.is_negative) {
+      return vertices[vertex.index].right_child;
+    } else {
+      return vertices[vertex.index].left_child;
+    }
+  }
+
+  //! Helper function to get right child with respect to the sign of vertex
+  static const SignedVertex& get_right_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
+    if (! vertex.is_negative) {
+      return vertices[vertex.index].right_child;
+    } else {
+      return vertices[vertex.index].left_child;
+    }
+  }
+
 };
+
+//!The standard-interfaced iterator for SLPProducedWord class
+class SLPProducedWordConstIterator :
+    public std::iterator <
+        std::forward_iterator_tag,      //iterator_category
+        const TerminalSymbol,           //value_type
+        LongInteger                     //difference_type
+    >
+{
+public:
+  SLPProducedWordConstIterator()
+    : inspector()
+    , vertices(nullptr)
+    , current_word_length(0)
+  {}
+
+  SLPProducedWordConstIterator(const std::vector<SLPVertex>& vertices, const SignedVertex& root)
+    : inspector(vertices, root)
+    , vertices(&vertices)
+    , current_word_length(0)
+  {}
+
+  explicit SLPProducedWordConstIterator(const SLPProducedWordConstIterator& other)
+    : inspector(other.inspector)
+    , current_word_length(other.current_word_length)
+  { }
+
+  SLPProducedWordConstIterator& operator=(const SLPProducedWordConstIterator& other) {
+    inspector = other.inspector;
+    current_word_length = other.current_word_length;
+  }
+
+  bool operator==(const SLPProducedWordConstIterator& other) {
+    return vertices == (other.vertices) &&
+           (vertices == nullptr || current_word_length == other.current_word_length);
+  }
+
+  bool operator!=(const SLPProducedWordConstIterator& other) {
+    return !(*this == other);
+  }
+
+  SLPProducedWordConstIterator& operator++() {
+    inspector.next_vertex();
+
+    while (vertices->at(inspector.current_vertex().index).terminal_symbol == SLPVertex::NON_TERMINAL) {
+      inspector.next_vertex();
+    }
+
+    ++current_word_length;
+  }
+
+  const TerminalSymbol& operator*() {
+    return (inspector.current_vertex().is_negative ? -1 : 1) * vertices->at(inspector.current_vertex().index).terminal_symbol;
+  }
+  
+private:
+  SLPSet::ConstVerticesPostorderInspector inspector; //!<We use this inspector to list all terminals
+  const std::vector<SLPVertex>* vertices;            //!< Container with vertices
+  LongInteger current_word_length;                   //!<The current position in the resulting word
+};
+
+
+//! Class which represents a constant word produced by some vertex from SLP
+/**
+ * This class supports inspections of
+ *
+ */
+class SLPProducedConstWord {
+public:
+  //! The only constructor for this word
+  /**
+   * Construct a word adapter on SLP specified by vertices vector with root vertex
+   * having index root_vertex in the vector of vertices.
+   *
+   * @param vertices The vector of vertices in SLP
+   * @param root_vertex The index of the root vertex in SLP
+   */
+  SLPProducedConstWord(const std::vector<SLPVertex>& vertices, size_t root_vertex)
+    : vertices(vertices)
+    , root_vertex(root_vertex)
+  { }
+
+  unsigned int get_letter(size_t index) const;
+  size_t size() const;
+
+private:
+  SLPProducedConstWord() {} //word without associated vertices is useless
+
+  const std::vector<SLPVertex>& vertices;
+  size_t root_vertex;
+};
+
+
 
 #endif	/* COMPOSITIONSYSTEMSET_H */
 
