@@ -19,7 +19,7 @@ typedef unsigned int TerminalSymbol;
 
 //! Represents a vertex in program or the "inversed" vertex.
 struct SignedVertex {
-  size_t index;     //!< The index of the vertex in in the vertices vector.
+  size_t index;     //!< The index of the vertex in the vertices vector.
   bool is_negative; //!< True if we need "inversed" vertex
 
   //Constructor to simplify the creation of this vertex
@@ -71,15 +71,15 @@ struct SLPVertex {
   { }
 };
 
-//! Progression tables which are described the the thesis by Lifshits
+//! Progression tables which are described in the thesis by Lifshits
   /**
    * It is a class of the progression table as described in the thesis
    * by Yury Lifshits. This table enumerates the entries of the subtrees
    * of pattern to the subtrees of text.
    *
    * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
-   * \em n is the number of vertices in \em P and \em m is the number of vertices
-   * in \em T. In the cell PT[i][j] we have all entries of the word produced by
+   * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
+   * In the cell PT[i][j] we have all entries of the word produced by
    * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
    * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
    * the position in the word \p$T_j\p$ just after the end of the first part,
@@ -155,6 +155,7 @@ private:
  *
  * Actually, this class computes several words at the same time, one word for
  * each "root" of this system.
+ * TODO make arbitrary number of roots, composition then works under the condition num_terminals_1 == num_roots_2
  */
 class SLPSet {
 public:
@@ -163,11 +164,13 @@ public:
     , roots(terminals_count)
     , terminals_count(terminals_count)
   {
+    //filling terminals
     for (size_t terminal_id = 0; terminal_id < terminals_count; ++terminal_id) {
       vertices[terminal_id].terminal_symbol = terminal_id + 1;
       vertices[terminal_id].parents_count = 1;
     }
     
+    //filling roots
     for (size_t terminal_id = terminals_count; 
          terminal_id < 2 * terminals_count;
          ++terminal_id) {
@@ -189,7 +192,7 @@ public:
    * @param rule_lhs The terminal index of the left part of the only non-trivial
    *                 production rule. If < 0, then terminal is reversed.
    * @param rule_rhs The right side of prudction rule, see docs for rule_lhs.
-   *                 if rule_rhs == 0, then the second child is epsont.
+   *                 if rule_rhs == 0, then the second child is absent.
    */
 
   SLPSet(unsigned int terminals_count, unsigned int nontrivial_root,
@@ -256,7 +259,7 @@ public:
    * reduced word.
    *
    * Requires \p$O(n^3 h)\p$ operations, where \p$n\p$ is the number of
-   * vertices and  \p$h\p$ is the height of this program.
+   * vertices and  \p$h\p$ is the height of this program. TODO how is it indexed?
    *
    * @return The program which produce the freely reduced words.
    */
@@ -265,7 +268,7 @@ public:
   //! Post-order SLP Inspector
   /**
    * This is an inspector which goes through the
-   * vertices of the SLP in the following orders: first, all left children,
+   * vertices of the SLP in the following order: all left children,
    * then all right children, and after that the vertex itself. Useful to
    * produce the resulting words and also to compare SLPs
    */
@@ -352,13 +355,13 @@ private:
 
   //! Container for all vertices of the graph.
   std::vector< SLPVertex > vertices;
-  std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array
+  std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array corresponding to the roots
   unsigned int terminals_count; //!< The number of terminals in the system.
 
-  //! Helper function to get left child with respect to the sign of vertex
+  //! Helper function to get the left child with respect to the sign of vertex
   static const SignedVertex& get_left_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
     if (vertex.is_negative) {
-      return vertices[vertex.index].right_child;
+      return vertices[vertex.index].right_child;//TODO should we invert this vertex?
     } else {
       return vertices[vertex.index].left_child;
     }
@@ -367,9 +370,9 @@ private:
   //! Helper function to get right child with respect to the sign of vertex
   static const SignedVertex& get_right_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
     if (! vertex.is_negative) {
-      return vertices[vertex.index].right_child;
+      return vertices[vertex.index].left_child;//TODO should we invert this vertex?
     } else {
-      return vertices[vertex.index].left_child;
+      return vertices[vertex.index].right_child;
     }
   }
 

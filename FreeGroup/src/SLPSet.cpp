@@ -23,7 +23,7 @@ SLPSet::equal_to(const SLPSet& other) const {
        ++this_root, ++other_root) {
      
     ProgressionTable::MatchResultSequence match = PT.get_matches(SignedVertex(*this_root, false), SignedVertex(*other_root, false));
-    if (match.start != 0 && match.count != 1) {
+    if (match.start != 0 || match.count != 1) {
       return false;
     }
 
