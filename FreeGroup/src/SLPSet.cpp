@@ -1,7 +1,18 @@
 #include "SLPSet.h"
 
-const SignedVertex SignedVertex::Null; //define static in cpp file
+const SLPVertex SLPVertex::Null; //define static in cpp file
 
+SLPVertex SLPVertex::terminal_vertex(const TerminalSymbol& terminal_symbol) {
+  SLPVertex vertex(std::make_shared<BasicVertex>(), false);
+
+  vertex.ptr_->terminal_symbol = terminal_symbol;
+  vertex.ptr_->length = 1;
+  vertex.ptr_->height = 1;
+
+  return vertex;
+}
+
+/* TODO: implement equal_to
 SLPSet::equal_to(const SLPSet& other) const {
   if (other.roots.size() != this->roots.size()) {
     return false;
@@ -34,3 +45,4 @@ SLPSet::equal_to(const SLPSet& other) const {
   return true;
 
 }
+*/
