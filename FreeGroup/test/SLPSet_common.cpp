@@ -64,6 +64,24 @@ namespace {
     EXPECT_EQ(hash(null_vertex), hash(negative_null_vertex));
     EXPECT_NE(hash(null_vertex), hash(v1p));
   }
+
+  //Tests for hash<std::pair>
+  TEST(HashPair, HashPair) {
+    std::hash<std::pair<int, int> > hash;
+
+    auto p11 = std::make_pair(1, 1);
+    auto p00 = std::make_pair(0, 0);
+    auto p01 = std::make_pair(0, 1);
+    auto p10 = std::make_pair(1, 0);
+
+    EXPECT_EQ(hash(p00), hash(std::make_pair(0, 0)));
+    EXPECT_NE(hash(p00), hash(p11));
+    EXPECT_NE(hash(p00), hash(p01));
+    EXPECT_NE(hash(p00), hash(p10));
+    EXPECT_NE(hash(p01), hash(p11));
+    EXPECT_NE(hash(p01), hash(p10));
+    EXPECT_NE(hash(p10), hash(p11));
+  }
 }
 
 
