@@ -73,7 +73,7 @@ class SLPVertex {
      * @param invert True if inverted
      * @return SignedVertex, left child
      */
-    const SignedVertex& left_child(bool invert) const {
+    const SignedVertex& left_child(bool invert = false) const {
       if (invert) {
         return right_child_;
       } else {
@@ -81,8 +81,8 @@ class SLPVertex {
       }
     }
 
-    bool has_left_child(bool invert) const {
-      return left_child(invert) != NULL_VERTEX;
+    bool has_left_child(bool invert = false) const {
+      return left_child(invert) != SignedVertex::Null;
     }
 
     /**
@@ -90,12 +90,12 @@ class SLPVertex {
      * @param invert True if inverted
      * @return SignedVertex, right child
      */
-    const SignedVertex& right_child(bool invert) const {
+    const SignedVertex& right_child(bool invert = false) const {
       return left_child(!invert);
     }
 
     bool has_right_child(bool invert) const {
-      return right_child(invert) != NULL_VERTEX;
+      return right_child(invert) != SignedVertex::Null;
     }
 
     bool is_terminal() const {
@@ -110,13 +110,17 @@ class SLPVertex {
       return length_;
     }
 
+    unsigned int height() const {
+      return height_;
+    }
+
     //TODO: add missed getters/setters
   private:
-    SignedVertex left_child_; //!< The index of the left vertex in vertices vector. Use CHILD_NOT_EXIST
-    SignedVertex right_child_; //!< The index of the right vertex in vertices vector.
-    TerminalSymbol terminal_symbol_; //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
-    LongInteger length_;               //!< Length of word produced by the vertex
-    unsigned int height_;                   //!< Height of subtree
+    SignedVertex left_child_;         //!< The index of the left vertex in vertices vector. Use SignedVertex::Null if child is absent.
+    SignedVertex right_child_;        //!< The index of the right vertex in vertices vector.
+    TerminalSymbol terminal_symbol_;  //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
+    LongInteger length_;              //!< Length of word produced by the vertex
+    unsigned int height_;             //!< Height of subtree
 
 };
 
@@ -141,10 +145,6 @@ class SLPVertex {
    *
    * See the "Algorithms and complexity analysis for processing compressed text"
    * for details.
-   *
-   * @param pattern 
-   * @param text The SLP of the text where we are looking the word.
-   * @param prefix_table The pre-allocated storage for the result.
    */
 class ProgressionTable {
   public:
