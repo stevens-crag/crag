@@ -15,6 +15,10 @@ typedef mpz_class LongInteger;
 #include <memory>
 #include <initializer_list>
 #include <iterator>
+#include <unordered_map>
+#include <functional>
+
+using std::hash;
 
 typedef unsigned int TerminalSymbol;
 static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing invalid terminal symbol
@@ -24,7 +28,7 @@ class SLPVertex;
 //! Pointer to some SLPVertex, probably with 'sign'
 struct SignedVertex {
   public:
-    std::shared_ptr<SLPVertex> vertex; //!< The index of the vertex in in the vertices vector.
+    std::shared_ptr<SLPVertex> ptr;    //!< The pointer tp SLPVertex
     bool negative;                     //!< True if we need "inverse" vertex
 
     SignedVertex()
@@ -39,9 +43,9 @@ struct SignedVertex {
  * The implementation of equality operator for #SignedVertex ignores the sign if lhs.vertex is SignedVertex::Null.index
  */
 bool operator==(const SignedVertex& lhs, const SignedVertex& rhs) {
-  return lhs.vertex == rhs.vertex &&
+  return lhs.ptr == rhs.ptr &&
       (lhs.negative == rhs.negative ||
-       lhs.vertex == (SignedVertex::Null).vertex);
+       lhs.ptr == (SignedVertex::Null).ptr);
 }
 
 //! Standard implementation through operator ==
@@ -124,29 +128,56 @@ class SLPVertex {
 
 };
 
+namespace std {
+  //! Definition of the hash for std::pair
+  template<typename TFirst, typename TSecond>
+  struct hash< std::pair<TFirst, TSecond> > {
+  private:
+    const std::hash<TFirst> first_hash_;
+    const std::hash<TSecond> second_hash_;
+  public:
+    size_t operator()(const std::pair<TFirst, TSecond>& obj) const {
+      size_t first_hash_value = first_hash_(obj.first);
+      //Taken from boost/functional/hash
+      return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
+    }
+  };
+
+  //! Definition of the hash for SignedVertex
+  template<>
+  struct hash< SignedVertex > {
+    private:
+      const std::hash<std::shared_ptr<SLPVertex> > ptr_hash_;
+    public:
+      size_t operator()(const SignedVertex& vertex) const {
+        return vertex.negative? ~ptr_hash_(vertex.ptr) : ptr_hash_(vertex.ptr);
+      }
+  };
+}
+
 //! Progression tables which are described in the thesis by Lifshits
-  /**
-   * It is a class of the progression table as described in the thesis
-   * by Yury Lifshits. This table enumerates the entries of the subtrees
-   * of pattern to the subtrees of text.
-   *
-   * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
-   * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
-   * In the cell PT[i][j] we have all entries of the word produced by
-   * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
-   * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
-   * the position in the word \p$T_j\p$ just after the end of the first part,
-   * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
-   *
-   * The important fact that we use here is that if some entries have the common
-   * point (split point in this case), then the beginning of these entries make
-   * the arithmetic progression, which can be encoded by the triplet of integers.
-   * So, the table just stores these triplets.
-   *
-   * See the "Algorithms and complexity analysis for processing compressed text"
-   * for details.
-   */
-class ProgressionTable {
+/**
+ * It is a class of the progression table as described in the thesis
+ * by Yury Lifshits. This table enumerates the entries of the subtrees
+ * of pattern to the subtrees of text.
+ *
+ * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
+ * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
+ * In the cell PT[i][j] we have all entries of the word produced by
+ * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
+ * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
+ * the position in the word \p$T_j\p$ just after the end of the first part,
+ * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
+ *
+ * The important fact that we use here is that if some entries have the common
+ * point (split point in this case), then the beginning of these entries make
+ * the arithmetic progression, which can be encoded by the triplet of integers.
+ * So, the table just stores these triplets.
+ *
+ * See the "Algorithms and complexity analysis for processing compressed text"
+ * for details.
+ */
+class SLPMatchingTable {
   public:
     struct MatchResultSequence {
         LongInteger start; //!< The beginning of the first match
@@ -154,7 +185,7 @@ class ProgressionTable {
         LongInteger count; //!< The number of matches
     };
 
-    ProgressionTable(const std::vector<SLPVertex>& pattern_vertices,
+    SLPMatchingTable(const std::vector<SLPVertex>& pattern_vertices,
                      const std::vector<SLPVertex>& text_vertices)
         : pattern_vertices(pattern_vertices),
           text_vertices(text_vertices),
@@ -179,10 +210,7 @@ class ProgressionTable {
 
 
   private:
-    struct MatchResult {
-        MatchResultSequence match; //!< Entries of pattern in text
-        MatchResultSequence inversed_match; //!< Entires of inversed pattern in text
-    };
+    std::unordered_map<std::pair<SignedVertex, SignedVertex> >
 
     //! Helper function which looks for pattern in text[begin..end]
     std::pair<MatchResultSequence, MatchResultSequence> local_search(

@@ -19,12 +19,12 @@ SLPSet::equal_to(const SLPSet& other) const {
     }
   }
 
-  ProgressionTable PT(*this, other);
+  SLPMatchingTable PT(*this, other);
   for (auto this_root = this->roots.begin(), auto other_root = other.roots.end();
        this_root != this->roots.end(); //Don't have to check other, because other.roots.size() == this->roots.size()
        ++this_root, ++other_root) {
      
-    ProgressionTable::MatchResultSequence match = PT.get_matches(SignedVertex(*this_root, false), SignedVertex(*other_root, false));
+    SLPMatchingTable::MatchResultSequence match = PT.get_matches(SignedVertex(*this_root, false), SignedVertex(*other_root, false));
     if (match.start != 0 || match.count != 1) {
       return false;
     }
