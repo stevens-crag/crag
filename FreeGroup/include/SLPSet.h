@@ -117,28 +117,32 @@ class SLPVertex {
 
 };
 
-//! Progression tables which are described the the thesis by Lifshits
-/**
- * It is a class of the progression table as described in the thesis
- * by Yury Lifshits. This table enumerates the entries of the subtrees
- * of pattern to the subtrees of text.
- *
- * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
- * \em n is the number of vertices in \em P and \em m is the number of vertices
- * in \em T. In the cell PT[i][j] we have all entries of the word produced by
- * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
- * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
- * the position in the word \p$T_j\p$ just after the end of the first part,
- * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
- *
- * The important fact that we use here is that if some entries have the common
- * point (split point in this case), then the beginning of these entries make
- * the arithmetic progression, which can be encoded by the triplet of integers.
- * So, the table just stores these triplets.
- *
- * See the "Algorithms and complexity analysis for processing compressed text"
- * for details.
- */
+//! Progression tables which are described in the thesis by Lifshits
+  /**
+   * It is a class of the progression table as described in the thesis
+   * by Yury Lifshits. This table enumerates the entries of the subtrees
+   * of pattern to the subtrees of text.
+   *
+   * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
+   * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
+   * In the cell PT[i][j] we have all entries of the word produced by
+   * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
+   * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
+   * the position in the word \p$T_j\p$ just after the end of the first part,
+   * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
+   *
+   * The important fact that we use here is that if some entries have the common
+   * point (split point in this case), then the beginning of these entries make
+   * the arithmetic progression, which can be encoded by the triplet of integers.
+   * So, the table just stores these triplets.
+   *
+   * See the "Algorithms and complexity analysis for processing compressed text"
+   * for details.
+   *
+   * @param pattern 
+   * @param text The SLP of the text where we are looking the word.
+   * @param prefix_table The pre-allocated storage for the result.
+   */
 class ProgressionTable {
   public:
     struct MatchResultSequence {
@@ -193,6 +197,7 @@ class ProgressionTable {
  *
  * Actually, this class computes several words at the same time, one word for
  * each "root" of this system.
+ * TODO make arbitrary number of roots, composition then works under the condition num_terminals_1 == num_roots_2
  */
 class SLPSet {
   public:
@@ -216,19 +221,18 @@ class SLPSet {
       }
     }
 
-    //! Constructor to create almost trivial SLP with one non-trivial root
-    /**
-     * Constructs SLP with #terminals_count terminals and the same number of roots.
-     * Root #nontrivial_root (index starts from 1) has the only non-trivial
-     * production rule (rule_lhs, rule_rhs).
-     *
-     * @param terminals_count The number of terminals and roots
-     * @param nontrivial_root The index of non-trivial root, starting from 1
-     * @param rule_lhs The terminal index of the left part of the only non-trivial
-     *                 production rule. If < 0, then terminal is reversed.
-     * @param rule_rhs The right side of prudction rule, see docs for rule_lhs.
-     *                 if rule_rhs == 0, then the second child is epsont.
-     */
+  //! Constructor to create almost trivial SLP with one non-trivial root
+  /**
+   * Constructs SLP with #terminals_count terminals and the same number of roots.
+   * Root #nontrivial_root (index starts from 1) has the only non-trivial
+   * production rule (rule_lhs, rule_rhs).
+   * 
+   * @param terminals_count The number of terminals and roots
+   * @param nontrivial_root The index of non-trivial root, starting from 1
+   * @param rule_lhs The terminal index of the left part of the only non-trivial
+   *                 production rule. If < 0, then terminal is reversed.
+   * @param rule_rhs The right side of prudction rule, see docs for rule_lhs.
+   *                 if rule_rhs == 0, then the second child is absent.
 
     SLPSet(unsigned int terminals_count, unsigned int nontrivial_root,
            int rule_lhs, int rule_rhs)
@@ -287,29 +291,29 @@ class SLPSet {
      */
     bool equal_to(const SLPSet& other) const;
 
-    //! Reduce words produces by this SLP.
-    /**
-     * Take each vertex and build a new program such that it produces the freely
-     * reduced word.
-     *
-     * Requires \p$O(n^3 h)\p$ operations, where \p$n\p$ is the number of
-     * vertices and  \p$h\p$ is the height of this program.
-     *
-     * @return The program which produce the freely reduced words.
-     */
-    SLPSet&& free_reduction() const;
+  //! Reduce words produces by this SLP.
+  /**
+   * Take each vertex and build a new program such that it produces the freely
+   * reduced word.
+   *
+   * Requires \p$O(n^3 h)\p$ operations, where \p$n\p$ is the number of
+   * vertices and  \p$h\p$ is the height of this program. TODO how is it indexed?
+   *
+   * @return The program which produce the freely reduced words.
+   */
+  SLPSet&& free_reduction() const;
 
-    //! Post-order SLP Inspector
-    /**
-     * This is an inspector which goes through the
-     * vertices of the SLP in the following orders: first, all left children,
-     * then all right children, and after that the vertex itself. Useful to
-     * produce the resulting words and also to compare SLPs
-     */
-    class ConstVerticesPostorderInspector
-    {
-      public:
-      ConstVerticesPostorderInspector()
+  //! Post-order SLP Inspector
+  /**
+   * This is an inspector which goes through the
+   * vertices of the SLP in the following order: all left children,
+   * then all right children, and after that the vertex itself. Useful to
+   * produce the resulting words and also to compare SLPs
+   */
+  class ConstVerticesPostorderInspector
+  {
+  public:
+    ConstVerticesPostorderInspector()
       : vertices(nullptr)
       {}
       //! Inspect the subtree of #root in #vertices
@@ -387,10 +391,10 @@ class SLPSet {
 
     private:
 
-    //! Container for all vertices of the graph.
-    std::vector<SLPVertex> vertices;
-    std::vector<size_t> roots;//!< Contains the numbers of the vertices in the vertices array
-    unsigned int terminals_count;//!< The number of terminals in the system.
+  //! Container for all vertices of the graph.
+  std::vector< SLPVertex > vertices;
+  std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array corresponding to the roots
+  unsigned int terminals_count; //!< The number of terminals in the system.
 
     //! Helper function to get left child with respect to the sign of vertex
     static const SignedVertex& get_left_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
