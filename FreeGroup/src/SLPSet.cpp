@@ -1,5 +1,7 @@
 #include "SLPSet.h"
 
+const SignedVertex SignedVertex::Null; //define static in cpp file
+
 SLPSet::equal_to(const SLPSet& other) const {
   if (other.roots.size() != this->roots.size()) {
     return false;

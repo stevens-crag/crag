@@ -1,49 +1,54 @@
 /*
- * File:   CompositionSystemSet.h
+ * File:   SLPSet.h
  * Author: dpantele
  *
  * Created on November 18, 2012, 4:06 PM
  */
 
-#ifndef COMPOSITIONSYSTEMSET_H
-#define	COMPOSITIONSYSTEMSET_H
+#ifndef SLPSET_H
+#define	SLPSET_H
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
-
-typedef unsigned int TerminalSymbol;
-static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing invalid terminal symbol
 
 #include <vector>
 #include <memory>
 #include <initializer_list>
 #include <iterator>
 
-//! Represents a vertex in program or the "inverse" vertex.
+typedef unsigned int TerminalSymbol;
+static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing invalid terminal symbol
+
+//! One vertex in the straight line program
+class SLPVertex;
+//! Pointer to some SLPVertex, probably with 'sign'
 struct SignedVertex {
   public:
-    size_t index;     //!< The index of the vertex in in the vertices vector.
-    bool negative;    //!< True if we need "inverse" vertex
+    std::shared_ptr<SLPVertex> vertex; //!< The index of the vertex in in the vertices vector.
+    bool negative;                     //!< True if we need "inverse" vertex
 
     SignedVertex()
-      : index(-1),
-        negative(false)
+      : negative(false)
     { }
+
+    static const SignedVertex Null; //!< Use this constant to specify 'nullptr'
 };
 
-static const SignedVertex NULL_VERTEX;
-
+//!The implementation of equality operator for #SignedVertex.
+/**
+ * The implementation of equality operator for #SignedVertex ignores the sign if lhs.vertex is SignedVertex::Null.index
+ */
 bool operator==(const SignedVertex& lhs, const SignedVertex& rhs) {
-  return lhs.index == rhs.index &&
+  return lhs.vertex == rhs.vertex &&
       (lhs.negative == rhs.negative ||
-       lhs.index == NULL_VERTEX.index);
+       lhs.vertex == (SignedVertex::Null).vertex);
 }
 
+//! Standard implementation through operator ==
 bool operator!=(const SignedVertex& lhs, const SignedVertex& rhs) {
   return !(lhs == rhs);
 }
 
-//! Structure representing one vertex in the SLP. Internal.
 /**
  * Represents one composition rule of kind \p$A\rightarrow BC \p$.
  * Also stores internal information such as the height of the subtree
@@ -56,12 +61,11 @@ bool operator!=(const SignedVertex& lhs, const SignedVertex& rhs) {
 class SLPVertex {
   public:
     SLPVertex()
-        : left_child_(NULL_VERTEX),
-          right_child_(NULL_VERTEX),
+        : left_child_(SignedVertex::Null),
+          right_child_(SignedVertex::Null),
           terminal_symbol_(INVALID_TERMINAL),
           length_(0),
-          height_(0),
-          parents_count_(0) {
+          height_(0) {
     }
 
     /**
@@ -113,7 +117,6 @@ class SLPVertex {
     TerminalSymbol terminal_symbol_; //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
     LongInteger length_;               //!< Length of word produced by the vertex
     unsigned int height_;                   //!< Height of subtree
-    unsigned int parents_count_;            //!< Number of parents
 
 };
 
@@ -151,6 +154,14 @@ class ProgressionTable {
         LongInteger count; //!< The number of matches
     };
 
+    ProgressionTable(const std::vector<SLPVertex>& pattern_vertices,
+                     const std::vector<SLPVertex>& text_vertices)
+        : pattern_vertices(pattern_vertices),
+          text_vertices(text_vertices),
+          table(pattern_vertices.size() * text_vertices.size()) {
+    }
+
+
     //! Return all matches of the pattern around the "split point"
     /**
      * This function get the result from #table and recursively calculate
@@ -166,12 +177,6 @@ class ProgressionTable {
     MatchResultSequence matches(const SignedVertex& pattern,
                                 const SignedVertex& text);
 
-    ProgressionTable(const std::vector<SLPVertex>& pattern_vertices,
-                     const std::vector<SLPVertex>& text_vertices)
-        : pattern_vertices(pattern_vertices),
-          text_vertices(text_vertices),
-          table(pattern_vertices.size() * text_vertices.size()) {
-    }
 
   private:
     struct MatchResult {
