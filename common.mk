@@ -39,7 +39,7 @@ vpath %.a $(LIB_DIR)
 
 include ../build-config.mk
 
-LDFLAGS += -L $(LIB_DIR)/  $(foreach dir,$(DEPEND_ON),-L../$(dir)/$(LIB_DIR))
+LDFLAGS += -L $(LIB_DIR)/  $(foreach dir,$(DEPEND_ON),-L ../$(dir)/$(LIB_DIR))
 LIBS    += -l$(THISLIB) $(foreach name,$(DEPEND_ON),-l$(name)) $(LOCAL_LIBS)
 INCLUDE += -I include/ $(foreach dir,$(DEPEND_ON),-I../$(dir)/include) $(LOCAL_INCLUDE)
 DEPENDONLIBS = $(DEPEND_ON)
@@ -91,7 +91,7 @@ $(OBJ_DIR)/%.o : %.cpp
 ## Build dependencies
 $(OBJ_DIR)/%.d: %.cpp
 	if [ ! -d $(OBJ_DIR) ]; then mkdir -p $(OBJ_DIR); fi
-	$(SHELL) -ec '$(CXX) -MM $(INCLUDE) $< | sed "s:$*.o:$(OBJ_DIR)/& $@:g"' > $@
+	$(SHELL) -ec '$(CXX) $(CPPFLAGS) -MM $(INCLUDE) $(CXXFLAGS) $< | sed "s:$*.o:$(OBJ_DIR)/& $@:g"' > $@
 
 
 # Google test framework integration
@@ -129,7 +129,8 @@ $(BIN_DIR)/all_unittests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o)
                       $(LIB_DIR)/lib$(THISLIB).a $(DEPENDONLIBS)
 	@echo "found tests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=%)"
 	@if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
-	$(CXX) $(CPPFLAGS) $(INCLUDE)-I$(GTEST_DIR)/include $(CXXFLAGS) $^ $(LDFLAGS) -lpthread $(LIBS) -o $@
+	$(CXX) $(CPPFLAGS) $(INCLUDE)-I$(GTEST_DIR)/include $(CXXFLAGS) $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o) $(GTEST_DIR)/gtest_main.a \
+	    $(LDFLAGS) -lpthread $(LIBS) -o $@
 	@echo
 	@echo " ./$@ : compiled sucessfully."
 	@echo
@@ -144,6 +145,3 @@ clean:
 # Include all the dependency files, this will  automatically remake them if they are
 # out of date
 include $(foreach file,$(SRC) $(MAIN),$(OBJ_DIR)/$(file).d)
-	
-	
-
