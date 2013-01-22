@@ -15,29 +15,20 @@
 namespace {
   class SignedVertexTest : public ::testing::Test {
     protected:
-      virtual void SetUp() {
-        auto vertex1 = std::make_shared<SLPVertex>();
-        auto vertex2 = std::make_shared<SLPVertex>();
-
-        v1p.ptr = vertex1;
-        v1p.negative = false;
-
-        v1n.ptr = vertex1;
-        v1n.negative = true;
-
-        v2p.ptr = vertex2;
-        v2p.negative = false;
-
-        null_vertex = SignedVertex::Null;
-        negative_null_vertex = SignedVertex::Null;
-        negative_null_vertex.negative = true;
+      SignedVertexTest()
+        : v1p(SLPVertex::terminal_vertex(1))
+        , v2p(SLPVertex::terminal_vertex(1))
+        , null_vertex(SLPVertex::Null)
+        , negative_null_vertex(SLPVertex::Null.negate())
+      {
+        v1n = v1p.negate();
       }
 
-      SignedVertex v1p;
-      SignedVertex v1n;
-      SignedVertex v2p;
-      SignedVertex null_vertex;
-      SignedVertex negative_null_vertex;
+      SLPVertex v1p;
+      SLPVertex v1n;
+      SLPVertex v2p;
+      SLPVertex null_vertex;
+      SLPVertex negative_null_vertex;
   };
 
   TEST_F(SignedVertexTest, Equality) {
@@ -50,13 +41,13 @@ namespace {
     EXPECT_EQ(null_vertex, negative_null_vertex);
 
     EXPECT_NE(v1p, null_vertex);
-    EXPECT_EQ(v1p.ptr->left_child(), null_vertex);
-    EXPECT_EQ(v1p.ptr->left_child(), v1p.ptr->right_child());
-
+    EXPECT_EQ(v1p.left_child(), null_vertex);
+    EXPECT_EQ(v1p.left_child(), v1p.right_child());
+    EXPECT_EQ(v1p.left_child(), v1p.right_child().negate());
   }
 
   TEST_F(SignedVertexTest, hash_function) {
-    std::hash<SignedVertex> hash;
+    std::hash<SLPVertex> hash;
     EXPECT_EQ(hash(v1p), hash(v1p));
     EXPECT_NE(hash(v1p), hash(v1n));
     EXPECT_NE(hash(v1p), hash(v2p));

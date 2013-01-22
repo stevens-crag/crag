@@ -61,21 +61,23 @@ class SLPVertex {
     //!The implementation of equality operator for #SLPVertex.
     /**
      * Compares the actual addresses of vertices and sign.
-     * The implementation of equality operator for #SLPVertex ignores the sign if lhs.vertex is SignedVertex::Null.index
      */
     bool operator== (const SLPVertex& other) {
       return this->ptr_ == other.ptr_ &&
-          ( this->negative_ == other.negative_ ||
-            this->ptr_ == Null.ptr_ );
+             this->negative_ == other.negative_;
     }
 
     bool operator!= (const SLPVertex& other) {
       return !(*this == other);
     }
 
-    //! Returns 'negated' vertex
+    //! Returns 'negated' vertex. Null.negate() is Null
     SLPVertex negate() const {
-      return SLPVertex(ptr_, !negative_);
+      if (ptr_) {
+        return SLPVertex(ptr_, !negative_);
+      } else {
+        return Null;
+      }
     }
 
     //getters
@@ -212,7 +214,7 @@ class SLPProducedWordIterator {
 
   private:
     SLPPostorderInspector inspector_; //!< Subtree inspector
-    LongInteger length; //!< Length already produced
+    LongInteger length_;              //!< Length already produced
 
 };
 
@@ -225,9 +227,9 @@ class SLPProducedWord {
     const TerminalSymbol& operator[](LongInteger index) const; //!< Get one letter from the word
 
     SLPProducedWordIterator begin() const; //!< Get the iterator to the first symbol
-    SLPProducedWordIterator end() const; //!< Get the iterator to the symbol after the last
+    SLPProducedWordIterator end() const;   //!< Get the iterator to the symbol after the last
   private:
-    SLPVertex root; //!< The root vertex producing this word
+    SLPVertex root_; //!< The root vertex producing this word
 };
 
 namespace std {
@@ -252,9 +254,6 @@ namespace std {
       const std::hash<std::shared_ptr<SLPVertex::BasicVertex> > ptr_hash_;
     public:
       size_t operator()(const SLPVertex& vertex) const {
-        if (vertex == SLPVertex::Null) {
-          return ptr_hash_(vertex.ptr_);
-        }
         return vertex.negative_? ~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
       }
   };
