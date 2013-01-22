@@ -138,8 +138,7 @@ class SLPPostorderInspector
 
     //! Inspect the subtree of #root
     SLPPostorderInspector(const SLPVertex& root)
-      : current_path_() {
-      current_path_.push_back(root);
+      : current_path_({root}) {
       goto_leftmost_terminal();
     }
 
@@ -160,7 +159,7 @@ class SLPPostorderInspector
     void go_to_next_vertex();
 
   private:
-    std::vector< const SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
+    std::vector< SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
 
     //! Go from the current_path_.back() to the leftmost terminal
     void goto_leftmost_terminal();

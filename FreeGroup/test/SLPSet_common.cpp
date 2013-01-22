@@ -82,6 +82,38 @@ namespace {
     EXPECT_NE(hash(p01), hash(p10));
     EXPECT_NE(hash(p10), hash(p11));
   }
+
+  TEST(SLPVertexTest, TerminalVertex) {
+    SLPVertex a = SLPVertex::terminal_vertex(1);
+
+    EXPECT_EQ(a.length(), 1);
+    EXPECT_EQ(a.height(), 1);
+    EXPECT_FALSE(a.has_left_child());
+    EXPECT_FALSE(a.has_right_child());
+
+    EXPECT_TRUE(a.is_terminal());
+    EXPECT_EQ(a.terminal_symbol(), 1);
+  }
+
+  TEST(SLPVertexTest, ConcatednatedVertex) {
+    SLPVertex a = SLPVertex::terminal_vertex(1);
+    SLPVertex b = SLPVertex::terminal_vertex(2);
+    SLPVertex c = SLPVertex::terminal_vertex(3);
+
+    SLPVertex ab_1 = SLPVertex::concatenate(a, b.negate());
+    EXPECT_EQ(ab_1.length(), 2);
+    EXPECT_EQ(ab_1.height(), 2);
+    EXPECT_EQ(ab_1.left_child(), a);
+    EXPECT_NE(ab_1.right_child(), b);
+    EXPECT_EQ(ab_1.right_child(), b.negate());
+
+    SLPVertex d = SLPVertex::concatenate(ab_1.negate(), c.negate()); //ba^-1c_1
+    EXPECT_EQ(d.length(), 3);
+    EXPECT_EQ(d.height(), 3);
+    EXPECT_EQ(d.left_child().left_child(), b);
+    EXPECT_EQ(d.left_child().right_child(), a.negate());
+    EXPECT_EQ(d.right_child(), c.negate());
+  }
 }
 
 
