@@ -32,7 +32,7 @@ LOCAL_LIBS = -L/lib/ -lgmpxx -lgmp
 
 # 
 # SRC: lists all source files
-SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_operators StraightLineProgramWord_truncate StraightLineProgramWord_split
+SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_operators StraightLineProgramWord_truncate StraightLineProgramWord_split SLPSet
 
 
 # 
