@@ -2,6 +2,14 @@
 
 const SLPVertex SLPVertex::Null; //define static in cpp file
 
+inline BasicVertex::BasicVertex()
+  : left_child(SLPVertex::Null),
+    right_child(SLPVertex::Null),
+    terminal_symbol(INVALID_TERMINAL),
+    length(0),
+    height(0)
+{ }
+
 SLPVertex SLPVertex::terminal_vertex(const TerminalSymbol& terminal_symbol) {
   SLPVertex vertex(std::make_shared<BasicVertex>(), false);
 
@@ -12,37 +20,13 @@ SLPVertex SLPVertex::terminal_vertex(const TerminalSymbol& terminal_symbol) {
   return vertex;
 }
 
-/* TODO: implement equal_to
-SLPSet::equal_to(const SLPSet& other) const {
-  if (other.roots.size() != this->roots.size()) {
-    return false;
-  }
+SLPVertex SLPVertex::concatenate(const SLPVertex& left_child, const SLPVertex& right_child) {
+  SLPVertex vertex(std::make_shared<BasicVertex>(), false);
 
-  if (other.terminals_count != this->terminals_count) {
-    return false;
-  }
+  vertex.ptr_->left_child = left_child;
+  vertex.ptr_->right_child = right_child;
+  vertex.ptr_->length = left_child.length() + right_child.length();
+  vertex.ptr_->height = std::max(left_child.height(), right_child.height()) + 1;
 
-  for (auto this_root = this->roots.begin(), auto other_root = other.roots.end();
-       this_root != this->roots.end(); //Don't have to check other, because other.roots.size() == this->roots.size()
-       ++this_root, ++other_root) {
-    if (this->vertices[*this_root].length != other.vertices[*other_root].length) {
-      return false;
-    }
-  }
-
-  SLPMatchingTable PT(*this, other);
-  for (auto this_root = this->roots.begin(), auto other_root = other.roots.end();
-       this_root != this->roots.end(); //Don't have to check other, because other.roots.size() == this->roots.size()
-       ++this_root, ++other_root) {
-     
-    SLPMatchingTable::MatchResultSequence match = PT.get_matches(SignedVertex(*this_root, false), SignedVertex(*other_root, false));
-    if (match.start != 0 || match.count != 1) {
-      return false;
-    }
-
-  }
-
-  return true;
-
+  return vertex;
 }
-*/

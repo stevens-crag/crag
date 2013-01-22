@@ -6,7 +6,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "SLPSet.cpp"
+#include "SLPSet.h"
 
 #include <memory>
 #include <functional>
@@ -44,6 +44,15 @@ namespace {
     EXPECT_EQ(v1p.left_child(), null_vertex);
     EXPECT_EQ(v1p.left_child(), v1p.right_child());
     EXPECT_EQ(v1p.left_child(), v1p.right_child().negate());
+
+    EXPECT_EQ(null_vertex.length(), 0);
+    EXPECT_EQ(null_vertex.height(), 0);
+    EXPECT_EQ(null_vertex.has_left_child(), false);
+    EXPECT_EQ(null_vertex.has_right_child(), false);
+    EXPECT_EQ(null_vertex.left_child(), null_vertex);
+    EXPECT_EQ(null_vertex.right_child(), null_vertex);
+    EXPECT_EQ(null_vertex.is_terminal(), false);
+    EXPECT_EQ(null_vertex.terminal_symbol(), INVALID_TERMINAL);
   }
 
   TEST_F(SignedVertexTest, hash_function) {

@@ -26,7 +26,12 @@ static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing inv
 
 //Need this to allow hash access interior of SLPVertex
 class SLPVertex;
-template<> class std::hash<SLPVertex>;
+namespace std {
+  template<> class hash<SLPVertex>;
+}
+
+//! Internal structure of SLPVertex
+struct BasicVertex;
 
 //! One vertex in the straight line program
 /**
@@ -42,9 +47,10 @@ class SLPVertex {
   public:
     //! Default constructor. Constructing 'invalid' vertex.
     SLPVertex()
-      : ptr_(),
-        negative_(false) {
-    }
+      : ptr_()
+      , negative_(false)
+    { }
+
 
     static const SLPVertex Null; //Use this vertex to represent invalid vertex
 
@@ -62,12 +68,12 @@ class SLPVertex {
     /**
      * Compares the actual addresses of vertices and sign.
      */
-    bool operator== (const SLPVertex& other) {
+    bool operator== (const SLPVertex& other) const {
       return this->ptr_ == other.ptr_ &&
              this->negative_ == other.negative_;
     }
 
-    bool operator!= (const SLPVertex& other) {
+    bool operator!= (const SLPVertex& other) const {
       return !(*this == other);
     }
 
@@ -81,63 +87,29 @@ class SLPVertex {
     }
 
     //getters
-    SLPVertex left_child() const {
-      if (negative_) {
-        return ptr_->right_child.negate();
-      } else {
-        return ptr_->left_child;
-      }
-    }
+    inline SLPVertex left_child() const;
 
     bool has_left_child() const {
       return left_child() != Null;
     }
 
-    SLPVertex right_child() const {
-      if (negative_) {
-        return ptr_->left_child.negate();
-      } else {
-        return ptr_->right_child;
-      }
-    }
+    inline SLPVertex right_child() const;
 
     bool has_right_child() const {
       return right_child() != Null;
     }
 
+    inline TerminalSymbol terminal_symbol() const;
+
     bool is_terminal() const {
-      return ptr_->terminal_symbol != INVALID_TERMINAL;
+      return terminal_symbol() != INVALID_TERMINAL;
     }
 
-    const TerminalSymbol& terminal_symbol() const {
-      return ptr_->terminal_symbol;
-    }
+    inline LongInteger length() const;
 
-    const LongInteger& length() const {
-      return ptr_->length;
-    }
-
-    unsigned int height() const {
-      return ptr_->height;
-    }
+    inline unsigned int height() const;
 
   protected:
-    struct BasicVertex {
-      SLPVertex left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
-      SLPVertex right_child;           //!< Right part of the rule.
-      TerminalSymbol terminal_symbol;  //!< INVALID_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
-      LongInteger length;              //!< Length of word produced by the vertex
-      unsigned int height;             //!< Height of subtree
-
-      BasicVertex()
-        : left_child(Null),
-          right_child(Null),
-          terminal_symbol(INVALID_TERMINAL),
-          length(0),
-          height(0)
-      { }
-    };
-
     SLPVertex(const std::shared_ptr<BasicVertex>& ptr, bool negative)
       : ptr_(ptr),
         negative_(negative) {
@@ -147,6 +119,8 @@ class SLPVertex {
     bool negative_;                     //!< True if we need "inverse" vertex
 
 };
+
+
 
 //! Post-order SLP Inspector
 /**
@@ -159,29 +133,38 @@ class SLPPostorderInspector
 {
   public:
     //Default constructor is useless, but keep it for #SLPProducedWordIterator()
-    SLPPostorderInspector();
+    SLPPostorderInspector()
+    { }
+
     //! Inspect the subtree of #root
-    SLPPostorderInspector(const SLPVertex& root);
+    SLPPostorderInspector(const SLPVertex& root)
+      : current_path_() {
+      current_path_.push_back(root);
+      goto_leftmost_terminal();
+    }
 
     //Use default copy/move assignments/constructors
 
     //! Get current vertex
-    const SLPVertex& current_vertex() const;
+    const SLPVertex& current_vertex() const {
+      return current_path_.back();
+    }
 
     //! True if there are no more vertices, we have visited everything
-    bool inspection_ended() const;
+    bool inspection_ended() const {
+      return current_path_.empty();
+    }
 
     //! Move inspector to the next vertex
     //TODO: think about this function name
     void go_to_next_vertex();
 
   private:
-    std::vector< SLPVertex > current_path; //!< Way to the current vertex in the container. We are using this vector like a stack
+    std::vector< SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
 
-    //! Go from the current_path.back() to the leftmost terminal
+    //! Go from the current_path_.back() to the leftmost terminal
     void goto_leftmost_terminal();
 };
-
 
 /* We can't emulate standard container here to use functions from STL, because
  * the difference between iterators must be integral type, which is impossible here.
@@ -197,7 +180,11 @@ class SLPPostorderInspector
  */
 class SLPProducedWordIterator {
   public:
-    SLPProducedWordIterator();
+    SLPProducedWordIterator()
+      : inspector_()
+      , length_(0)
+      , root_()
+    { }
     explicit SLPProducedWordIterator(const SLPVertex& root);
 
     SLPProducedWordIterator& operator++(); //!< Prefix increment
@@ -215,6 +202,7 @@ class SLPProducedWordIterator {
   private:
     SLPPostorderInspector inspector_; //!< Subtree inspector
     LongInteger length_;              //!< Length already produced
+    SLPVertex   root_;                //!< Root
 
 };
 
@@ -240,6 +228,10 @@ namespace std {
     const std::hash<TFirst> first_hash_;
     const std::hash<TSecond> second_hash_;
   public:
+    hash()
+      : first_hash_()
+      , second_hash_()
+    { }
     size_t operator()(const std::pair<TFirst, TSecond>& obj) const {
       size_t first_hash_value = first_hash_(obj.first);
       //Taken from boost/functional/hash
@@ -251,8 +243,9 @@ namespace std {
   template<>
   struct hash< SLPVertex > {
     private:
-      const std::hash<std::shared_ptr<SLPVertex::BasicVertex> > ptr_hash_;
+      const std::hash<std::shared_ptr<BasicVertex> > ptr_hash_;
     public:
+      hash(): ptr_hash_() { }
       size_t operator()(const SLPVertex& vertex) const {
         return vertex.negative_? ~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
       }
@@ -375,6 +368,51 @@ class SLPSet {
  * TODO: Put it into SLPVertex, or maybe some external function, or...
  */
 //SLPSet free_reduction() const;
+
+struct BasicVertex {
+  public:
+    SLPVertex left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
+    SLPVertex right_child;           //!< Right part of the rule.
+    TerminalSymbol terminal_symbol;  //!< INVALID_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
+    LongInteger length;              //!< Length of word produced by the vertex
+    unsigned int height;             //!< Height of subtree
+
+    BasicVertex();
+};
+
+inline SLPVertex SLPVertex::left_child() const {
+  if (!ptr_) {
+   return Null;
+  }
+  if (negative_) {
+   return (ptr_->right_child).negate();
+  } else {
+   return ptr_->left_child;
+  }
+}
+
+inline SLPVertex SLPVertex::right_child() const {
+  if (!ptr_) {
+   return Null;
+  }
+  if (negative_) {
+    return ptr_->left_child.negate();
+  } else {
+    return ptr_->right_child;
+  }
+}
+
+inline TerminalSymbol SLPVertex::terminal_symbol() const {
+  return ptr_ ? ptr_->terminal_symbol : INVALID_TERMINAL;
+}
+
+inline LongInteger SLPVertex::length() const {
+     return ptr_ ? ptr_->length : 0;
+   }
+
+inline unsigned int SLPVertex::height() const {
+  return ptr_ ? ptr_->height : 0;
+}
 
 #endif	/* SLPSET_H */
 
