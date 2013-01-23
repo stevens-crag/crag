@@ -64,3 +64,29 @@ void SLPPostorderInspector::goto_leftmost_terminal() {
 
   current_path_.pop_back();
 }
+
+SLPProducedWordIterator& SLPProducedWordIterator::operator ++() {
+  ++length_;
+  inspector_.go_to_next_vertex();
+
+  while (!inspector_.inspection_ended() && !inspector_.current_vertex().is_terminal()) {
+    inspector_.go_to_next_vertex();
+  }
+
+  return *this;
+}
+
+SLPProducedWord::value_type SLPProducedWord::operator [](LongInteger index) const {
+  SLPVertex current_vertex = root_;
+
+  while (!current_vertex.is_terminal()) {
+    if (index < current_vertex.left_child().length()) { //Go left
+      current_vertex = current_vertex.left_child();
+    } else {
+      index -= current_vertex.left_child().length();
+      current_vertex = current_vertex.right_child();
+    }
+  }
+
+  return current_vertex;
+}

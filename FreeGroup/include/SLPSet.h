@@ -105,6 +105,10 @@ class SLPVertex {
       return terminal_symbol() != INVALID_TERMINAL;
     }
 
+    bool is_negative() const {
+      return negative_;
+    }
+
     inline LongInteger length() const;
 
     inline unsigned int height() const;
@@ -165,56 +169,106 @@ class SLPPostorderInspector
     void goto_leftmost_terminal();
 };
 
-/* We can't emulate standard container here to use functions from STL, because
- * the difference between iterators must be integral type, which is impossible here.
- *
- * So it will be -like interfaces.
- */
-//! Iterator-like interface of #SLPProducedWord.
+//! Iterator of #SLPProducedWord.
 /**
- * Due to the fact that difference between iterators is the LongIntger,
- * we decided not to implement STL iterator interface, so it is just iterator-like
- * implementation.
+ * This is a forward iterator for SLPProducedWord. Note that even difference_type is standard ptrdiff_t,
+ * it is possible that the actual difference between two iterator may be more than 2^64. However,
+ * in all standard algorithms this distance can not be achieved, because it takes to long to move
+ * this iterator so long.
  *
  */
-class SLPProducedWordIterator {
+class SLPProducedWordIterator : public std::iterator <
+        std::forward_iterator_tag,      //iterator_category
+        const SLPVertex                 //value_type
+  > {
   public:
     SLPProducedWordIterator()
       : inspector_()
       , length_(0)
       , root_()
     { }
-    explicit SLPProducedWordIterator(const SLPVertex& root);
+    explicit SLPProducedWordIterator(const SLPVertex& root)
+      : inspector_(root)
+      , length_(0)
+      , root_(root)
+    { }
 
-    SLPProducedWordIterator& operator++(); //!< Prefix increment
-    SLPProducedWordIterator operator++(int); //!< Postfix increment
+    //use default copy/move constructors/assignments
 
-    const TerminalSymbol& operator*() const; //!< "Dereference" current symbol
+    SLPProducedWordIterator& operator++(); //!< Preincrement
+    SLPProducedWordIterator operator++(int) { //!< Postincrement
+      SLPProducedWordIterator copy(*this);
+      ++(*this);
+      return copy;
+    }
+
+    reference operator*() const { //!< "Dereference" current symbol
+      return inspector_.current_vertex();
+    }
+
+    pointer operator->() const {
+      return &(inspector_.current_vertex());
+    }
 
     //!< Compare to another iterator.
     /**
      * Compares "#length" && root. If this->length >= root.length() and other->length >= root.length(), then also true
      */
-    bool operator==(const SLPProducedWordIterator& other);
-    bool operator!=(const SLPProducedWordIterator& other);
+    bool operator==(const SLPProducedWordIterator& other) const {
+      return ( root_ == other.root_ &&
+               length_ == other.length_
+             ) ||
+             ( length_ >= root_.length() &&
+               other.length_ >= other.root_.length()
+             );
+    }
+
+    bool operator!=(const SLPProducedWordIterator& other) const {
+      return !(*this == other);
+    }
 
   private:
-    SLPPostorderInspector inspector_; //!< Subtree inspector
-    LongInteger length_;              //!< Length already produced
-    SLPVertex   root_;                //!< Root
+    SLPPostorderInspector inspector_;    //!< Subtree inspector
+    LongInteger length_;                 //!< Length already produced
+    SLPVertex   root_;                   //!< Root
 
 };
 
 //! Word produced by some #SLPVertex
 class SLPProducedWord {
   public:
-    SLPProducedWord(); //!< Just empty word
-    explicit SLPProducedWord(const SLPVertex& root); //!< Word produced by some root
+    typedef SLPVertex value_type;
+    typedef SLPProducedWordIterator const_iterator;      //no iterator, only const
+    //we do not define size_type, because size() should return LongInteger
 
-    const TerminalSymbol& operator[](LongInteger index) const; //!< Get one letter from the word
+    SLPProducedWord() //!< Just empty word
+      : root_()
+    { }
 
-    SLPProducedWordIterator begin() const; //!< Get the iterator to the first symbol
-    SLPProducedWordIterator end() const;   //!< Get the iterator to the symbol after the last
+    explicit SLPProducedWord(const SLPVertex& root) //!< Word produced by some root
+      : root_(root)
+    { }
+
+   //TODO: define swap, operator ==
+
+    value_type operator[](LongInteger index) const; //!< Get one letter from the word
+
+    const_iterator begin() const { //!< Get the iterator to the first symbol
+      return const_iterator(root_);
+    }
+
+    const_iterator end() const { //!< Get the iterator to the symbol after the last
+      return const_iterator();
+    }
+
+    LongInteger size() const {
+      return root_.length();
+    }
+
+    bool empty() const {
+      return size() != 0;
+    }
+
   private:
     SLPVertex root_; //!< The root vertex producing this word
 };
