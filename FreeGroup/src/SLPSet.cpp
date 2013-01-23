@@ -96,6 +96,7 @@ SLPProducedWord::value_type SLPProducedWord::operator [](LongInteger index) cons
   return current_vertex;
 }
 
+
 const SLPMatchingTable::MatchResultSequence SLPMatchingTable::NO_MATCHES;
 
 bool terminals_equal(const SLPVertex& lhs, const SLPVertex& rhs) {
