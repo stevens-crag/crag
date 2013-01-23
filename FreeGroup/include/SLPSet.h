@@ -138,8 +138,7 @@ class SLPPostorderInspector
 
     //! Inspect the subtree of #root
     SLPPostorderInspector(const SLPVertex& root)
-      : current_path_() {
-      current_path_.push_back(root);
+      : current_path_({root}) {
       goto_leftmost_terminal();
     }
 
