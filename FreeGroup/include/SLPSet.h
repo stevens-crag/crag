@@ -1,149 +1,308 @@
 /*
- * File:   CompositionSystemSet.h
+ * File:   SLPSet.h
  * Author: dpantele
  *
  * Created on November 18, 2012, 4:06 PM
  */
 
-#ifndef COMPOSITIONSYSTEMSET_H
-#define	COMPOSITIONSYSTEMSET_H
+#ifndef SLPSET_H
+#define	SLPSET_H
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
-typedef unsigned int TerminalSymbol;
 
 #include <vector>
 #include <memory>
 #include <initializer_list>
 #include <iterator>
+#include <unordered_map>
+#include <functional>
+#include <queue>
 
-//! Represents a vertex in program or the "inversed" vertex.
-struct SignedVertex {
-  size_t index;     //!< The index of the vertex in the vertices vector.
-  bool is_negative; //!< True if we need "inversed" vertex
+using std::hash;
 
-  //Constructor to simplify the creation of this vertex
-  SignedVertex(size_t index, bool negative)
-          : index(index)
-          , is_negative(negative)
-  { }
+typedef unsigned int TerminalSymbol;
+static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing invalid terminal symbol
 
-  const size_t NULL_INDEX = -1; //!< Special value, which ignores sign while comparing
-};
-
-bool operator==(const SignedVertex& lhs, const SignedVertex& rhs) {
-  return lhs.index == rhs.index && 
-          (lhs.is_negative == rhs.is_negative || lhs.index == SignedVertex::NULL_INDEX);
+//Need this to allow hash access interior of SLPVertex
+class SLPVertex;
+namespace std {
+  template<> class hash<SLPVertex>;
 }
 
-bool operator!=(const SignedVertex& lhs, const SignedVertex& rhs) {
-  return !(lhs == rhs);
-}
+//! Internal structure of SLPVertex
+struct BasicVertex;
 
-//! Struct representing one vertex in the SLP. Internal.
+//! One vertex in the straight line program
 /**
  * Represents one composition rule of kind \p$A\rightarrow BC \p$.
  * Also stores internal information such as the height of the subtree
  * and the length of it.
  *
- * TODO: check if we can guarantee that any non-terminal vertex has exactly
- * two children.
+ * Should be considered as immutable.
  *
  */
-struct SLPVertex {
-  //! Constant indicating that there is no such child.
-  const SignedVertex CHILD_NOT_EXIST = SignedVertex(SignedVertex::NULL_INDEX, false);
-  SignedVertex left_child;               //!< The index of the left vertex in vertices vector. Use CHILD_NOT_EXIST
-  SignedVertex right_child;              //!< The index of the right vertex in vertices vector.
-  TerminalSymbol terminal_symbol;          //!< NON_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
-  const TerminalSymbol NON_TERMINAL = 0;   //!< Constant, meaning this vertex is non-terminal
-  LongInteger length;                    //!< Length of word produced by the vertex
-  unsigned int height;                   //!< Height of subtree
-  unsigned int parents_count;            //!< Number of parents
+class SLPVertex {
+  friend class std::hash<SLPVertex>;
+  public:
+    //! Default constructor. Constructing 'invalid' vertex.
+    SLPVertex()
+      : ptr_()
+      , negative_(false)
+    { }
 
-  SLPVertex()
-    : left_child(CHILD_NOT_EXIST)
-    , right_child(CHILD_NOT_EXIST)
-    , terminal_symbol(NON_TERMINAL)
-    , length(0)
-    , height(0)
-    , parents_count(0)
-  { }
+
+    static const SLPVertex Null; //Use this vertex to represent invalid vertex
+
+    //Use idiom of "named constructors" to properly create all vertices
+    //! Create just terminal vertex.
+    static SLPVertex terminal_vertex(const TerminalSymbol&);
+
+    //! Create a new vertex defined by some composition rule
+    //TODO: rename it somehow
+    static SLPVertex concatenate(const SLPVertex& left_child, const SLPVertex& right_child);
+
+    //Use default copy&move constructors/assignments, not defining them
+
+    //!The implementation of equality operator for #SLPVertex.
+    /**
+     * Compares the actual addresses of vertices and sign.
+     */
+    bool operator== (const SLPVertex& other) const {
+      return this->ptr_ == other.ptr_ &&
+             this->negative_ == other.negative_;
+    }
+
+    bool operator!= (const SLPVertex& other) const {
+      return !(*this == other);
+    }
+
+    //! Returns 'negated' vertex. Null.negate() is Null
+    SLPVertex negate() const {
+      if (ptr_) {
+        return SLPVertex(ptr_, !negative_);
+      } else {
+        return Null;
+      }
+    }
+
+    //getters
+    inline SLPVertex left_child() const;
+
+    bool has_left_child() const {
+      return left_child() != Null;
+    }
+
+    inline SLPVertex right_child() const;
+
+    bool has_right_child() const {
+      return right_child() != Null;
+    }
+
+    inline TerminalSymbol terminal_symbol() const;
+
+    bool is_terminal() const {
+      return terminal_symbol() != INVALID_TERMINAL;
+    }
+
+    inline LongInteger length() const;
+
+    inline unsigned int height() const;
+
+  protected:
+    SLPVertex(const std::shared_ptr<BasicVertex>& ptr, bool negative)
+      : ptr_(ptr),
+        negative_(negative) {
+    }
+
+    std::shared_ptr<BasicVertex> ptr_;  //!< The pointer to SLPVertex
+    bool negative_;                     //!< True if we need "inverse" vertex
+
 };
 
+
+
+//! Post-order SLP Inspector
+/**
+ * This is an inspector which goes through the children of some root
+ * in the following order: all left children, then all right children,
+ * and after that the vertex itself. Useful to produce the resulting
+ * words and also to compare SLPs
+ */
+class SLPPostorderInspector
+{
+  public:
+    //Default constructor is useless, but keep it for #SLPProducedWordIterator()
+    SLPPostorderInspector()
+    { }
+
+    //! Inspect the subtree of #root
+    SLPPostorderInspector(const SLPVertex& root)
+      : current_path_({root}) {
+      goto_leftmost_terminal();
+    }
+
+    //Use default copy/move assignments/constructors
+
+    //! Get current vertex
+    const SLPVertex& current_vertex() const {
+      return current_path_.back();
+    }
+
+    //! True if there are no more vertices, we have visited everything
+    bool inspection_ended() const {
+      return current_path_.empty();
+    }
+
+    //! Move inspector to the next vertex
+    //TODO: think about this function name
+    void go_to_next_vertex();
+
+  private:
+    std::vector< SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
+
+    //! Go from the current_path_.back() to the leftmost terminal
+    void goto_leftmost_terminal();
+};
+
+/* We can't emulate standard container here to use functions from STL, because
+ * the difference between iterators must be integral type, which is impossible here.
+ *
+ * So it will be -like interfaces.
+ */
+//! Iterator-like interface of #SLPProducedWord.
+/**
+ * Due to the fact that difference between iterators is the LongIntger,
+ * we decided not to implement STL iterator interface, so it is just iterator-like
+ * implementation.
+ *
+ */
+class SLPProducedWordIterator {
+  public:
+    SLPProducedWordIterator()
+      : inspector_()
+      , length_(0)
+      , root_()
+    { }
+    explicit SLPProducedWordIterator(const SLPVertex& root);
+
+    SLPProducedWordIterator& operator++(); //!< Prefix increment
+    SLPProducedWordIterator operator++(int); //!< Postfix increment
+
+    const TerminalSymbol& operator*() const; //!< "Dereference" current symbol
+
+    //!< Compare to another iterator.
+    /**
+     * Compares "#length" && root. If this->length >= root.length() and other->length >= root.length(), then also true
+     */
+    bool operator==(const SLPProducedWordIterator& other);
+    bool operator!=(const SLPProducedWordIterator& other);
+
+  private:
+    SLPPostorderInspector inspector_; //!< Subtree inspector
+    LongInteger length_;              //!< Length already produced
+    SLPVertex   root_;                //!< Root
+
+};
+
+//! Word produced by some #SLPVertex
+class SLPProducedWord {
+  public:
+    SLPProducedWord(); //!< Just empty word
+    explicit SLPProducedWord(const SLPVertex& root); //!< Word produced by some root
+
+    const TerminalSymbol& operator[](LongInteger index) const; //!< Get one letter from the word
+
+    SLPProducedWordIterator begin() const; //!< Get the iterator to the first symbol
+    SLPProducedWordIterator end() const;   //!< Get the iterator to the symbol after the last
+  private:
+    SLPVertex root_; //!< The root vertex producing this word
+};
+
+namespace std {
+  //! Definition of the hash for std::pair
+  template<typename TFirst, typename TSecond>
+  struct hash< std::pair<TFirst, TSecond> > {
+  private:
+    const std::hash<TFirst> first_hash_;
+    const std::hash<TSecond> second_hash_;
+  public:
+    hash()
+      : first_hash_()
+      , second_hash_()
+    { }
+    size_t operator()(const std::pair<TFirst, TSecond>& obj) const {
+      size_t first_hash_value = first_hash_(obj.first);
+      //Taken from boost/functional/hash
+      return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
+    }
+  };
+
+  //! Definition of the hash for SignedVertex
+  template<>
+  struct hash< SLPVertex > {
+    private:
+      const std::hash<std::shared_ptr<BasicVertex> > ptr_hash_;
+    public:
+      hash(): ptr_hash_() { }
+      size_t operator()(const SLPVertex& vertex) const {
+        return vertex.negative_? ~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
+      }
+  };
+}
+
 //! Progression tables which are described in the thesis by Lifshits
-  /**
-   * It is a class of the progression table as described in the thesis
-   * by Yury Lifshits. This table enumerates the entries of the subtrees
-   * of pattern to the subtrees of text.
-   *
-   * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
-   * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
-   * In the cell PT[i][j] we have all entries of the word produced by
-   * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
-   * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
-   * the position in the word \p$T_j\p$ just after the end of the first part,
-   * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
-   *
-   * The important fact that we use here is that if some entries have the common
-   * point (split point in this case), then the beginning of these entries make
-   * the arithmetic progression, which can be encoded by the triplet of integers.
-   * So, the table just stores these triplets.
-   *
-   * See the "Algorithms and complexity analysis for processing compressed text"
-   * for details.
-   *
-   * @param pattern 
-   * @param text The SLP of the text where we are looking the word.
-   * @param prefix_table The pre-allocated storage for the result.
-   */
-class ProgressionTable {
-public:
-  struct MatchResultSequence {
-    LongInteger start; //!< The beginning of the first match
-    LongInteger step;  //!< The distance between the matches
-    LongInteger count; //!< The number of matches
-  };
+/**
+ * It is a class of the progression table as described in the thesis
+ * by Yury Lifshits. This table enumerates the entries of the subtrees
+ * of pattern to the subtrees of text.
+ *
+ * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
+ * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
+ * In the cell PT[i][j] we have all entries of the word produced by
+ * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
+ * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
+ * the position in the word \p$T_j\p$ just after the end of the first part,
+ * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
+ *
+ * The important fact that we use here is that if some entries have the common
+ * point (split point in this case), then the beginning of these entries make
+ * the arithmetic progression, which can be encoded by the triplet of integers.
+ * So, the table just stores these triplets.
+ *
+ * See the "Algorithms and complexity analysis for processing compressed text"
+ * for details.
+ */
+class SLPMatchingTable {
+  public:
+    struct MatchResultSequence {
+        LongInteger start; //!< The beginning of the first match
+        LongInteger step;  //!< The distance between the matches
+        LongInteger count; //!< The number of matches
+    };
 
-  //! Return all matches of the pattern around the "split point"
-  /**
-   * This function get the result from #table and recursively calculate
-   * it if needed.
-   * 
-   * @param pattern The SLP for a word we want to find in text.
-   *                Specified by the index of vertex in SLPSet::vertices.
-   *
-   * @param text    The SLP for the text where we are searching.
-   *                Index in SLPSet::vertices
-   * @return The sequence of the beginnings of matches.
-   */
-  MatchResultSequence get_matches(const SignedVertex& pattern,
-                                  const SignedVertex& text);
-
-  ProgressionTable(const std::vector<SLPVertex>& pattern_vertices,
-                   const std::vector<SLPVertex>& text_vertices)
-      : pattern_vertices(pattern_vertices)
-      , text_vertices(text_vertices)
-      , table(pattern_vertices.size() * text_vertices.size())
-  {}
+    //! Return all matches of the pattern around the "split point"
+    /**
+     * This function get the result from #table and recursively calculate
+     * it if needed.
+     *
+     * @param pattern The SLP for a word we want to find in text.
+     *                Specified by the index of vertex in SLPSet::vertices.
+     *
+     * @param text    The SLP for the text where we are searching.
+     *                Index in SLPSet::vertices
+     * @return The sequence of the beginnings of matches.
+     */
+    MatchResultSequence matches(const SLPVertex& pattern,
+                                const SLPVertex& text);
 
 
+  protected:
+    //! Helper function which looks for pattern in text[begin..end]
+    std::pair<MatchResultSequence, MatchResultSequence> local_search(
+        const SLPVertex&  pattern, const SLPVertex&  text, LongInteger begin, LongInteger end);
 
-private:
-  struct MatchResult {
-    MatchResultSequence match; //!< Entries of pattern in text
-    MatchResultSequence inversed_match; //!< Entires of inversed pattern in text
-  };
-
-  //! Helper function which looks for pattern in text[begin..end]
-  std::pair<MatchResultSequence, MatchResultSequence>
-    local_search(SignedVertex pattern, SignedVertex text,
-                 LongInteger begin, LongInteger end);
-
-
-  const std::vector<SLPVertex>& pattern_vertices; //!< Reference to SLP with pattern
-  const std::vector<SLPVertex>& text_vertices; //!< Reference to SLP with text
-  std::vector<MatchResult> table; //!<The storage for matchings, virtual 2D
+    std::unordered_map<std::pair<SLPVertex, SLPVertex>, MatchResultSequence> match_table_; //! The actual storage for the calculated values.
 };
 
 //! class of straight line program collection
@@ -158,318 +317,101 @@ private:
  * TODO make arbitrary number of roots, composition then works under the condition num_terminals_1 == num_roots_2
  */
 class SLPSet {
-public:
-  SLPSet(unsigned int terminals_count)
-    : vertices(2 * terminals_count)
-    , roots(terminals_count)
-    , terminals_count(terminals_count)
-  {
-    //filling terminals
-    for (size_t terminal_id = 0; terminal_id < terminals_count; ++terminal_id) {
-      vertices[terminal_id].terminal_symbol = terminal_id + 1;
-      vertices[terminal_id].parents_count = 1;
-    }
-    
-    //filling roots
-    for (size_t terminal_id = terminals_count; 
-         terminal_id < 2 * terminals_count;
-         ++terminal_id) {
-      vertices[terminal_id].length = 1;
-      vertices[terminal_id].height = 1;
-      vertices[terminal_id].left_child = SignedVertex(terminal_id - terminals_count, false);
-      roots[terminal_id - terminals_count] = terminal_id;
-    }
-  }
-
-  //! Constructor to create almost trivial SLP with one non-trivial root
-  /**
-   * Constructs SLP with #terminals_count terminals and the same number of roots.
-   * Root #nontrivial_root (index starts from 1) has the only non-trivial
-   * production rule (rule_lhs, rule_rhs).
-   * 
-   * @param terminals_count The number of terminals and roots
-   * @param nontrivial_root The index of non-trivial root, starting from 1
-   * @param rule_lhs The terminal index of the left part of the only non-trivial
-   *                 production rule. If < 0, then terminal is reversed.
-   * @param rule_rhs The right side of prudction rule, see docs for rule_lhs.
-   *                 if rule_rhs == 0, then the second child is absent.
-   */
-
-  SLPSet(unsigned int terminals_count, unsigned int nontrivial_root,
-         int rule_lhs, int rule_rhs)
-    : SLPSet(terminals_count)
-  {
-    SLPVertex non_trivial();
-
-    if (rule_lhs != -rule_rhs) {//If one vertex cancels another one, leave just root without any children
-      non_trivial.left_child.index  = abs(rule_lhs) - 1;
-      non_trivial.left_child.is_negative = (rule_lhs < 0);
-      non_trivial.height = 1;
-
-      if (rule_rhs != 0) {
-        non_trivial.right_child.index = abs(rule_rhs) - 1;
-        non_trivial.right_child.is_negative = (rule_rhs < 0);
-        non_trivial.length = 2;
-      } else {
-        non_trivial.length = 1;
-      }
-
-      if (abs(rule_lhs) != nontrivial_root) {
-        vertices[non_trivial.left_child.index].parents_count += 1;
-      }
-
-      if (abs(rule_rhs) != nontrivial_root) {
-        vertices[non_trivial.right_child.index].parents_count += 1;
-      }
-    }
-    
-    vertices[nontrivial_root + terminals_count - 1] = non_trivial;
-  }
-
-  //! Compose current program with another one
-  /**
-   * Add all vertices from the other SLP to *this and connect \p$i\p$-th
-   * terminal of the other SLP to \p$i\p$-th root of this. Trying not to connect
-   * to terminal, but combine them in one vertex, if possible.
-   *
-   * The root list is copied from the other SLP.
-   *
-   * @param other The SLP to compose with *this
-   * @return Modified *this
-   */
-  SLPSet& compose_with(const SLPSet& other);
-
-  //! Check whether or not this program produces the same words as the other one
-  /**
-   * We check if \p$i\p$-th root in both programs give the same words.
-   * Algorithm requires \p$O(n m h)\p$ operations, where \p$n\p$
-   * is the size of this->vertices, \p$m\p$ is the size of other.vertices
-   * and \p$h\p$ is the height of *this.
-   *
-   * Note that this function do not reduce the produced words automatically.
-   *
-   * @param other Program which is compared with *this
-   * @return true if programs are equal, false otherwise
-   */
-  bool equal_to(const SLPSet& other) const;
-
-  //! Reduce words produces by this SLP.
-  /**
-   * Take each vertex and build a new program such that it produces the freely
-   * reduced word.
-   *
-   * Requires \p$O(n^3 h)\p$ operations, where \p$n\p$ is the number of
-   * vertices and  \p$h\p$ is the height of this program. TODO how is it indexed?
-   *
-   * @return The program which produce the freely reduced words.
-   */
-  SLPSet&& free_reduction() const;
-
-  //! Post-order SLP Inspector
-  /**
-   * This is an inspector which goes through the
-   * vertices of the SLP in the following order: all left children,
-   * then all right children, and after that the vertex itself. Useful to
-   * produce the resulting words and also to compare SLPs
-   */
-  class ConstVerticesPostorderInspector
-  {
   public:
-    ConstVerticesPostorderInspector()
-      : vertices(nullptr)
-    { }
-    //! Inspect the subtree of #root in #vertices
-    ConstVerticesPostorderInspector(const std::vector<SLPVertex>& vertices, const SignedVertex& root)
-      : vertices(&vertices)
-    {
-        this->current_path.push(root);
-        this->goto_leftmost_terminal();
-    }
-      
-    explicit ConstVerticesPostorderInspector(const ConstVerticesPostorderInspector& other)
-      : vertices(other.vertices)
-      , current_path(other.current_path)
-    { }
-
-    ConstVerticesPostorderInspector& operator=(const ConstVerticesPostorderInspector& other) {
-      this->vertices = other.vertices;
-      this->current_path = other.current_path;
-    }
-
-    //! Return the index of current vertex
-    const SignedVertex& current_vertex() const {
-      return current_path.top();
-    }
-
-    //! True if there are no more vertices, we have visited everything
-    bool inspection_ended() {
-      return this->current_path.empty();
-    }
-
-    //! Move inspector to the next vertex
-    void next_vertex() {
-      SignedVertex current = this->current_path.top();
-      this->current_path.pop();
-
-      if(this->inspection_ended()) {
-        return;
-      }
-      SignedVertex parent = this->current_path.top();
-      SignedVertex right_sibling = SLPSet::get_right_child(parent, this->vertices);
-      
-      if ( right_sibling == current || right_sibling == SLPVertex::CHILD_NOT_EXIST) {
-        //We have already visited all right children of the parent vertex, stop on parent
-      } else {
-        //We have visited all left children of parent, going to the right
-        this->current_path.push(right_sibling);
-        this->goto_leftmost_terminal();
-      }
-    }
-
-
-
-  private:
-    const std::vector< SLPVertex >* vertices;             //!< Pointer to vertices container
-    std::stack< SignedVertex > current_path; //!< Way to the current vertex in the container
-
-    //!Go from the current_path->top() to the leftmost terminal
-    void goto_leftmost_terminal() {
-        while (this->current_path.top() != SLPVertex::CHILD_NOT_EXIST) {
-          bool inversed = this->current_path.top().is_negative;
-          const SignedVertex& left_child = SLPSet::get_left_child(this->current_path.top(), this->vertices);
-          if (left_child != SLPVertex::CHILD_NOT_EXIST) {
-            this->current_path.push(left_child);
-          } else {
-            //Don't have any left children, then go right
-            this->current_path.push(SLPSet::get_right_child(this->current_path.top(), this->vertices));
-          }
-          
-          this->current_path.top().is_negative ^= inversed;
-        }
-
-        this->current_path.pop();
-    }
-  };
-
-private:
-
-  //! Container for all vertices of the graph.
-  std::vector< SLPVertex > vertices;
-  std::vector< size_t > roots; //!< Contains the numbers of the vertices in the vertices array corresponding to the roots
-  unsigned int terminals_count; //!< The number of terminals in the system.
-
-  //! Helper function to get the left child with respect to the sign of vertex
-  static const SignedVertex& get_left_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
-    if (vertex.is_negative) {
-      return vertices[vertex.index].right_child;//TODO should we invert this vertex?
-    } else {
-      return vertices[vertex.index].left_child;
-    }
-  }
-
-  //! Helper function to get right child with respect to the sign of vertex
-  static const SignedVertex& get_right_child(const SignedVertex& vertex, const std::vector< SLPVertex >& vertices) {
-    if (! vertex.is_negative) {
-      return vertices[vertex.index].left_child;//TODO should we invert this vertex?
-    } else {
-      return vertices[vertex.index].right_child;
-    }
-  }
-
+    SLPSet();
+  protected:
+    std::vector<SLPVertex> roots;     //!< Contains the roots of this SLP
 };
 
-//!The standard-interfaced iterator for SLPProducedWord class
-class SLPProducedWordConstIterator :
-    public std::iterator <
-        std::forward_iterator_tag,      //iterator_category
-        const TerminalSymbol,           //value_type
-        LongInteger                     //difference_type
-    >
-{
-public:
-  SLPProducedWordConstIterator()
-    : inspector()
-    , vertices(nullptr)
-    , current_word_length(0)
-  {}
-
-  SLPProducedWordConstIterator(const std::vector<SLPVertex>& vertices, const SignedVertex& root)
-    : inspector(vertices, root)
-    , vertices(&vertices)
-    , current_word_length(0)
-  {}
-
-  explicit SLPProducedWordConstIterator(const SLPProducedWordConstIterator& other)
-    : inspector(other.inspector)
-    , current_word_length(other.current_word_length)
-  { }
-
-  SLPProducedWordConstIterator& operator=(const SLPProducedWordConstIterator& other) {
-    inspector = other.inspector;
-    current_word_length = other.current_word_length;
-  }
-
-  bool operator==(const SLPProducedWordConstIterator& other) {
-    return vertices == (other.vertices) &&
-           (vertices == nullptr || current_word_length == other.current_word_length);
-  }
-
-  bool operator!=(const SLPProducedWordConstIterator& other) {
-    return !(*this == other);
-  }
-
-  SLPProducedWordConstIterator& operator++() {
-    inspector.next_vertex();
-
-    while (vertices->at(inspector.current_vertex().index).terminal_symbol == SLPVertex::NON_TERMINAL) {
-      inspector.next_vertex();
-    }
-
-    ++current_word_length;
-  }
-
-  const TerminalSymbol& operator*() {
-    return (inspector.current_vertex().is_negative ? -1 : 1) * vertices->at(inspector.current_vertex().index).terminal_symbol;
-  }
-  
-private:
-  SLPSet::ConstVerticesPostorderInspector inspector; //!<We use this inspector to list all terminals
-  const std::vector<SLPVertex>* vertices;            //!< Container with vertices
-  LongInteger current_word_length;                   //!<The current position in the resulting word
-};
-
-
-//! Class which represents a constant word produced by some vertex from SLP
+//! Compose current program with another one
 /**
- * This class supports inspections of
+ * Add all vertices from the other SLP to *this and connect \p$i\p$-th
+ * terminal of the other SLP to \p$i\p$-th root of this. Trying not to connect
+ * to terminal, but combine them in one vertex, if possible.
  *
+ * The root list is copied from the other SLP.
+ *
+ * @param other The SLP to compose with *this
+ * @return Modified *this
+ *
+ * TODO: Move it to Automorphism class, because it has no sense for abstract SLPS
  */
-class SLPProducedConstWord {
-public:
-  //! The only constructor for this word
-  /**
-   * Construct a word adapter on SLP specified by vertices vector with root vertex
-   * having index root_vertex in the vector of vertices.
-   *
-   * @param vertices The vector of vertices in SLP
-   * @param root_vertex The index of the root vertex in SLP
-   */
-  SLPProducedConstWord(const std::vector<SLPVertex>& vertices, size_t root_vertex)
-    : vertices(vertices)
-    , root_vertex(root_vertex)
-  { }
+//SLPSet& compose_with(const SLPSet& other);
 
-  unsigned int get_letter(size_t index) const;
-  size_t size() const;
+//! Check whether or not this program produces the same words as the other one
+/**
+ * We check if \p$i\p$-th root in both programs give the same words.
+ * Algorithm requires \p$O(n m h)\p$ operations, where \p$n\p$
+ * is the size of this->vertices, \p$m\p$ is the size of other.vertices
+ * and \p$h\p$ is the height of *this.
+ *
+ * Note that this function do not reduce the produced words automatically.
+ *
+ * @param other Program which is compared with *this
+ * @return true if programs are equal, false otherwise
+ *
+ * TODO: Put it somewhere, probably into MatchingTable
+ */
+//bool equal_to(const SLPSet& other) const;
 
-private:
-  SLPProducedConstWord() {} //word without associated vertices is useless
+//! Reduce words produces by this SLP.
+/**
+ * Take each vertex and build a new program such that it produces the freely
+ * reduced word.
+ *
+ * Requires \p$O(n^3 h)\p$ operations, where \p$n\p$ is the number of
+ * vertices and  \p$h\p$ is the height of this program. TODO how is it indexed?
+ *
+ * @return The program which produce the freely reduced words.
+ *
+ * TODO: Put it into SLPVertex, or maybe some external function, or...
+ */
+//SLPSet free_reduction() const;
 
-  const std::vector<SLPVertex>& vertices;
-  size_t root_vertex;
+struct BasicVertex {
+  public:
+    SLPVertex left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
+    SLPVertex right_child;           //!< Right part of the rule.
+    TerminalSymbol terminal_symbol;  //!< INVALID_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
+    LongInteger length;              //!< Length of word produced by the vertex
+    unsigned int height;             //!< Height of subtree
+
+    BasicVertex();
 };
 
+inline SLPVertex SLPVertex::left_child() const {
+  if (!ptr_) {
+   return Null;
+  }
+  if (negative_) {
+   return (ptr_->right_child).negate();
+  } else {
+   return ptr_->left_child;
+  }
+}
 
+inline SLPVertex SLPVertex::right_child() const {
+  if (!ptr_) {
+   return Null;
+  }
+  if (negative_) {
+    return ptr_->left_child.negate();
+  } else {
+    return ptr_->right_child;
+  }
+}
 
-#endif	/* COMPOSITIONSYSTEMSET_H */
+inline TerminalSymbol SLPVertex::terminal_symbol() const {
+  return ptr_ ? ptr_->terminal_symbol : INVALID_TERMINAL;
+}
+
+inline LongInteger SLPVertex::length() const {
+     return ptr_ ? ptr_->length : 0;
+   }
+
+inline unsigned int SLPVertex::height() const {
+  return ptr_ ? ptr_->height : 0;
+}
+
+#endif	/* SLPSET_H */
 
