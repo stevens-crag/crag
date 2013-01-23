@@ -339,6 +339,8 @@ class SLPMatchingTable {
         LongInteger count; //!< The number of matches
     };
 
+    const static MatchResultSequence NO_MATCHES;
+
     //! Return all matches of the pattern around the "split point"
     /**
      * This function get the result from #table and recursively calculate
