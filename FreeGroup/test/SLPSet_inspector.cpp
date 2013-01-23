@@ -78,9 +78,9 @@ namespace {
     SLPVertex ab = SLPVertex::concatenate(a, b);
     SLPVertex ba_1 = SLPVertex::concatenate(b, a.negate());//ba^-1
 
-    SLPVertex ab2a_1 = SLPVertex::concatenate(ab, ba_1);
+    SLPVertex abab_1 = SLPVertex::concatenate(ab, ba_1.negate());
 
-    SLPPostorderInspector inspector(ab2a_1);
+    SLPPostorderInspector inspector(abab_1);
     ASSERT_FALSE(inspector.inspection_ended());
     EXPECT_EQ(inspector.current_vertex(), a);
     inspector.go_to_next_vertex();
@@ -91,16 +91,16 @@ namespace {
     EXPECT_EQ(inspector.current_vertex(), ab);
     inspector.go_to_next_vertex();
     ASSERT_FALSE(inspector.inspection_ended());
-    EXPECT_EQ(inspector.current_vertex(), b);
+    EXPECT_EQ(inspector.current_vertex(), a);
     inspector.go_to_next_vertex();
     ASSERT_FALSE(inspector.inspection_ended());
-    EXPECT_EQ(inspector.current_vertex(), a.negate());
+    EXPECT_EQ(inspector.current_vertex(), b.negate());
     inspector.go_to_next_vertex();
     ASSERT_FALSE(inspector.inspection_ended());
-    EXPECT_EQ(inspector.current_vertex(), ba_1);
+    EXPECT_EQ(inspector.current_vertex(), ba_1.negate());
     inspector.go_to_next_vertex();
     ASSERT_FALSE(inspector.inspection_ended());
-    EXPECT_EQ(inspector.current_vertex(), ab2a_1);
+    EXPECT_EQ(inspector.current_vertex(), abab_1);
     inspector.go_to_next_vertex();
     EXPECT_TRUE(inspector.inspection_ended());
   }
