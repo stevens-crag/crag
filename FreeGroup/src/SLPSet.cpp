@@ -1,5 +1,7 @@
 #include "SLPSet.h"
 
+namespace crag {
+
 const SLPVertex SLPVertex::Null; //define static in cpp file
 
 inline BasicVertex::BasicVertex()
@@ -90,3 +92,5 @@ SLPProducedWord::value_type SLPProducedWord::operator [](LongInteger index) cons
 
   return current_vertex;
 }
+
+} //namespace crag

@@ -13,6 +13,7 @@
 #include <functional>
 #include <utility>
 
+namespace crag {
 namespace {
   TEST(Inspector, EmptyInspector) {
     EXPECT_TRUE(SLPPostorderInspector().inspection_ended());
@@ -105,7 +106,7 @@ namespace {
     EXPECT_TRUE(inspector.inspection_ended());
   }
 }
-
+}
 
 
 

@@ -12,6 +12,7 @@
 #include <functional>
 #include <utility>
 
+namespace crag{
 namespace {
   class SignedVertexTest : public ::testing::Test {
     protected:
@@ -115,5 +116,5 @@ namespace {
     EXPECT_EQ(d.right_child(), c.negate());
   }
 }
-
+}
 
