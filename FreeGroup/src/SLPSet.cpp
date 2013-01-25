@@ -1,5 +1,7 @@
 #include "SLPSet.h"
 
+namespace crag {
+
 const SLPVertex SLPVertex::Null; //define static in cpp file
 
 inline BasicVertex::BasicVertex()
@@ -227,3 +229,5 @@ class SLPMatchingInspector {
     }
 
 };
+
+} //namespace crag

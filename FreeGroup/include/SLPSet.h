@@ -19,16 +19,19 @@ typedef mpz_class LongInteger;
 #include <functional>
 #include <queue>
 
-using std::hash;
-
+namespace crag {
 typedef unsigned int TerminalSymbol;
 static const TerminalSymbol INVALID_TERMINAL = 0; //!< Constant representing invalid terminal symbol
 
 //Need this to allow hash access interior of SLPVertex
 class SLPVertex;
-namespace std {
-  template<> class hash<SLPVertex>;
 }
+
+namespace std {
+  template<> class hash<crag::SLPVertex>;
+}
+
+namespace crag {
 
 //! Internal structure of SLPVertex
 struct BasicVertex;
@@ -272,7 +275,7 @@ class SLPProducedWord {
   private:
     SLPVertex root_; //!< The root vertex producing this word
 };
-
+}//namespace crag
 namespace std {
   //! Definition of the hash for std::pair
   template<typename TFirst, typename TSecond>
@@ -294,17 +297,18 @@ namespace std {
 
   //! Definition of the hash for SignedVertex
   template<>
-  struct hash< SLPVertex > {
+  struct hash< crag::SLPVertex > {
     private:
-      const std::hash<std::shared_ptr<BasicVertex> > ptr_hash_;
+      const std::hash<std::shared_ptr<crag::BasicVertex> > ptr_hash_;
     public:
       hash(): ptr_hash_() { }
-      size_t operator()(const SLPVertex& vertex) const {
+      size_t operator()(const crag::SLPVertex& vertex) const {
         return vertex.negative_? ~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
       }
   };
 }
 
+namespace crag {
 //! Progression tables which are described in the thesis by Lifshits
 /**
  * It is a class of the progression table as described in the thesis
@@ -468,6 +472,6 @@ inline LongInteger SLPVertex::length() const {
 inline unsigned int SLPVertex::height() const {
   return ptr_ ? ptr_->height : 0;
 }
-
+}
 #endif	/* SLPSET_H */
 

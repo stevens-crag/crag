@@ -19,6 +19,7 @@
 #include <functional>
 #include <utility>
 
+namespace crag {
 namespace {
   TEST(SLPProducedWord, size) {
     EXPECT_EQ(SLPProducedWord().size(), 0);
@@ -104,5 +105,5 @@ namespace {
     EXPECT_EQ(iterator, w.end());
   }
 }
-
+}
 
