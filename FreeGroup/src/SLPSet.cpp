@@ -3,6 +3,8 @@
 
 namespace crag {
 
+namespace crag {
+
 const SLPVertex SLPVertex::Null; //define static in cpp file
 
 inline BasicVertex::BasicVertex()
