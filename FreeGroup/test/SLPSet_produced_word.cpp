@@ -106,7 +106,6 @@ namespace {
     EXPECT_EQ(iterator, w.end());
   }
 
-
   TEST(SLPProducedWord, StressTest) {
     const unsigned int word_size = 6;
 
