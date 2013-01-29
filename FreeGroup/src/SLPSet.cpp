@@ -159,6 +159,11 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
   return match_result;
 }
 
+std::pair<SLPMatchingTable::MatchResultSequence, SLPMatchingTable::MatchResultSequence> SLPMatchingTable::local_search(
+        const SLPVertex&  pattern, const SLPVertex&  text, LongInteger begin, LongInteger end) {
+	throw new std::exception();
+}
+
 class SLPMatchingInspector {
   public:
     SLPMatchingInspector() = delete;
@@ -231,5 +236,13 @@ class SLPMatchingInspector {
 
 };
 
+
+
+SLPSet::SLPSet(size_type roots_num) {
+  roots.reserve(roots_num);
+  TerminalSymbol n = INVALID_TERMINAL;
+  for (int i = 0; i < roots_num; ++i)
+    roots.push_back(SLPVertex::terminal_vertex(++n));
+}
 
 } //namespace crag

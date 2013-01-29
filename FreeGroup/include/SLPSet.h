@@ -41,7 +41,7 @@ struct BasicVertex;
  * Represents one composition rule of kind \p$A\rightarrow BC \p$.
  * Also stores internal information such as the height of the subtree
  * and the length of it.
- *
+ *i
  * Should be considered as immutable.
  *
  */
@@ -377,8 +377,59 @@ class SLPMatchingTable {
  * TODO make arbitrary number of roots, composition then works under the condition num_terminals_1 == num_roots_2
  */
 class SLPSet {
+	SLPSet() = delete;
   public:
-    SLPSet();
+    typedef typename std::vector<SLPVertex>::size_type size_type;
+
+    //! Constructs an SLPSet consisting of roots_num roots being terminals.
+    explicit SLPSet(size_type roots_num);
+
+    //! Constructs an SLPSet consisting of the single root.
+    SLPSet(const SLPVertex& root) {
+		roots.push_back(root);
+    }
+
+    //! Constructs an SLPSet with the roots from the range [first,last).
+    template<typename InputIterator>
+    SLPSet(InputIterator begin, InputIterator end):
+		roots(begin, end) {}
+
+    //! Copy constructor
+    explicit SLPSet(const SLPSet& x):
+				roots(x.roots) {}
+
+    //! Move constructor
+    SLPSet(SLPSet&& x):
+		roots(std::move(x.roots)) {}
+
+    //! Initializer list constructor
+    SLPSet(std::initializer_list<SLPVertex> il):
+		roots(il) {}
+
+    //! Returns vertex corresponding the nth root
+    /**
+     * @param n root index (0, ..., size() - 1)
+     * @return the vertex corresponding to the root
+     */
+    SLPVertex get_root(size_type n) {
+    	return roots[n];
+    }
+
+    //! Returns the word produced by #n-th root. 
+    /**
+     * @param n root index (0, ..., size() - 1) 
+     * @return the word produced by the root
+     */      
+    SLPProducedWord operator[](size_type n) {
+	  return SLPProducedWord(roots[n]);
+	}
+
+
+    //! Returns number of roots
+    size_type roots_num() const {
+	  return roots.size();
+	}
+
   protected:
     std::vector<SLPVertex> roots;     //!< Contains the roots of this SLP
 };
