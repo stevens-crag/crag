@@ -146,10 +146,9 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
     }
   } else  {//we have pattern.length > 1 => text.length > 1
     if (pattern.left_child().length() >= pattern.right_child().length()) {//Right child is smaller
-      auto local_matches = local_search(pattern.left_child(), text,
-                                        text.left_child().length() - pattern.length(),
-                                        text.left_child().length() + pattern.left_child().length());
-      //TODO: finish this mess
+      const SLPVertex& large_pattern_part = pattern.left_child();
+      const SLPVertex& small_pattern_part = pattern.right_child();
+      bool small_pattern_is_after = true;
     }
   }
 
@@ -158,76 +157,148 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
   return match_result;
 }
 
-class SLPMatchingInspector {
-  public:
-    SLPMatchingInspector() = delete;
-    SLPMatchingInspector(SLPVertex pattern, SLPVertex text, bool reverse, LongInteger left_border, LongInteger right_border)
-      : parent_stack_()
-      , pattern_(pattern)
-      , text_position_({text, 0})
-      , reverse_(reverse)
-      , left_border_(left_border)
-      , right_border_(right_border)
-    {
-      go_further();
-    }
+SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex& large_pattern_part,
+                                                       const SLPVertex& small_pattern_part,
+                                                       bool small_pattern_is_after,
+                                                       const SLPVertex& text,
+                                                       SLPMatchingTable* matching_table) {
+  LongInteger large_pattern_part_left_bound = text.split_point() - large_pattern_part.length();
+  if (small_pattern_is_after) {
+    large_pattern_part_left_bound -= small_pattern_part.length();
+  }
 
-    bool inspection_ended() const {
-      return text_position_.vertex == SLPVertex::Null && parent_stack_.empty();
-    }
+  LongInteger large_pattern_part_right_bound = text.split_point() + large_pattern_part.length();
 
-    void go_next() {
-      if (reverse_) {
-        text_position_.vertex = text_position_.vertex.left_child();
-      } else {
-        text_position_.text_begin += text_position_.vertex.left_child().length();
-        text_position_.vertex = text_position_.vertex.right_child();
-      }
-      go_further();
-    }
-  private:
-    struct TextPosition {
-      SLPVertex vertex;
-      LongInteger text_begin;
-    };
-    std::vector<TextPosition> parent_stack_;
-    SLPVertex pattern_;
-    TextPosition text_position_;
-    bool reverse_;
-    LongInteger left_border_;
-    LongInteger right_border_;
+  if (!small_pattern_is_after) {
+    large_pattern_part_right_bound += small_pattern_part.length();
+  }
 
-    bool position_is_suitable(const TextPosition& position, bool is_right_child) const {
-      if (text_position_.vertex == SLPVertex::Null ||
-          right_border_ - text_position_.text_begin < pattern_.length() ||
-          text_position_.text_begin + text_position_.vertex.length() - left_border_ < pattern_.length()
-          ) {
-        return false;
-      }
+  SLPMatchingInspector large_part_hunter(
+      large_pattern_part.length(), //pattern length
+      text, //text
+      large_pattern_part_left_bound, //the leftmost letter of text to consider
+      large_pattern_part_right_bound //the rightmost letter of text to consider
+  );
 
-      return true;
-    }
+  SLPMatchingTable::MatchResultSequence result;
 
-    void go_further() {
-      //TODO: case root.length() == pattern_.length()
-      while (position_is_suitable(text_position_, reverse_)) {
-        parent_stack_.push_back(text_position_);
+  while(!large_part_hunter.inspection_ended()) {
+    auto large_part_matches = local_search(large_pattern_part, &large_part_hunter, matching_table);
+    if (large_part_matches.count > 0) {
+      if (small_pattern_is_after) {
+        LongInteger large_pattern_first_match_end = large_part_matches.start + large_pattern_part.length();
+        LongInteger large_pattern_last_match_end = large_pattern_first_match_end + large_part_matches.count * large_part_matches.step;
 
-        if (reverse_) {
-          text_position_.text_begin += text_position_.vertex.left_child().length();
-          text_position_.vertex = text_position_.vertex.right_child();
-        } else {
-          text_position_.vertex = text_position_.vertex.left_child();
-        }
-      }
-      if (!parent_stack_.empty()) {
-        text_position_ = parent_stack_.back();
-        parent_stack_.pop_back();
-      } else {
-        text_position_ = {SLPVertex::Null, 0};
+        SLPMatchingInspector seaside_hunter(
+            small_pattern_part.length(),
+            text,
+            large_pattern_last_match_end - small_pattern_part.length(),
+            large_pattern_last_match_end + small_pattern_part.length()
+        );
+
+        auto seaside_matches = local_search(small_pattern_part, &seaside_hunter, matching_table);
+
+        SLPMatchingInspector continental_hunter(
+            small_pattern_part.length(),
+            text,
+            large_pattern_first_match_end,
+            large_pattern_first_match_end + small_pattern_part.length()
+        );
+
+        auto continental_matches = local_search(small_pattern_part, &continental_hunter, matching_table);
+
+        //TODO: join all matches
+
+
       }
     }
+  }
 
-};
+  return result;
+}
+
+
+void internal::SLPMatchingInspector::go_further() {
+    while (position_is_suitable(text_position_)) {
+      parent_stack_.push_back(text_position_);
+      text_position_.vertex = text_position_.vertex.left_child();
+    }
+    if (!parent_stack_.empty()) {
+      text_position_ = parent_stack_.back();
+      parent_stack_.pop_back();
+    } else {
+      text_position_ = {SLPVertex::Null, 0};
+    }
+}
+
+SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable::MatchResultSequence first, SLPMatchingTable::MatchResultSequence second) {
+  if (first.step == 0) {
+    return second;
+  }
+  if (second.step == 0) {
+    return first;
+  }
+  if (first.step != second.step) {
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  if (first.start > second.start) { //we assume that the first sequence begin before the second
+    std::swap(first, second);
+  }
+
+  LongInteger distance_between_starts = second.start - first.start;
+  LongInteger steps_inside_starts_interval;
+  LongInteger residue; //Should be 0
+
+  mpz_fdiv_qr(steps_inside_starts_interval.get_mpz_t(), residue.get_mpz_t(), distance_between_starts.get_mpz_t(), first.step.get_mpz_t());
+
+  if (residue != 0) { //starts are not coherent with step
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  if (first.count < steps_inside_starts_interval) { //first sequence ends before second starts
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  if (first.count < second.count + steps_inside_starts_interval) {//Second sequence ends after first
+    first.count = second.count + steps_inside_starts_interval;
+    return first;
+  }
+
+  return first;
+}
+
+
+SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pattern, SLPMatchingInspector* inspector, SLPMatchingTable* matching_table) {
+  SLPMatchingTable::MatchResultSequence current_result = SLPMatchingTable::NO_MATCHES;
+  while (!inspector->inspection_ended()) {
+    auto current_match = matching_table->matches(pattern, inspector->current_text());
+    //cut the sequence to begin after the large_pattern_part_left_bound
+    if (current_match.count > 0 && current_match.start < inspector->left_border()) {
+      LongInteger count_reduce; //The number of steps which are outside of the boundary
+      LongInteger correct_begin_offset; //Distance between boundary and first match
+      LongInteger current_begin_offset = inspector->left_border() - current_match.start;
+      mpz_cdiv_qr(count_reduce.get_mpz_t(), correct_begin_offset.get_mpz_t(), current_begin_offset.get_mpz_t(), current_match.step.get_mpz_t());
+      current_match.count -= count_reduce;
+      current_match.start += current_begin_offset - correct_begin_offset; //They have different signs, because they are located on the different sides from left bound
+    }
+    //cut the sequence to end before large_pattern_part_right_bound
+    LongInteger current_match_last_element_end = current_match.start + current_match.count * current_match.step + pattern.length();
+    if (current_match.count > 0 && current_match_last_element_end > inspector->right_border()) {
+      LongInteger count_reduce;
+      LongInteger current_end_offset = current_match_last_element_end - inspector->right_border();
+      mpz_cdiv_q(count_reduce.get_mpz_t(), current_end_offset.get_mpz_t(), current_match.step.get_mpz_t());
+      current_match.count -= count_reduce;
+    }
+    auto joined_result = join_sequences(current_result, current_match);
+    if (current_result != SLPMatchingTable::NO_MATCHES && joined_result == SLPMatchingTable::NO_MATCHES) {
+      return current_result;
+    }
+    current_result = std::move(joined_result);
+    inspector->go_next();
+  }
+  return current_result;
+}
+
 
 } //namespace crag
