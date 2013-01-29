@@ -22,3 +22,6 @@ nbproject/
 .settings/
 .project
 .cproject
+
+#build file
+build-config.mk
