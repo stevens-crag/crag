@@ -6,7 +6,7 @@
  */
 
 #ifndef SLPSET_H
-#define	SLPSET_H
+#define SLPSET_H
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
@@ -481,19 +481,19 @@ namespace internal {
 class SLPMatchingInspector {
   public:
     SLPMatchingInspector() = delete;
-    SLPMatchingInspector(LongInteger pattern_length, SLPVertex text, LongInteger left_border, LongInteger right_border)
+    SLPMatchingInspector(const LongInteger& pattern_length, const SLPVertex& text, const LongInteger& left_bound, const LongInteger& interval_length)
       : parent_stack_()
       , pattern_length_(pattern_length)
       , text_position_({text, 0})
-      , left_border_(left_border)
-      , right_border_(right_border)
+      , left_bound_(left_bound)
+      , interval_length_(interval_length)
     {
-      if (left_border_ < 0) {
-        left_border_ = 0;
+      if (left_bound_ < 0) {
+        left_bound_ = 0;
       }
 
-      if (right_border_ > text.length()) {
-        right_border_ = text.length();
+      if (left_bound_ + interval_length_ > text.length()) {
+        interval_length_ = text.length() - left_bound_;
       }
       go_further();
     }
@@ -517,11 +517,11 @@ class SLPMatchingInspector {
     }
 
     const LongInteger& left_border() const {
-      return left_border_;
+      return left_bound_;
     }
 
-    const LongInteger& right_border() const {
-      return right_border_;
+    const LongInteger& interval_length() const {
+      return interval_length_;
     }
 
   private:
@@ -532,14 +532,14 @@ class SLPMatchingInspector {
     std::vector<TextPosition> parent_stack_;
     LongInteger pattern_length_;
     TextPosition text_position_;
-    LongInteger left_border_;
-    LongInteger right_border_;
+    LongInteger left_bound_;
+    LongInteger interval_length_;
 
     bool position_is_suitable(const TextPosition& position) const {
       if (text_position_.vertex == SLPVertex::Null ||
-          right_border_ - text_position_.text_begin < pattern_length_ ||
-          text_position_.text_begin + text_position_.vertex.length() - left_border_ < pattern_length_
-          ) {
+          interval_length_ - (text_position_.text_begin - left_bound_) < pattern_length_ ||
+          (text_position_.text_begin - left_bound_) + text_position_.vertex.length()  < pattern_length_
+      ) {
         return false;
       }
       return true;
@@ -551,6 +551,10 @@ class SLPMatchingInspector {
 
 //! Find sequence containing all elements of two sequences and only them
 SLPMatchingTable::MatchResultSequence join_sequences(SLPMatchingTable::MatchResultSequence first,
+                                                     SLPMatchingTable::MatchResultSequence second);
+
+//! Find sequence containing elements presented in both sequences
+SLPMatchingTable::MatchResultSequence intersect_sequences(SLPMatchingTable::MatchResultSequence first,
                                                      SLPMatchingTable::MatchResultSequence second);
 
 //! Find coherent entries of pattern with some bounded inspector
@@ -573,5 +577,4 @@ namespace std {
     swap(first.step, second.step);
   }
 }
-#endif	/* SLPSET_H */
-
+#endif  /* SLPSET_H */

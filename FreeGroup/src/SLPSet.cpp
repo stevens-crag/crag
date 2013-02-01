@@ -1,4 +1,5 @@
 #include "SLPSet.h"
+#include <gmp.h>
 
 namespace crag {
 
@@ -183,34 +184,54 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
   SLPMatchingTable::MatchResultSequence result;
 
   while(!large_part_hunter.inspection_ended()) {
-    auto large_part_matches = local_search(large_pattern_part, &large_part_hunter, matching_table);
+    auto large_part_matches = internal::local_search(large_pattern_part, &large_part_hunter, matching_table);
     if (large_part_matches.count > 0) {
-      if (small_pattern_is_after) {
-        LongInteger large_pattern_first_match_end = large_part_matches.start + large_pattern_part.length();
-        LongInteger large_pattern_last_match_end = large_pattern_first_match_end + large_part_matches.count * large_part_matches.step;
+      SLPMatchingTable::MatchResultSequence small_part_candidates = {
+          small_pattern_is_after ?
+              large_part_matches.start + large_pattern_part.length() :
+              large_part_matches.start - small_pattern_part.length() ,
+          large_part_matches.step,
+          large_part_matches.count
+      };
 
-        SLPMatchingInspector seaside_hunter(
-            small_pattern_part.length(),
-            text,
-            large_pattern_last_match_end - small_pattern_part.length(),
-            large_pattern_last_match_end + small_pattern_part.length()
-        );
+      const LongInteger& first_candidate_start = small_part_candidates.start;
+      LongInteger last_candidate_start = small_part_candidates.start + small_part_candidates.step * (small_part_candidates.count - 1);
 
-        auto seaside_matches = local_search(small_pattern_part, &seaside_hunter, matching_table);
+      LongInteger seaside_candidates_bound = (small_pattern_is_after ? last_candidate_start : first_candidate_start) - small_pattern_part.length();
 
-        SLPMatchingInspector continental_hunter(
-            small_pattern_part.length(),
-            text,
-            large_pattern_first_match_end,
-            large_pattern_first_match_end + small_pattern_part.length()
-        );
+      SLPMatchingInspector seaside_hunter(
+          small_pattern_part.length(),
+          text,
+          seaside_candidates_bound,
+          seaside_candidates_bound + 2 * small_pattern_part.length()
+      );
 
-        auto continental_matches = local_search(small_pattern_part, &continental_hunter, matching_table);
+      auto seaside_matches = internal::local_search(small_pattern_part, &seaside_hunter, matching_table);
+      auto seaside_approved_candidates = internal::intersect_sequences(small_part_candidates, seaside_matches);
 
-        //TODO: join all matches
+      LongInteger continental_candidate_start = small_pattern_is_after ? first_candidate_start : last_candidate_start;
 
+      SLPMatchingInspector continental_hunter(
+          small_pattern_part.length(),
+          text,
+          continental_candidate_start,
+          continental_candidate_start + small_pattern_part.length()
+      );
 
+      auto continental_matches = internal::local_search(small_pattern_part, &continental_hunter, matching_table);
+      SLPMatchingTable::MatchResultSequence approved_candidates;
+
+      if (continental_matches.count > 0) {
+        SLPMatchingTable::MatchResultSequence continental_approved_candidates = small_part_candidates;
+        LongInteger small_pattern_part_length_in_large_steps;
+        mpz_cdiv_q(small_pattern_part_length_in_large_steps.get_mpz_t(), small_pattern_part.length().get_mpz_t(), large_part_matches.step.get_mpz_t());
+        continental_approved_candidates.count -= small_pattern_part_length_in_large_steps;
+        approved_candidates = internal::join_sequences(continental_approved_candidates, seaside_approved_candidates);
+      } else {
+        approved_candidates = seaside_approved_candidates;
       }
+
+      result = internal::join_sequences(result, approved_candidates);
     }
   }
 
@@ -268,6 +289,52 @@ SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable:
   return first;
 }
 
+SLPMatchingTable::MatchResultSequence internal::intersect_sequences(SLPMatchingTable::MatchResultSequence first,
+                                                     SLPMatchingTable::MatchResultSequence second) {
+  if (first.start > second.start) {
+    std::swap(first, second);
+  }
+
+  LongInteger first_step_coefficient;
+  LongInteger second_step_coefficient;
+  LongInteger steps_gcd;
+
+  mpz_gcdext(steps_gcd.get_mpz_t(), first_step_coefficient.get_mpz_t(), second_step_coefficient.get_mpz_t(), first.step.get_mpz_t(), second.step.get_mpz_t());
+
+  LongInteger starts_difference = first.start - second.start;
+
+  if (!mpz_divisible_p(starts_difference.get_mpz_t(), steps_gcd.get_mpz_t())) {
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  SLPMatchingTable::MatchResultSequence result;
+
+  result.step = (first.step * second.step / steps_gcd);
+
+  LongInteger remainder;
+  second_step_coefficient *= starts_difference;
+  mpz_fdiv_r(remainder.get_mpz_t(), second_step_coefficient.get_mpz_t(), first.step.get_mpz_t());
+
+  result.start = second.start  + remainder * second.step / steps_gcd;
+
+  LongInteger last_first = first.start + first.step * (first.count - 1);
+  LongInteger last_second = second.start + second.step * (second.count - 1);
+
+  if (last_first > last_second) {
+    last_first.swap(last_second);
+  }
+
+  last_first -= result.start;
+
+  mpz_fdiv_q(result.count.get_mpz_t(), last_first.get_mpz_t(), result.step.get_mpz_t());
+  result.count += 1;
+
+  if (result.count <= 0) {
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  return result;
+}
 
 SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pattern, SLPMatchingInspector* inspector, SLPMatchingTable* matching_table) {
   SLPMatchingTable::MatchResultSequence current_result = SLPMatchingTable::NO_MATCHES;
@@ -284,9 +351,9 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
     }
     //cut the sequence to end before large_pattern_part_right_bound
     LongInteger current_match_last_element_end = current_match.start + current_match.count * current_match.step + pattern.length();
-    if (current_match.count > 0 && current_match_last_element_end > inspector->right_border()) {
+    if (current_match.count > 0 && current_match_last_element_end > inspector->left_border() + inspector->interval_length()) {
       LongInteger count_reduce;
-      LongInteger current_end_offset = current_match_last_element_end - inspector->right_border();
+      LongInteger current_end_offset = current_match_last_element_end - inspector->left_border() + inspector->interval_length();
       mpz_cdiv_q(count_reduce.get_mpz_t(), current_end_offset.get_mpz_t(), current_match.step.get_mpz_t());
       current_match.count -= count_reduce;
     }
