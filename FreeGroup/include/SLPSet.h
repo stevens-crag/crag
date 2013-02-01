@@ -426,7 +426,7 @@ class SLPSet {
      * @param n root index (0, ..., size() - 1)
      * @return the vertex corresponding to the root
      */
-    SLPVertex get_root(size_type n) {
+    SLPVertex root(size_type n) const {
     	return roots[n];
     }
 
@@ -435,7 +435,7 @@ class SLPSet {
      * @param n root index (0, ..., size() - 1) 
      * @return the word produced by the root
      */      
-    SLPProducedWord operator[](size_type n) {
+    SLPProducedWord produced_word(size_type n) const {
 	  return SLPProducedWord(roots[n]);
 	}
 
