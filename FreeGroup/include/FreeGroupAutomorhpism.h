@@ -43,10 +43,36 @@ public:
 			SLPVertex left_terminal_vertex,
 			SLPVertex right_terminal_vertexl);
 
+	//! Composes the current automorphism with the specified Nielsen automorphism
+	/**
+	 * Changes the current automorphism so it represents the composition of itself with the given Nielsen
+	 * automorphism, which inverts the specified terminal symbol.
+	 *
+	 * @param inverted_terminal the inverted terminal symbol
+	 * @return itself after the composition
+	 */
+	FreeGroupAutomorphism& composeWithNielsen(TerminalSymbol inverted_terminal);
 
+	//! Composes the current automorphism with the specified Nielsen automorphism
+	/**
+	 * Changes the current automorphism so it represents the composition of itself with the given Nielsen
+	 * automorphism, which maps the specified terminal to the product of another two.
+	 *
+	 * @param mapped_terminal terminal symbol being mapped
+	 * @param left_terminal_vertex vertex representing left terminal in the product
+	 * @param right_terminal_vertexlvertex representing right terminal in the product
+	 * @return itself after the composition
+	 */
+	FreeGroupAutomorphism& composeWithNielsen(TerminalSymbol mapped_terminal,
+			SLPVertex left_terminal_vertex,
+			SLPVertex right_terminal_vertexl);
 
-	//! Compose the current automorphism with the given one.
-	FreeGroupAutomorphism& composeWith(const FreeGroupAutomorphism& a);
+	//! Applies the given automorphism to the current one and returns the resulting automorphism
+	/**
+	 * Applies the automorphism a to the given one. It constructs a new automorphism and returns it.
+	 * The computational complexity is O(n ln n), where n is the size of the slp representing automorphism a.
+	 */
+	FreeGroupAutomorphism& apply(const FreeGroupAutomorphism& a);
 
 	//! The image of the terminal t.
 	/**
