@@ -36,32 +36,32 @@ SLPVertex SLPVertex::concatenate(const SLPVertex& left_child, const SLPVertex& r
 
 void SLPPostorderInspector::go_to_next_vertex() {
   //TODO: maybe raise an exception if current_path is empty already?
-  const SLPVertex current = current_path_.back();
+  PathState current = current_path_.back();
   current_path_.pop_back();
 
   if (inspection_ended()) {
     return;
   }
 
-  const SLPVertex& parent = current_path_.back();
+  const PathState& parent = current_path_.back();
 
-  if ( parent.right_child() == current || !parent.has_right_child()) {
+  if ( current.is_right_child || !parent.vertex.has_right_child()) {
     //We have already visited all right children of the parent vertex, stop on parent
   } else {
     //We have visited all left children of parent, going to the right
-    current_path_.push_back(parent.right_child());
+    current_path_.push_back(PathState({parent.vertex.right_child(), true}));
     goto_leftmost_terminal();
   }
 }
 
 void SLPPostorderInspector::goto_leftmost_terminal() {
-  while (current_path_.back() != SLPVertex::Null) {
-    const SLPVertex & current = current_path_.back();
-    if (current.has_left_child()) {
-      current_path_.push_back(current.left_child());
+  while (current_path_.back().vertex != SLPVertex::Null) {
+    const PathState & current = current_path_.back();
+    if (current.vertex.has_left_child()) {
+      current_path_.push_back(PathState({current.vertex.left_child(), false}));
     } else {
       //Don't have any left children, then go right
-      current_path_.push_back(current.right_child());
+      current_path_.push_back(PathState({current.vertex.right_child(), true}));
     }
   }
 

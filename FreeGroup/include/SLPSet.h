@@ -150,7 +150,7 @@ class SLPPostorderInspector
 
     //! Inspect the subtree of #root
     SLPPostorderInspector(const SLPVertex& root)
-      : current_path_({root}) {
+      : current_path_({PathState({root, false})}) {
       goto_leftmost_terminal();
     }
 
@@ -158,7 +158,7 @@ class SLPPostorderInspector
 
     //! Get current vertex
     const SLPVertex& current_vertex() const {
-      return current_path_.back();
+      return current_path_.back().vertex;
     }
 
     //! True if there are no more vertices, we have visited everything
@@ -171,7 +171,12 @@ class SLPPostorderInspector
     void go_to_next_vertex();
 
   private:
-    std::vector< SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
+    struct PathState {
+      SLPVertex vertex;
+      bool is_right_child;
+    };
+
+    std::vector<PathState> current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack. Each tuple is <Vertex, is_right_child>
 
     //! Go from the current_path_.back() to the leftmost terminal
     void goto_leftmost_terminal();
