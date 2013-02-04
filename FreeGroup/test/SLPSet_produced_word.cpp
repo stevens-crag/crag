@@ -18,6 +18,7 @@
 #include <memory>
 #include <functional>
 #include <utility>
+#include <algorithm>
 
 namespace crag {
 namespace {
@@ -103,6 +104,44 @@ namespace {
     ++iterator;
 
     EXPECT_EQ(iterator, w.end());
+  }
+
+
+  TEST(SLPProducedWord, StressTest) {
+    const unsigned int word_size = 6;
+
+    SLPVertex a = SLPVertex::terminal_vertex(1);
+    SLPVertex b = SLPVertex::terminal_vertex(2);
+
+    unsigned int current_word = 0;
+    while (current_word < (1 << word_size)) {
+      std::vector<unsigned int> current_word_split;
+      for (unsigned int i = 1; i < word_size; ++i) {
+        current_word_split.push_back(i);
+      }
+
+      do {
+        std::vector<SLPVertex> word_presentation;
+        for (unsigned int i = 0; i < word_size; ++i) {
+          word_presentation.push_back(((current_word & (1 << i)) ? b : a));
+        }
+
+        for (unsigned int split : current_word_split) {
+          SLPVertex new_vertex = SLPVertex::concatenate(word_presentation[split - 1], word_presentation[split]);
+          for (unsigned int i = split - new_vertex.left_child().length().get_ui(); i < split + new_vertex.right_child().length(); ++i) {
+            word_presentation[i] = new_vertex;
+          }
+        }
+
+        unsigned int position = 0;
+        EXPECT_EQ(current_word_split.back(), word_presentation.front().left_child().length());
+        for (auto symbol = SLPProducedWordIterator(word_presentation.front()); symbol != SLPProducedWordIterator(); ++position, ++symbol) {
+          EXPECT_EQ(((current_word & (1 << position)) ? b : a), *symbol);
+        }
+
+      } while(std::next_permutation(current_word_split.begin(), current_word_split.end()));
+      ++current_word;
+    }
   }
 }
 }
