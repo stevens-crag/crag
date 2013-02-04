@@ -147,9 +147,21 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
     }
   } else  {//we have pattern.length > 1 => text.length > 1
     if (pattern.left_child().length() >= pattern.right_child().length()) {//Right child is smaller
-      const SLPVertex& large_pattern_part = pattern.left_child();
-      const SLPVertex& small_pattern_part = pattern.right_child();
-      bool small_pattern_is_after = true;
+      match_result = internal::nontrivial_match(
+          pattern.left_child(),
+          pattern.right_child(),
+          true,
+          text,
+          this
+      );
+    } else {
+      match_result = internal::nontrivial_match(
+          pattern.right_child(),
+          pattern.left_child(),
+          false,
+          text,
+          this
+      );
     }
   }
 
@@ -168,17 +180,11 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
     large_pattern_part_left_bound -= small_pattern_part.length();
   }
 
-  LongInteger large_pattern_part_right_bound = text.split_point() + large_pattern_part.length();
-
-  if (!small_pattern_is_after) {
-    large_pattern_part_right_bound += small_pattern_part.length();
-  }
-
   SLPMatchingInspector large_part_hunter(
       large_pattern_part.length(), //pattern length
       text, //text
       large_pattern_part_left_bound, //the leftmost letter of text to consider
-      large_pattern_part_right_bound //the rightmost letter of text to consider
+      large_pattern_part.length() * 2 + small_pattern_part.length()
   );
 
   SLPMatchingTable::MatchResultSequence result;
@@ -186,13 +192,20 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
   while(!large_part_hunter.inspection_ended()) {
     auto large_part_matches = internal::local_search(large_pattern_part, &large_part_hunter, matching_table);
     if (large_part_matches.count > 0) {
-      SLPMatchingTable::MatchResultSequence small_part_candidates = {
-          small_pattern_is_after ?
-              large_part_matches.start + large_pattern_part.length() :
-              large_part_matches.start - small_pattern_part.length() ,
-          large_part_matches.step,
-          large_part_matches.count
-      };
+      SLPMatchingTable::MatchResultSequence small_part_candidates;
+      if (small_pattern_is_after) {
+        small_part_candidates = {
+            large_part_matches.start + large_pattern_part.length(),
+            large_part_matches.step,
+            large_part_matches.count
+        };
+      } else {
+        small_part_candidates = {
+            large_part_matches.start - small_pattern_part.length(),
+            large_part_matches.step,
+            large_part_matches.count
+        };
+      }
 
       const LongInteger& first_candidate_start = small_part_candidates.start;
       LongInteger last_candidate_start = small_part_candidates.start + small_part_candidates.step * (small_part_candidates.count - 1);
@@ -253,10 +266,10 @@ void internal::SLPMatchingInspector::go_further() {
 }
 
 SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable::MatchResultSequence first, SLPMatchingTable::MatchResultSequence second) {
-  if (first.step == 0) {
+  if (first.step == 0 || first.count == 0) {
     return second;
   }
-  if (second.step == 0) {
+  if (second.step == 0  || second.count == 0) {
     return first;
   }
   if (first.step != second.step) {
@@ -277,20 +290,25 @@ SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable:
     return SLPMatchingTable::NO_MATCHES;
   }
 
-  if (first.count < steps_inside_starts_interval) { //first sequence ends before second starts
+  if (first.count - 1 < steps_inside_starts_interval) { //first sequence ends before second starts
     return SLPMatchingTable::NO_MATCHES;
   }
 
   if (first.count < second.count + steps_inside_starts_interval) {//Second sequence ends after first
-    first.count = second.count + steps_inside_starts_interval;
+    first.count -= steps_inside_starts_interval;
+    first.start = second.start;
     return first;
   }
 
-  return first;
+  return second;
 }
 
 SLPMatchingTable::MatchResultSequence internal::intersect_sequences(SLPMatchingTable::MatchResultSequence first,
                                                      SLPMatchingTable::MatchResultSequence second) {
+  if (first.step == 0 || first.count == 0 || second.step == 0 || second.count == 0) {
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
   if (first.start > second.start) {
     std::swap(first, second);
   }
@@ -349,8 +367,9 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
       current_match.count -= count_reduce;
       current_match.start += current_begin_offset - correct_begin_offset; //They have different signs, because they are located on the different sides from left bound
     }
+
     //cut the sequence to end before large_pattern_part_right_bound
-    LongInteger current_match_last_element_end = current_match.start + current_match.count * current_match.step + pattern.length();
+    LongInteger current_match_last_element_end = current_match.start + (current_match.count - 1) * current_match.step + pattern.length();
     if (current_match.count > 0 && current_match_last_element_end > inspector->left_border() + inspector->interval_length()) {
       LongInteger count_reduce;
       LongInteger current_end_offset = current_match_last_element_end - inspector->left_border() + inspector->interval_length();
@@ -368,4 +387,13 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
 }
 
 
+::std::ostream& operator<<(::std::ostream& os, const SLPMatchingTable::MatchResultSequence& match) {
+  return os << '{' << match.start << ',' << match.step << ',' << match.count << '}';  // whatever needed to print bar to os
+}
 } //namespace crag
+
+void std::swap(crag::SLPMatchingTable::MatchResultSequence& first, crag::SLPMatchingTable::MatchResultSequence& second) {
+  mpz_swap(first.count.get_mpz_t(), second.count.get_mpz_t());
+  mpz_swap(first.start.get_mpz_t(), second.start.get_mpz_t());
+  mpz_swap(first.step.get_mpz_t(), second.step.get_mpz_t());
+}

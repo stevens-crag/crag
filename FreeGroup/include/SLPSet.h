@@ -347,6 +347,14 @@ class SLPMatchingTable {
         LongInteger start; //!< The beginning of the first match
         LongInteger step;  //!< The distance between the matches
         LongInteger count; //!< The number of matches
+
+        bool operator==(const MatchResultSequence& other) const {
+          return start == other.start && step == other.step && count == other.count;
+        }
+
+        bool operator!=(const MatchResultSequence& other) const {
+          return !(*this == other);
+        }
     };
 
     const static MatchResultSequence NO_MATCHES;
@@ -370,6 +378,8 @@ class SLPMatchingTable {
   protected:
     std::unordered_map<std::pair<SLPVertex, SLPVertex>, MatchResultSequence> match_table_; //! The actual storage for the calculated values.
 };
+
+::std::ostream& operator<<(::std::ostream& os, const SLPMatchingTable::MatchResultSequence& match);
 
 //! class of straight line program collection
 /**
@@ -573,13 +583,9 @@ SLPMatchingTable::MatchResultSequence nontrivial_match(const SLPVertex& large_pa
                                                        const SLPVertex& text,
                                                        SLPMatchingTable* matching_table);
 
-}
+} //namespace internal
 } //namespace crag
 namespace std {
-  void swap(crag::SLPMatchingTable::MatchResultSequence& first, crag::SLPMatchingTable::MatchResultSequence second) {
-    swap(first.count, second.count);
-    swap(first.start, second.start);
-    swap(first.step, second.step);
-  }
+  void swap(crag::SLPMatchingTable::MatchResultSequence& first, crag::SLPMatchingTable::MatchResultSequence& second);
 }
 #endif  /* SLPSET_H */
