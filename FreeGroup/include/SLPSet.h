@@ -550,7 +550,7 @@ class SLPMatchingInspector {
     LongInteger left_bound_;
     LongInteger interval_length_;
 
-    bool position_is_suitable(const TextPosition& position) const {
+    bool position_is_suitable() const {
       if (text_position_.vertex == SLPVertex::Null ||
           interval_length_ - (text_position_.text_begin - left_bound_) < pattern_length_ ||
           (text_position_.text_begin - left_bound_) + text_position_.vertex.length()  < pattern_length_

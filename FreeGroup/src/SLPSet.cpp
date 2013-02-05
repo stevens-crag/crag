@@ -253,7 +253,7 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
 
 
 void internal::SLPMatchingInspector::go_further() {
-    while (position_is_suitable(text_position_)) {
+    while (position_is_suitable()) {
       parent_stack_.push_back(text_position_);
       text_position_.vertex = text_position_.vertex.left_child();
     }
