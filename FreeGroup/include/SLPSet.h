@@ -499,12 +499,13 @@ class SLPMatchingInspector {
     SLPMatchingInspector(const LongInteger& pattern_length, const SLPVertex& text, const LongInteger& left_bound, const LongInteger& interval_length)
       : parent_stack_()
       , pattern_length_(pattern_length)
-      , text_position_({text, 0})
+      , text_position_({text, -left_bound})
       , left_bound_(left_bound)
       , interval_length_(interval_length)
     {
       if (left_bound_ < 0) {
         left_bound_ = 0;
+        text_position_.distance_from_left_border = 0;
       }
 
       if (left_bound_ + interval_length_ > text.length()) {
@@ -518,7 +519,7 @@ class SLPMatchingInspector {
     }
 
     void go_next() {
-      text_position_.text_begin += text_position_.vertex.left_child().length();
+      text_position_.distance_from_left_border += text_position_.vertex.left_child().length();
       text_position_.vertex = text_position_.vertex.right_child();
       go_further();
     }
@@ -527,8 +528,8 @@ class SLPMatchingInspector {
       return text_position_.vertex;
     }
 
-    LongInteger current_text_begin() const {
-      return text_position_.text_begin;
+    LongInteger current_distance_from_left_border() const {
+      return text_position_.distance_from_left_border;
     }
 
     const LongInteger& left_border() const {
@@ -542,7 +543,7 @@ class SLPMatchingInspector {
   private:
     struct TextPosition {
       SLPVertex vertex;
-      LongInteger text_begin;
+      LongInteger distance_from_left_border;
     };
     std::vector<TextPosition> parent_stack_;
     LongInteger pattern_length_;
@@ -552,8 +553,8 @@ class SLPMatchingInspector {
 
     bool position_is_suitable() const {
       if (text_position_.vertex == SLPVertex::Null ||
-          interval_length_ - (text_position_.text_begin - left_bound_) < pattern_length_ ||
-          (text_position_.text_begin - left_bound_) + text_position_.vertex.length()  < pattern_length_
+          interval_length_ - text_position_.distance_from_left_border < pattern_length_ ||
+          text_position_.distance_from_left_border + text_position_.vertex.length()  < pattern_length_
       ) {
         return false;
       }
