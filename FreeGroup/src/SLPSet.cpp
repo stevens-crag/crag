@@ -272,6 +272,55 @@ SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable:
   if (second.step == 0  || second.count == 0) {
     return first;
   }
+  //if one of the sequences is just one element, then the behavior should be different
+  if (first.count == 1) {
+    std::swap(first, second);
+  }
+
+  if (second.count == 1) {
+    if (first.count == 1) {
+      if (first.start < second.start) {
+        first.step = second.start - first.start;
+        first.count = 2;
+        return first;
+      } else if (second.start < first.start) {
+        second.step = first.start - second.start;
+        second.count = 2;
+        return second;
+      } else {
+        second.step = 1;
+        second.count = 1;
+        return second;
+      }
+    } else {
+      LongInteger distance_between_starts = second.start - first.start;
+      LongInteger steps_between_starts;
+      LongInteger distance_badness;
+
+      mpz_fdiv_qr(steps_between_starts.get_mpz_t(), distance_badness.get_mpz_t(), distance_between_starts.get_mpz_t(), first.step.get_mpz_t());
+
+      if (distance_badness != 0) {
+        return SLPMatchingTable::NO_MATCHES;
+      }
+
+      if (steps_between_starts == -1) {
+        first.start -= first.step;
+        first.count += 1;
+
+        return first;
+      } else if (steps_between_starts == first.count) {
+        first.count += 1;
+
+        return first;
+      } else if (steps_between_starts >= 0 && steps_between_starts < first.count) {
+        return first;
+      } else {
+        return SLPMatchingTable::NO_MATCHES;
+      }
+    }
+  }
+
+
   if (first.step != second.step) {
     return SLPMatchingTable::NO_MATCHES;
   }
@@ -290,17 +339,17 @@ SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable:
     return SLPMatchingTable::NO_MATCHES;
   }
 
-  if (first.count - 1 < steps_inside_starts_interval) { //first sequence ends before second starts
+  if (first.count < steps_inside_starts_interval) { //first sequence ends before second starts
     return SLPMatchingTable::NO_MATCHES;
   }
 
   if (first.count < second.count + steps_inside_starts_interval) {//Second sequence ends after first
-    first.count -= steps_inside_starts_interval;
-    first.start = second.start;
+    second.count += steps_inside_starts_interval;
+    second.start = first.start;
+    return second;
+  } else {
     return first;
   }
-
-  return second;
 }
 
 SLPMatchingTable::MatchResultSequence internal::intersect_sequences(SLPMatchingTable::MatchResultSequence first,
@@ -358,6 +407,8 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
   SLPMatchingTable::MatchResultSequence current_result = SLPMatchingTable::NO_MATCHES;
   while (!inspector->inspection_ended()) {
     auto current_match = matching_table->matches(pattern, inspector->current_text());
+    //Adjust match start
+    current_match.start += (inspector->current_distance_from_left_border() + inspector->left_border());
     //cut the sequence to begin after the large_pattern_part_left_bound
     if (current_match.count > 0 && current_match.start < inspector->left_border()) {
       LongInteger count_reduce; //The number of steps which are outside of the boundary
@@ -372,12 +423,16 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
     LongInteger current_match_last_element_end = current_match.start + (current_match.count - 1) * current_match.step + pattern.length();
     if (current_match.count > 0 && current_match_last_element_end > inspector->left_border() + inspector->interval_length()) {
       LongInteger count_reduce;
-      LongInteger current_end_offset = current_match_last_element_end - inspector->left_border() + inspector->interval_length();
+      LongInteger current_end_offset = current_match_last_element_end - inspector->left_border() - inspector->interval_length();
       mpz_cdiv_q(count_reduce.get_mpz_t(), current_end_offset.get_mpz_t(), current_match.step.get_mpz_t());
       current_match.count -= count_reduce;
     }
+
     auto joined_result = join_sequences(current_result, current_match);
-    if (current_result != SLPMatchingTable::NO_MATCHES && joined_result == SLPMatchingTable::NO_MATCHES) {
+    if (current_result.count != 0 &&
+        (joined_result.count == 0 ||
+         current_match.start > current_result.start + pattern.length()
+        )) {
       return current_result;
     }
     current_result = std::move(joined_result);

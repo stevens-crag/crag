@@ -12,6 +12,9 @@
 #include <functional>
 #include <utility>
 #include <algorithm>
+#include <cstdlib>
+#include <ctime>
+
 
 namespace crag {
 ::std::ostream& operator<<(::std::ostream& os, const ::crag::SLPVertex& vertex)
@@ -25,6 +28,7 @@ namespace crag {
 }
 
 namespace {
+
 
 class SLPMatchingInspectorTrivial : public ::testing::Test {
   protected:
@@ -102,270 +106,165 @@ TEST_F(SLPMatchingInspectorTrivial, OneCompositionRightCut) {
   EXPECT_TRUE(inspector.inspection_ended());
 }
 
+typedef SLPMatchingTable::MatchResultSequence Seq;
+
+
 TEST(MatchResultSequence, Swap) {
-  SLPMatchingTable::MatchResultSequence first = {1, 2, 3};
-  SLPMatchingTable::MatchResultSequence first_copy = {1, 2, 3};
-  SLPMatchingTable::MatchResultSequence second = {4, 5, 6};
-  SLPMatchingTable::MatchResultSequence second_copy = {4, 5, 6};
+  Seq first = {1, 2, 3};
+  Seq second = {4, 5, 6};
 
   std::swap(first, second);
 
-  EXPECT_EQ(second_copy, first);
-  EXPECT_EQ(first_copy, second);
+  EXPECT_EQ(Seq({4, 5, 6}), first);
+  EXPECT_EQ(Seq({1, 2, 3}), second);
 }
 
-TEST(JoinSequences, FirstZeroStep) {
-  SLPMatchingTable::MatchResultSequence first = {1, 0, 1};
-  SLPMatchingTable::MatchResultSequence second = {1, 2, 0};
+using internal::join_sequences;
+auto NO_MATCHES = SLPMatchingTable::NO_MATCHES;
 
-  auto result = internal::join_sequences(first, second);
+TEST(JoinSequences, EmptySequnces) {
+  EXPECT_EQ(Seq({1, 2, 1}), join_sequences({1, 0, 1}, {1, 2, 1}))
+      << "If step of the first sequence is zero, return second.";
 
-  EXPECT_EQ(result, second);
+  EXPECT_EQ(Seq({1, 1, 1}), join_sequences({1, 1, 1}, {1, 0, 2}))
+      << "If step of the second sequence is zero, return first.";
+
+  EXPECT_EQ(Seq({1, 2, 1}), join_sequences({1, 1, 0}, {1, 2, 1}))
+      << "If count of the first sequence is zero, return second.";
+
+  EXPECT_EQ(Seq({1, 1, 1}), join_sequences({1, 1, 1}, {1, 2, 0}))
+      << "If count of the second sequence is zero, return first.";
 }
 
-TEST(JoinSequences, SecondZeroStep) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 1};
-  SLPMatchingTable::MatchResultSequence second = {1, 0, 2};
+TEST(JoinSequences, StepCoherence) {
+  EXPECT_EQ(NO_MATCHES, join_sequences({1, 1, 2}, {1, 2, 2}))
+      << "If steps are different, the join is empty.";
 
-  auto result = internal::join_sequences(first, second);
-
-  EXPECT_EQ(result, first);
+  EXPECT_EQ(NO_MATCHES, join_sequences({0, 2, 6}, {1, 2, 10}))
+      << "If the distance between first elements is not coherent with step, the join is empty.";
 }
 
-TEST(JoinSequences, FirstZeroCount) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 0};
-  SLPMatchingTable::MatchResultSequence second = {1, 2, 1};
+TEST(JoinSequences, JoinTwoSequnces) {
+  EXPECT_EQ(NO_MATCHES, join_sequences({0, 2, 2}, {6, 2, 4}))
+      << "First sequence ends far before the first element of the second.";
 
-  auto result = internal::join_sequences(first, second);
+  EXPECT_EQ(Seq({0, 2, 7}), join_sequences({0, 2, 3}, {6, 2, 4}))
+      << "First sequence ends just before the first element of the second.";
 
-  EXPECT_EQ(result, second);
+  EXPECT_EQ(Seq({0, 2, 7}), join_sequences({0, 2, 4}, {6, 2, 4}))
+      << "First sequence ends at the first element of the second.";
+
+  EXPECT_EQ(Seq({0, 2, 7}), join_sequences({0, 2, 5}, {6, 2, 4}))
+      << "First sequence starts before the second, ends after the first element of the second.";
+
+  EXPECT_EQ(Seq({0, 2, 7}), join_sequences({0, 2, 7}, {6, 2, 4}))
+      << "First sequence starts before the second, ends at the last element of the second.";
+
+  EXPECT_EQ(Seq({0, 2, 8}), join_sequences({0, 2, 8}, {6, 2, 4}))
+      << "First sequence starts before the second, ends after the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 4}), join_sequences({6, 2, 2}, {6, 2, 4}))
+      << "First sequence starts with the second, ends after the first element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 4}), join_sequences({6, 2, 4}, {6, 2, 4}))
+      << "Sequences are equal.";
+
+  EXPECT_EQ(Seq({6, 2, 5}), join_sequences({6, 2, 5}, {6, 2, 4}))
+      << "First sequence starts with the second, ends after the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 4}), join_sequences({8, 2, 2}, {6, 2, 4}))
+      << "First sequence starts after the second, ends before the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 4}), join_sequences({8, 2, 3}, {6, 2, 4}))
+      << "First sequence starts after the second, ends at the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 5}), join_sequences({8, 2, 4}, {6, 2, 4}))
+      << "First sequence starts after the second, ends after the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 5}), join_sequences({8, 2, 4}, {6, 2, 4}))
+      << "First sequence starts after the second, ends after the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 5}), join_sequences({12, 2, 2}, {6, 2, 4}))
+      << "First sequence starts at the last element of the second.";
+
+  EXPECT_EQ(Seq({6, 2, 6}), join_sequences({14, 2, 2}, {6, 2, 4}))
+      << "First sequence starts just after the last element of the second.";
+
+  EXPECT_EQ(NO_MATCHES, join_sequences({16, 2, 2}, {6, 2, 4}))
+      << "First sequence starts far after the last element of the second.";
+
 }
 
-TEST(JoinSequences, SecondZeroCount) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 1};
-  SLPMatchingTable::MatchResultSequence second = {1, 1, 0};
+TEST(JoinSequences, JoinTwoElements) {
+  EXPECT_EQ(Seq({0, 10, 2}), join_sequences({0, 3, 1}, {10, 7, 1})) <<
+      "Two elements always can be joined. Here the first is before the second.";
 
-  auto result = internal::join_sequences(first, second);
+  EXPECT_EQ(Seq({0, 10, 2}), join_sequences({10, 3, 1}, {0, 7, 1})) <<
+      "Two elements always can be joined. Here the second is before the first.";
 
-  EXPECT_EQ(result, first);
+  EXPECT_EQ(Seq({0, 1, 1}), join_sequences({0, 3, 1}, {0, 7, 1})) <<
+      "Two elements always can be joined. Here the second is equal to the first.";
 }
 
-TEST(JoinSequences, DifferentSteps) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 1};
-  SLPMatchingTable::MatchResultSequence second = {1, 2, 1};
+TEST(JoinSequences, JoinSequenceAndElement) {
+  EXPECT_EQ(NO_MATCHES, join_sequences({0, 3, 1}, {4, 2, 3})) <<
+      "Elements is before the sequence start, but is not in one step from it.";
 
-  auto result = internal::join_sequences(first, second);
+  EXPECT_EQ(Seq({2, 2, 4}), join_sequences({2, 3, 1}, {4, 2, 3})) <<
+      "Elements is one step from the sequence start.";
 
-  EXPECT_EQ(result, SLPMatchingTable::NO_MATCHES);
+  EXPECT_EQ(Seq({4, 2, 3}), join_sequences({4, 3, 1}, {4, 2, 3})) <<
+      "Elements is at the sequence start.";
+
+  EXPECT_EQ(Seq({4, 2, 3}), join_sequences({6, 3, 1}, {4, 2, 3})) <<
+      "Elements is inside the sequence start.";
+
+  EXPECT_EQ(NO_MATCHES, join_sequences({5, 3, 1}, {4, 2, 3})) <<
+      "Elements is between the sequence first and last elements, but does not equal to any element.";
+
+  EXPECT_EQ(Seq({4, 2, 3}), join_sequences({8, 3, 1}, {4, 2, 3})) <<
+      "Elements is the last sequence element.";
+
+  EXPECT_EQ(Seq({4, 2, 4}), join_sequences({10, 3, 1}, {4, 2, 3})) <<
+      "Elements is one step from the last sequence element.";
+
+  EXPECT_EQ(NO_MATCHES, join_sequences({12, 3, 1}, {4, 2, 3})) <<
+      "Elements is after the last sequence element, but not in one step from it.";
 }
 
-TEST(JoinSequences, NonCoherent) {
-  SLPMatchingTable::MatchResultSequence first = {0, 2, 6};
-  SLPMatchingTable::MatchResultSequence second = {1, 2, 10};
-  SLPMatchingTable::MatchResultSequence expected = SLPMatchingTable::NO_MATCHES;
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, NonIntersecting) {
-  SLPMatchingTable::MatchResultSequence first = {0, 1, 1};
-  SLPMatchingTable::MatchResultSequence second = {1, 1, 1};
-
-  auto result = internal::join_sequences(first, second);
-
-  EXPECT_EQ(result, SLPMatchingTable::NO_MATCHES);
-}
-
-TEST(JoinSequences, NonIntersectingSwapped) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 1};
-  SLPMatchingTable::MatchResultSequence second = {0, 1, 1};
-
-  auto result = internal::join_sequences(first, second);
-
-  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, result);
-}
-
-TEST(JoinSequences, InterectOneElement) {
-  SLPMatchingTable::MatchResultSequence first = {0, 1, 2};
-  SLPMatchingTable::MatchResultSequence second = {1, 1, 10};
-  SLPMatchingTable::MatchResultSequence expected = {1, 1, 1};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectOneElementSwapped) {
-  SLPMatchingTable::MatchResultSequence first = {1, 1, 10};
-  SLPMatchingTable::MatchResultSequence second = {0, 1, 2};
-  SLPMatchingTable::MatchResultSequence expected = {1, 1, 1};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectSeveralElements) {
-  SLPMatchingTable::MatchResultSequence first = {0, 2, 6};
-  SLPMatchingTable::MatchResultSequence second = {4, 2, 10};
-  SLPMatchingTable::MatchResultSequence expected = {4, 2, 4};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectSeveralElementsSwapped) {
-  SLPMatchingTable::MatchResultSequence first = {4, 2, 10};
-  SLPMatchingTable::MatchResultSequence second = {0, 2, 6};
-  SLPMatchingTable::MatchResultSequence expected = {4, 2, 4};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectSeveralElementsNonCoherentSwapped) {
-  SLPMatchingTable::MatchResultSequence first = {0, 2, 6};
-  SLPMatchingTable::MatchResultSequence second = {1, 2, 10};
-  SLPMatchingTable::MatchResultSequence expected = SLPMatchingTable::NO_MATCHES;
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectSeveralElementsOneInsideAnother) {
-  SLPMatchingTable::MatchResultSequence first = {0, 2, 10};
-  SLPMatchingTable::MatchResultSequence second = {4, 2, 2};
-  SLPMatchingTable::MatchResultSequence expected = {4, 2, 2};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
-
-TEST(JoinSequences, InterectSeveralElementsOneInsideAnotherSwapped) {
-  SLPMatchingTable::MatchResultSequence first = {4, 2, 2};
-  SLPMatchingTable::MatchResultSequence second = {0, 2, 10};
-  SLPMatchingTable::MatchResultSequence expected = {4, 2, 2};
-
-  auto result = internal::join_sequences(first, second);
-  EXPECT_EQ(result, expected);
-}
+using internal::intersect_sequences;
 
 TEST(IntersectSequences, ZeroValues) {
-  SLPMatchingTable::MatchResultSequence zero_step = {0, 0, 1};
-  SLPMatchingTable::MatchResultSequence zero_count = {0, 1, 0};
-  SLPMatchingTable::MatchResultSequence normal = {0, 1, 10};
-
-  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, internal::intersect_sequences(zero_step, normal));
-  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, internal::intersect_sequences(zero_count, normal));
+  EXPECT_EQ(NO_MATCHES, intersect_sequences({0, 0, 1}, {0, 1, 10}));
+  EXPECT_EQ(NO_MATCHES, intersect_sequences({0, 1, 0}, {0, 1, 10}));
 }
 
-TEST(IntersectSequences, SameSequences) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence expected = {10, 10, 10};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, InitialSupsequence) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {10, 10, 2};
-  SLPMatchingTable::MatchResultSequence expected = {10, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, InitialSubsequence) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 2};
-  SLPMatchingTable::MatchResultSequence second = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence expected = {10, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, TerminalSupsequence) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {90, 10, 2};
-  SLPMatchingTable::MatchResultSequence expected = {90, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, TerminalSubsequence) {
-  SLPMatchingTable::MatchResultSequence first = {90, 10, 2};
-  SLPMatchingTable::MatchResultSequence second = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence expected = {90, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, InnerSupsequence) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {50, 10, 2};
-  SLPMatchingTable::MatchResultSequence expected = {50, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, InnerSubsequence) {
-  SLPMatchingTable::MatchResultSequence first = {50, 10, 2};
-  SLPMatchingTable::MatchResultSequence second = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence expected = {50, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
+TEST(IntersectSequences, SubSequnces) {
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({0, 10, 11}, {10, 10, 10}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({0, 10, 12}, {10, 10, 10}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({10, 10, 10}, {10, 10, 11}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({10, 10, 10}, {10, 10, 10}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({10, 10, 11}, {10, 10, 10}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({10, 10, 10}, {0, 10, 12}));
+  EXPECT_EQ(Seq({10, 10, 10}), intersect_sequences({10, 10, 10}, {0, 10, 11}));
 }
 
 TEST(IntersectSequences, InnerSupsequenceDifferentSteps) {
-  SLPMatchingTable::MatchResultSequence first = {10, 5, 20};
-  SLPMatchingTable::MatchResultSequence second = {50, 10, 2};
-  SLPMatchingTable::MatchResultSequence expected = {50, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-TEST(IntersectSequences, InnerSubsequenceDifferentSteps) {
-  SLPMatchingTable::MatchResultSequence first = {50, 10, 2};
-  SLPMatchingTable::MatchResultSequence second = {10, 5, 20};
-  SLPMatchingTable::MatchResultSequence expected = {50, 10, 2};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
+  EXPECT_EQ(Seq({50, 10, 2}), intersect_sequences({50, 10, 2}, {10, 5, 20}));
+  EXPECT_EQ(Seq({50, 10, 2}), intersect_sequences({10, 5, 20}, {50, 10, 2}));
 }
 
 TEST(IntersectSequences, NotCoherentStarts) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {13, 15, 10};
-  SLPMatchingTable::MatchResultSequence expected = SLPMatchingTable::NO_MATCHES;
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
+  EXPECT_EQ(NO_MATCHES, intersect_sequences({10, 10, 10}, {13, 15, 10}));
 }
 
-TEST(IntersectSequences, OneAfterAnother) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {0, 10, 2};
-  SLPMatchingTable::MatchResultSequence expected = {10, 10, 1};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
-}
-
-TEST(IntersectSequences, MiddleSingleIntersect) {
-  SLPMatchingTable::MatchResultSequence first = {10, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {35, 15, 2};
-  SLPMatchingTable::MatchResultSequence expected = {50, 30, 1};
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
+TEST(IntersectSequences, ElementIntersection) {
+  EXPECT_EQ(Seq({17, 17 * 13, 1}), intersect_sequences({17, 13, 10}, {0, 17, 2}));
+  EXPECT_EQ(Seq({50, 30, 1}), intersect_sequences({10, 10, 10}, {35, 15, 2}));
 }
 
 TEST(IntersectSequences, IntesectionOutOfBoundaries) {
-  SLPMatchingTable::MatchResultSequence first = {55, 10, 10};
-  SLPMatchingTable::MatchResultSequence second = {30, 15, 3};
-  SLPMatchingTable::MatchResultSequence expected = SLPMatchingTable::NO_MATCHES;
-
-  auto result = internal::intersect_sequences(first, second);
-  EXPECT_EQ(expected, result);
+  EXPECT_EQ(NO_MATCHES, intersect_sequences({55, 10, 10}, {30, 15, 3}));
 }
 
 TEST(IntersectSequences, StressTest) {
@@ -467,9 +366,6 @@ TEST(SLPVertexHashtable, Test) {
   result = map.find(std::make_pair(acopy, a));
   ASSERT_NE(result, map.end());
   EXPECT_EQ(result->second, 1);
-
-
-
 }
 
 class FilledMatchingTable : public SLPMatchingTable {
@@ -555,6 +451,246 @@ TEST(FilledMatchingTable, Example) {
   EXPECT_EQ(FilledMatchingTable::MatchResultSequence({2, 1, 3}), matching_table.matches(a2,text));
   EXPECT_EQ(FilledMatchingTable::MatchResultSequence({1, 1, 4}), matching_table.matches(a3,text));
   EXPECT_EQ(FilledMatchingTable::MatchResultSequence({0, 1, 4}), matching_table.matches(pattern,text));
+}
+
+TEST(LocalSearch, Trivial) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+
+  internal::SLPMatchingInspector inspector(a.length(), a, 0, 1);
+  FilledMatchingTable matching_table(a, a);
+
+  auto matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::MatchResultSequence({0, 1, 1}), matches);
+
+  matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, LeftCut) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex a2 = SLPVertex::concatenate(a, a);
+
+  internal::SLPMatchingInspector inspector(a.length(), a2, 0, 1);
+
+  FilledMatchingTable matching_table(a, a2);
+
+  auto matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::MatchResultSequence({0, 1, 1}), matches);
+
+  matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, RightCut) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex a2 = SLPVertex::concatenate(a, a);
+
+  internal::SLPMatchingInspector inspector(a.length(), a2, 1, 1);
+
+  FilledMatchingTable matching_table(a, a2);
+
+  auto matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::MatchResultSequence({1, 1, 1}), matches);
+
+  matches = internal::local_search(a, &inspector, &matching_table);
+  EXPECT_EQ(SLPMatchingTable::NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, SimpleNontrivial) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex abab = SLPVertex::concatenate(ab, ab);
+
+  internal::SLPMatchingInspector inspector(ab.length(), abab, 0, 4);
+
+  FilledMatchingTable matching_table(ab, abab);
+
+  auto matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(Seq({0, 2, 2}), matches);
+
+  matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, SimpleNontrivialLeftCut) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex abab = SLPVertex::concatenate(ab, ab);
+
+  internal::SLPMatchingInspector inspector(ab.length(), abab, 1, 4);
+
+  FilledMatchingTable matching_table(ab, abab);
+
+  auto matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(Seq({2, 1, 1}), matches);
+
+  matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, SimpleNontrivialRightCut) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex abab = SLPVertex::concatenate(ab, ab);
+
+  internal::SLPMatchingInspector inspector(ab.length(), abab, 0, 3);
+
+  FilledMatchingTable matching_table(ab, abab);
+
+  auto matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(Seq({0, 1, 1}), matches);
+
+  matches = internal::local_search(ab, &inspector, &matching_table);
+  EXPECT_EQ(NO_MATCHES, matches);
+}
+
+TEST(LocalSearch, SimpleNontrivialSplitted) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex aba = SLPVertex::concatenate(ab, a);
+  SLPVertex abaab = SLPVertex::concatenate(aba, ab);
+
+  internal::SLPMatchingInspector ab_inspector(ab.length(), abaab, 0, 5);
+
+  FilledMatchingTable ab_matching_table(ab, abaab);
+
+  auto matches = internal::local_search(ab, &ab_inspector, &ab_matching_table);
+  EXPECT_EQ(Seq({0, 1, 1}), matches);
+
+  matches = internal::local_search(ab, &ab_inspector, &ab_matching_table);
+  EXPECT_EQ(Seq({3, 1, 1}), matches);
+
+  matches = internal::local_search(ab, &ab_inspector, &ab_matching_table);
+  EXPECT_EQ(NO_MATCHES, matches);
+
+  internal::SLPMatchingInspector a_inspector(a.length(), abaab, 0, 5);
+
+  FilledMatchingTable a_matching_table(a, abaab);
+
+  matches = internal::local_search(a, &a_inspector, &a_matching_table);
+  EXPECT_EQ(Seq({0, 1, 1}), matches);
+
+  matches = internal::local_search(a, &a_inspector, &a_matching_table);
+  EXPECT_EQ(Seq({2, 1, 2}), matches);
+
+  matches = internal::local_search(ab, &ab_inspector, &ab_matching_table);
+  EXPECT_EQ(NO_MATCHES, matches);
+
+}
+
+TEST(LocalSearch, RandomWord) {
+  const unsigned int WORD_SIZE = 10;
+  int REPEAT = 1;
+
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  //srand(time(NULL));
+  srand(2);
+
+  while (--REPEAT >= 0) {
+    int random_word = rand() % (1 << WORD_SIZE);
+    std::vector<unsigned int> random_word_split;
+    for (unsigned int i = 1; i < WORD_SIZE; ++i) {
+      random_word_split.push_back(i);
+    }
+
+    std::random_shuffle(random_word_split.begin(), random_word_split.end());
+
+    std::vector<SLPVertex> word_presentation;
+    for (unsigned int i = 0; i < WORD_SIZE; ++i) {
+      word_presentation.push_back(((random_word & (1 << i)) ? b : a));
+    }
+
+    for (unsigned int split : random_word_split) {
+      SLPVertex new_vertex = SLPVertex::concatenate(word_presentation[split - 1], word_presentation[split]);
+      for (unsigned int i = split - new_vertex.left_child().length().get_ui(); i < split + new_vertex.right_child().length(); ++i) {
+        word_presentation[i] = new_vertex;
+      }
+    }
+
+    SLPVertex text = word_presentation.front();
+
+    int random_pattern_number = rand() % (2 * WORD_SIZE - 1);
+    SLPPostorderInspector pattern_getter(text);
+    int i = random_pattern_number;
+    while (--i >= 0) {
+      pattern_getter.go_to_next_vertex();
+    }
+
+    SLPVertex pattern = pattern_getter.current_vertex();
+
+    unsigned int left_boundary = WORD_SIZE;
+    unsigned int right_boundary = 0;
+    while (left_boundary >= right_boundary) {
+      left_boundary = rand() % WORD_SIZE;
+      right_boundary = rand() % WORD_SIZE + 1;
+    }
+
+    unsigned int text_length = right_boundary - left_boundary;
+
+    internal::SLPMatchingInspector text_inspector(pattern.length(), text, left_boundary, text_length);
+    FilledMatchingTable matching_table(pattern, text);
+
+    std::string pattern_string;
+    for(const auto & vertex : SLPProducedWord(pattern)) {
+      pattern_string.push_back(vertex.terminal_symbol() == 1 ? 'a' : 'b');
+    }
+
+    std::string text_string;
+    for(const auto & vertex : SLPProducedWord(text)) {
+      text_string.push_back(vertex.terminal_symbol() == 1 ? 'a' : 'b');
+    }
+
+    std::ostringstream split_string;
+    for(const auto & split : random_word_split) {
+      split_string << split << ',';
+    }
+
+    unsigned int last_match_position = left_boundary;
+
+    auto match = internal::local_search(pattern, &text_inspector, &matching_table);
+    while (match != NO_MATCHES) {
+      int checked_matches = 0;
+      unsigned int next_match_to_check = match.start.get_ui();
+      while (checked_matches < match.count) {
+        ASSERT_LE(next_match_to_check + pattern.length().get_ui(), right_boundary)
+            << "Clever function found match of " << pattern_string
+            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+            << "] out of boundaries. Split string: " << split_string.str()
+            << " pattern #" << random_pattern_number;
+        last_match_position = text_string.find(pattern_string, last_match_position);
+        ASSERT_NE(std::string::npos, last_match_position)
+            << "Stupid function can't find any more matches of " << pattern_string
+            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+            << "], while clever function found " << next_match_to_check
+            << " Split string: " << split_string.str()
+            << " pattern #" << random_pattern_number;
+        ASSERT_EQ(next_match_to_check, last_match_position)
+            << "Stupid function can't find match " << next_match_to_check << " of " << pattern_string
+            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+            << "], found " << last_match_position << " instead. Split string: " << split_string.str()
+            << " pattern #" << random_pattern_number;
+        ++last_match_position;
+        ++checked_matches;
+        next_match_to_check += match.step.get_ui();
+      }
+      match = internal::local_search(pattern, &text_inspector, &matching_table);
+    }
+
+    last_match_position = text_string.find(pattern_string, last_match_position);
+
+    ASSERT_TRUE(last_match_position == std::string::npos || last_match_position + pattern.length().get_ui() > right_boundary)
+      << "Stupid function found one more match of " << pattern_string
+      << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+      << "] at position" << last_match_position
+      << " Split string: " << split_string.str()
+      << " pattern #" << random_pattern_number;
+  }
 }
 
 } //namespace
