@@ -400,6 +400,10 @@ SLPMatchingTable::MatchResultSequence internal::intersect_sequences(SLPMatchingT
     return SLPMatchingTable::NO_MATCHES;
   }
 
+  if (result.count == 1) {
+    result.step = 1;
+  }
+
   return result;
 }
 
@@ -431,7 +435,7 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
     auto joined_result = join_sequences(current_result, current_match);
     if (current_result.count != 0 &&
         (joined_result.count == 0 ||
-         current_match.start > current_result.start + pattern.length()
+         joined_result.step > pattern.length() //any two consequent matches must have some common point
         )) {
       return current_result;
     }

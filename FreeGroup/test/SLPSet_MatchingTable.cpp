@@ -259,8 +259,8 @@ TEST(IntersectSequences, NotCoherentStarts) {
 }
 
 TEST(IntersectSequences, ElementIntersection) {
-  EXPECT_EQ(Seq({17, 17 * 13, 1}), intersect_sequences({17, 13, 10}, {0, 17, 2}));
-  EXPECT_EQ(Seq({50, 30, 1}), intersect_sequences({10, 10, 10}, {35, 15, 2}));
+  EXPECT_EQ(Seq({17, 1, 1}), intersect_sequences({17, 13, 10}, {0, 17, 2}));
+  EXPECT_EQ(Seq({50, 1, 1}), intersect_sequences({10, 10, 10}, {35, 15, 2}));
 }
 
 TEST(IntersectSequences, IntesectionOutOfBoundaries) {
@@ -293,11 +293,11 @@ TEST(IntersectSequences, StressTest) {
     LongInteger current_intersection_steps = 0;
 
     while(current_first_steps < first.count && current_second_steps < second.count) {
-      ASSERT_TRUE(current_first != current_second || current_first == current_intersection) <<
+      ASSERT_TRUE(current_first != current_second || current_first >= current_intersection) <<
           "Common point of sequences " << first << " and " << second << " not in " << intersection;
 
-      ASSERT_TRUE(intersection.count == 0 || (current_intersection >= current_first && current_intersection >= current_second)) <<
-          "Extra point in intersection " << intersection << " of " << first << " and " << second;
+      ASSERT_TRUE(current_first != current_second || current_first <= current_intersection) <<
+          "Extra point " << current_intersection << " in intersection " << intersection << " of " << first << " and " << second;
 
       if (current_first == current_second) {
         ASSERT_LT(current_intersection_steps, intersection.count) <<
@@ -583,14 +583,13 @@ TEST(LocalSearch, SimpleNontrivialSplitted) {
 }
 
 TEST(LocalSearch, RandomWord) {
-  const unsigned int WORD_SIZE = 10;
-  int REPEAT = 1;
+  const unsigned int WORD_SIZE = 16;
+  int REPEAT = 10000;
 
   SLPVertex a = SLPVertex::terminal_vertex(1);
   SLPVertex b = SLPVertex::terminal_vertex(2);
 
-  //srand(time(NULL));
-  srand(2);
+  srand(time(NULL));
 
   while (--REPEAT >= 0) {
     int random_word = rand() % (1 << WORD_SIZE);
@@ -654,29 +653,33 @@ TEST(LocalSearch, RandomWord) {
     unsigned int last_match_position = left_boundary;
 
     auto match = internal::local_search(pattern, &text_inspector, &matching_table);
+    int last_approved_match = -1;
     while (match != NO_MATCHES) {
       int checked_matches = 0;
       unsigned int next_match_to_check = match.start.get_ui();
       while (checked_matches < match.count) {
-        ASSERT_LE(next_match_to_check + pattern.length().get_ui(), right_boundary)
-            << "Clever function found match of " << pattern_string
-            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
-            << "] out of boundaries. Split string: " << split_string.str()
-            << " pattern #" << random_pattern_number;
-        last_match_position = text_string.find(pattern_string, last_match_position);
-        ASSERT_NE(std::string::npos, last_match_position)
-            << "Stupid function can't find any more matches of " << pattern_string
-            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
-            << "], while clever function found " << next_match_to_check
-            << " Split string: " << split_string.str()
-            << " pattern #" << random_pattern_number;
-        ASSERT_EQ(next_match_to_check, last_match_position)
-            << "Stupid function can't find match " << next_match_to_check << " of " << pattern_string
-            << " in " << text_string << "[" << left_boundary << ":" << right_boundary
-            << "], found " << last_match_position << " instead. Split string: " << split_string.str()
-            << " pattern #" << random_pattern_number;
-        ++last_match_position;
+        if (last_approved_match != next_match_to_check) {
+          ASSERT_LE(next_match_to_check + pattern.length().get_ui(), right_boundary)
+              << "Local search found match of " << pattern_string
+              << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+              << "] out of boundaries. Split string: " << split_string.str()
+              << " pattern #" << random_pattern_number;
+          last_match_position = text_string.find(pattern_string, last_match_position);
+          ASSERT_NE(std::string::npos, last_match_position)
+              << "Naive algorithm can't find any more matches of " << pattern_string
+              << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+              << "], while local search found " << next_match_to_check
+              << " Split string: " << split_string.str()
+              << " pattern #" << random_pattern_number;
+          ASSERT_EQ(next_match_to_check, last_match_position)
+              << "Naive algorithm can't find match " << next_match_to_check << " of " << pattern_string
+              << " in " << text_string << "[" << left_boundary << ":" << right_boundary
+              << "], found " << last_match_position << " instead. Split string: " << split_string.str()
+              << " pattern #" << random_pattern_number;
+          ++last_match_position;
+        }
         ++checked_matches;
+        last_approved_match = next_match_to_check;
         next_match_to_check += match.step.get_ui();
       }
       match = internal::local_search(pattern, &text_inspector, &matching_table);
@@ -685,7 +688,7 @@ TEST(LocalSearch, RandomWord) {
     last_match_position = text_string.find(pattern_string, last_match_position);
 
     ASSERT_TRUE(last_match_position == std::string::npos || last_match_position + pattern.length().get_ui() > right_boundary)
-      << "Stupid function found one more match of " << pattern_string
+      << "Naive algorithm found one more match of " << pattern_string
       << " in " << text_string << "[" << left_boundary << ":" << right_boundary
       << "] at position" << last_match_position
       << " Split string: " << split_string.str()
