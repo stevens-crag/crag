@@ -17,22 +17,24 @@ namespace crag {
 /**
  * Represents a free group automorphism.
  */
-class FreeGroupAutomorphism: private crag::SLPSet {
+class FreeGroupAutomorphism {//TODO endomorphism
 public:
 	typedef typename SLPSet::size_type size_type;
 
 	FreeGroupAutomorphism() = delete;
 
+	FreeGroupAutomorphism& operator=(const FreeGroupAutomorphism&) = delete;
+
 	//! Constructs the identity automorphism of the free group with n generators
-	FreeGroupAutomorphism(size_type generators_num): SLPSet(generators_num) {}
+	FreeGroupAutomorphism(size_type generators_num): slp_(generators_num) {}
 
 	//! Copy constructor
 	explicit FreeGroupAutomorphism(const FreeGroupAutomorphism& x)
-				: SLPSet(x) {}
+				: slp_(x.slp_) {}
 
 	//! Move constructor
 	FreeGroupAutomorphism(FreeGroupAutomorphism&& x)
-		: SLPSet(std::move(x)) {}
+		: slp_(std::move(x.slp_)) {}
 
 	//! The Nielsen automorphism of the free group with n generators that just inverts the specified terminal and fixes all other terminals
 	FreeGroupAutomorphism(size_type generators_num, TerminalSymbol inverted_terminal);
@@ -65,7 +67,7 @@ public:
 	 */
 	FreeGroupAutomorphism& composeWithNielsen(TerminalSymbol mapped_terminal,
 			SLPVertex left_terminal_vertex,
-			SLPVertex right_terminal_vertexl);
+			SLPVertex right_terminal_vertex);
 
 	//! Applies the given automorphism to the current one and returns the resulting automorphism
 	/**
@@ -79,7 +81,7 @@ public:
 	 * @param t terminal (must be between 1 and generators_num())
 	 */
 	SLPProducedWord image(TerminalSymbol t) const {
-		return SLPSet::produced_word(t - 1);
+		return slp_.produced_word(t - 1);
 	}
 
 	//! The root of SLP representing the image of the terminal t.
@@ -87,13 +89,16 @@ public:
 	 * @param t terminal (must be between 1 and generators_num())
 	 */
 	SLPVertex slp(TerminalSymbol t) const {
-		return SLPSet::root(t - 1);
+		return slp_.root(t - 1);
 	}
 
 	//! Returns the generators number of the free group
 	size_type generators_num() const {
-		return roots_num();
+		return slp_.roots_num();
 	}
+
+private:
+	SLPSet slp_;//representation of the automorphism
 
 };
 

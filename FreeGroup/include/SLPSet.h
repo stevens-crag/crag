@@ -29,7 +29,7 @@ class SLPVertex;
 }
 
 namespace std {
-  template<> class hash<crag::SLPVertex>;
+template<> class hash<crag::SLPVertex> ;
 }
 
 namespace crag {
@@ -47,61 +47,59 @@ struct BasicVertex;
  *
  */
 class SLPVertex {
-  friend class std::hash<SLPVertex>;
-  public:
-    //! Default constructor. Constructing 'invalid' vertex.
-    SLPVertex()
-      : ptr_()
-      , negative_(false)
-    { }
+	friend class std::hash<SLPVertex>;
+public:
+	//! Default constructor. Constructing 'invalid' vertex.
+	SLPVertex() :
+			ptr_(), negative_(false) {
+	}
 
+	static const SLPVertex Null; //Use this vertex to represent invalid vertex
 
-    static const SLPVertex Null; //Use this vertex to represent invalid vertex
+	//Use idiom of "named constructors" to properly create all vertices
+	//! Create just terminal vertex.
+	static SLPVertex terminal_vertex(const TerminalSymbol&);
 
-    //Use idiom of "named constructors" to properly create all vertices
-    //! Create just terminal vertex.
-    static SLPVertex terminal_vertex(const TerminalSymbol&);
+	//! Create a new vertex defined by some composition rule
+	//TODO: rename it somehow
+	static SLPVertex concatenate(const SLPVertex& left_child,
+			const SLPVertex& right_child);
 
-    //! Create a new vertex defined by some composition rule
-    //TODO: rename it somehow
-    static SLPVertex concatenate(const SLPVertex& left_child, const SLPVertex& right_child);
+	//Use default copy&move constructors/assignments, not defining them
 
-    //Use default copy&move constructors/assignments, not defining them
+	//!The implementation of equality operator for #SLPVertex.
+	/**
+	 * Compares the actual addresses of vertices and sign.
+	 */
+	bool operator==(const SLPVertex& other) const {
+		return this->ptr_ == other.ptr_ && this->negative_ == other.negative_;
+	}
 
-    //!The implementation of equality operator for #SLPVertex.
-    /**
-     * Compares the actual addresses of vertices and sign.
-     */
-    bool operator== (const SLPVertex& other) const {
-      return this->ptr_ == other.ptr_ &&
-             this->negative_ == other.negative_;
-    }
+	bool operator!=(const SLPVertex& other) const {
+		return !(*this == other);
+	}
 
-    bool operator!= (const SLPVertex& other) const {
-      return !(*this == other);
-    }
+	//! Returns 'negated' vertex. Null.negate() is Null
+	SLPVertex negate() const {
+		if (ptr_) {
+			return SLPVertex(ptr_, !negative_);
+		} else {
+			return Null;
+		}
+	}
 
-    //! Returns 'negated' vertex. Null.negate() is Null
-    SLPVertex negate() const {
-      if (ptr_) {
-        return SLPVertex(ptr_, !negative_);
-      } else {
-        return Null;
-      }
-    }
+	//getters
+	inline SLPVertex left_child() const;
 
-    //getters
-    inline SLPVertex left_child() const;
+	bool has_left_child() const {
+		return left_child() != Null;
+	}
 
-    bool has_left_child() const {
-      return left_child() != Null;
-    }
+	inline SLPVertex right_child() const;
 
-    inline SLPVertex right_child() const;
-
-    bool has_right_child() const {
-      return right_child() != Null;
-    }
+	bool has_right_child() const {
+		return right_child() != Null;
+	}
 
     inline LongInteger split_point() const {
       return left_child().length();
@@ -109,29 +107,26 @@ class SLPVertex {
 
     inline TerminalSymbol terminal_symbol() const;
 
-    bool is_terminal() const {
-      return terminal_symbol() != INVALID_TERMINAL;
-    }
+	bool is_terminal() const {
+		return terminal_symbol() != INVALID_TERMINAL;
+	}
 
-    bool is_negative() const {
-      return negative_;
-    }
+	bool is_negative() const {
+		return negative_;
+	}
 
-    inline LongInteger length() const;
+	inline LongInteger length() const;
 
-    inline unsigned int height() const;
+	inline unsigned int height() const;
 
-  protected:
-    SLPVertex(const std::shared_ptr<BasicVertex>& ptr, bool negative)
-      : ptr_(ptr),
-        negative_(negative) {
-    }
+protected:
+	SLPVertex(const std::shared_ptr<BasicVertex>& ptr, bool negative) :
+			ptr_(ptr), negative_(negative) {
+	}
 
     std::shared_ptr<BasicVertex> ptr_;  //!< The pointer to SLPVertex
     bool negative_;                     //!< True if we need "inverse" vertex
 };
-
-
 
 //! Post-order SLP Inspector
 /**
@@ -189,132 +184,129 @@ class SLPPostorderInspector
  * this iterator so long.
  *
  */
-class SLPProducedWordIterator : public std::iterator <
-        std::forward_iterator_tag,      //iterator_category
-        const SLPVertex                 //value_type
-  > {
-  public:
-    SLPProducedWordIterator()
-      : inspector_()
-      , length_(0)
-      , root_()
-    { }
-    explicit SLPProducedWordIterator(const SLPVertex& root)
-      : inspector_(root)
-      , length_(0)
-      , root_(root)
-    { }
+class SLPProducedWordIterator: public std::iterator<std::forward_iterator_tag, //iterator_category
+		const SLPVertex                 //value_type
+> {
+public:
+	SLPProducedWordIterator() :
+			inspector_(), length_(0), root_() {
+	}
+	explicit SLPProducedWordIterator(const SLPVertex& root) :
+			inspector_(root), length_(0), root_(root) {
+	}
 
-    //use default copy/move constructors/assignments
+	//use default copy/move constructors/assignments
 
-    SLPProducedWordIterator& operator++(); //!< Preincrement
-    SLPProducedWordIterator operator++(int) { //!< Postincrement
-      SLPProducedWordIterator copy(*this);
-      ++(*this);
-      return copy;
-    }
+	SLPProducedWordIterator& operator++(); //!< Preincrement
+	SLPProducedWordIterator operator++(int) { //!< Postincrement
+		SLPProducedWordIterator copy(*this);
+		++(*this);
+		return copy;
+	}
 
-    reference operator*() const { //!< "Dereference" current symbol
-      return inspector_.current_vertex();
-    }
+	reference operator*() const { //!< "Dereference" current symbol
+		return inspector_.current_vertex();
+	}
 
-    pointer operator->() const {
-      return &(inspector_.current_vertex());
-    }
+	pointer operator->() const {
+		return &(inspector_.current_vertex());
+	}
 
-    //!< Compare to another iterator.
-    /**
-     * Compares "#length" && root. If this->length >= root.length() and other->length >= root.length(), then also true
-     */
-    bool operator==(const SLPProducedWordIterator& other) const {
-      return ( root_ == other.root_ &&
-               length_ == other.length_
-             ) ||
-             ( length_ >= root_.length() &&
-               other.length_ >= other.root_.length()
-             );
-    }
+	//!< Compare to another iterator.
+	/**
+	 * Compares "#length" && root. If this->length >= root.length() and other->length >= root.length(), then also true
+	 */
+	bool operator==(const SLPProducedWordIterator& other) const {
+		return (root_ == other.root_ && length_ == other.length_)
+				|| (length_ >= root_.length()
+						&& other.length_ >= other.root_.length());
+	}
 
-    bool operator!=(const SLPProducedWordIterator& other) const {
-      return !(*this == other);
-    }
+	bool operator!=(const SLPProducedWordIterator& other) const {
+		return !(*this == other);
+	}
 
-  private:
-    SLPPostorderInspector inspector_;    //!< Subtree inspector
-    LongInteger length_;                 //!< Length already produced
-    SLPVertex   root_;                   //!< Root
+private:
+	SLPPostorderInspector inspector_;    //!< Subtree inspector
+	LongInteger length_;                 //!< Length already produced
+	SLPVertex root_;                   //!< Root
 
 };
 
 //! Word produced by some #SLPVertex
 class SLPProducedWord {
-  public:
-    typedef SLPVertex value_type;
-    typedef SLPProducedWordIterator const_iterator;      //no iterator, only const
-    //we do not define size_type, because size() should return LongInteger
+public:
+	typedef SLPVertex value_type;
+	typedef SLPProducedWordIterator const_iterator;    //no iterator, only const
+	//we do not define size_type, because size() should return LongInteger
 
-    SLPProducedWord() //!< Just empty word
-      : root_()
-    { }
+	SLPProducedWord() //!< Just empty word
+	:
+			root_() {
+	}
 
-    explicit SLPProducedWord(const SLPVertex& root) //!< Word produced by some root
-      : root_(root)
-    { }
+	explicit SLPProducedWord(const SLPVertex& root) //!< Word produced by some root
+	:
+			root_(root) {
+	}
 
-   //TODO: define swap, operator ==
+	//TODO: define swap, operator ==
 
-    value_type operator[](LongInteger index) const; //!< Get one letter from the word
+	value_type operator[](LongInteger index) const; //!< Get one letter from the word
 
-    const_iterator begin() const { //!< Get the iterator to the first symbol
-      return const_iterator(root_);
-    }
+	const_iterator begin() const { //!< Get the iterator to the first symbol
+		return const_iterator(root_);
+	}
 
-    const_iterator end() const { //!< Get the iterator to the symbol after the last
-      return const_iterator();
-    }
+	const_iterator end() const { //!< Get the iterator to the symbol after the last
+		return const_iterator();
+	}
 
-    LongInteger size() const {
-      return root_.length();
-    }
+	LongInteger size() const {
+		return root_.length();
+	}
 
-    bool empty() const {
-      return size() != 0;
-    }
+	bool empty() const {
+		return size() != 0;
+	}
 
-  private:
-    SLPVertex root_; //!< The root vertex producing this word
+private:
+	SLPVertex root_; //!< The root vertex producing this word
 };
-}//namespace crag
+} //namespace crag
 namespace std {
-  //! Definition of the hash for std::pair
-  template<typename TFirst, typename TSecond>
-  struct hash< std::pair<TFirst, TSecond> > {
-  private:
-    const std::hash<TFirst> first_hash_;
-    const std::hash<TSecond> second_hash_;
-  public:
-    hash()
-      : first_hash_()
-      , second_hash_()
-    { }
-    size_t operator()(const std::pair<TFirst, TSecond>& obj) const {
-      size_t first_hash_value = first_hash_(obj.first);
-      //Taken from boost/functional/hash
-      return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
-    }
-  };
+//! Definition of the hash for std::pair
+template<typename TFirst, typename TSecond>
+struct hash<std::pair<TFirst, TSecond> > {
+private:
+	const std::hash<TFirst> first_hash_;
+	const std::hash<TSecond> second_hash_;
+public:
+	hash() :
+			first_hash_(), second_hash_() {
+	}
+	size_t operator()(const std::pair<TFirst, TSecond>& obj) const {
+		size_t first_hash_value = first_hash_(obj.first);
+		//Taken from boost/functional/hash
+		return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6)
+				+ (first_hash_value >> 2);
+	}
+};
 
-  //! Definition of the hash for SignedVertex
-  template<>
-  struct hash< crag::SLPVertex > {
-    private:
-      const std::hash<std::shared_ptr<crag::BasicVertex> > ptr_hash_;
-    public:
-      hash(): ptr_hash_() { }
-      size_t operator()(const crag::SLPVertex& vertex) const {
-        return vertex.negative_? ~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
-      }
-  };
+//! Definition of the hash for SignedVertex
+template<>
+struct hash<crag::SLPVertex> {
+private:
+	const std::hash<std::shared_ptr<crag::BasicVertex> > ptr_hash_;
+public:
+	hash() :
+			ptr_hash_() {
+	}
+	size_t operator()(const crag::SLPVertex& vertex) const {
+		return vertex.negative_ ?
+				~ptr_hash_(vertex.ptr_) : ptr_hash_(vertex.ptr_);
+	}
+};
 }
 
 namespace crag {
@@ -387,66 +379,97 @@ class SLPMatchingTable {
  * "Algorithms and complexity analysis for processing compressed text"
  * by Yury Lifshits when implementing this class
  *
- * Actually, this class computes several words at the same time, one word for
- * each "root" of this system.
- * TODO make arbitrary number of roots, composition then works under the condition num_terminals_1 == num_roots_2
+ * Actually, this class computes several words at the same time. Each word is represented
+ * by the root -- non-terminal generating it. These roots are indexed from 0 to roots_num - 1.
+ * Such composition allows to reuse vertices therefore potentially making the storage
+ * more efficient.
  */
 class SLPSet {
 	SLPSet() = delete;
-  public:
-    typedef typename std::vector<SLPVertex>::size_type size_type;
+public:
+	typedef typename std::vector<SLPVertex>::size_type size_type;
 
-    //! Constructs an SLPSet consisting of roots_num roots being terminals.
-    explicit SLPSet(size_type roots_num);
+	//! Constructs an SLPSet consisting of roots_num roots being terminals.
+	explicit SLPSet(size_type roots_num);
 
-    //! Constructs an SLPSet consisting of the single root.
-    SLPSet(const SLPVertex& root) {
+	//! Constructs an SLPSet consisting of the single root.
+	SLPSet(const SLPVertex& root) {
 		roots.push_back(root);
-    }
-
-    //! Constructs an SLPSet with the roots from the range [first,last).
-    template<typename InputIterator>
-    SLPSet(InputIterator begin, InputIterator end):
-		roots(begin, end) {}
-
-    //! Copy constructor
-    explicit SLPSet(const SLPSet& x):
-				roots(x.roots) {}
-
-    //! Move constructor
-    SLPSet(SLPSet&& x):
-		roots(std::move(x.roots)) {}
-
-    //! Initializer list constructor
-    SLPSet(std::initializer_list<SLPVertex> il):
-		roots(il) {}
-
-    //! Returns vertex corresponding the nth root
-    /**
-     * @param n root index (0, ..., size() - 1)
-     * @return the vertex corresponding to the root
-     */
-    SLPVertex root(size_type n) const {
-    	return roots[n];
-    }
-
-    //! Returns the word produced by #n-th root. 
-    /**
-     * @param n root index (0, ..., size() - 1) 
-     * @return the word produced by the root
-     */      
-    SLPProducedWord produced_word(size_type n) const {
-	  return SLPProducedWord(roots[n]);
 	}
 
+	//! Constructs an SLPSet with the roots from the range [first,last).
+	template<typename InputIterator>
+	SLPSet(InputIterator begin, InputIterator end):
+	roots(begin, end) {}
 
-    //! Returns number of roots
-    size_type roots_num() const {
-	  return roots.size();
+	//! Copy constructor
+	explicit SLPSet(const SLPSet& x):
+	roots(x.roots) {}
+
+	//! Move constructor
+	SLPSet(SLPSet&& x):
+	roots(std::move(x.roots)) {}
+
+	//! Initializer list constructor
+	SLPSet(std::initializer_list<SLPVertex> il):
+	roots(il) {}
+
+	//! Returns vertex corresponding the nth root
+	/**
+	 * @param n root index (0, ..., size() - 1)
+	 * @return the vertex corresponding to the root
+	 */
+	SLPVertex root(size_type n) const {
+		return roots[n];
 	}
 
-  protected:
-    std::vector<SLPVertex> roots;     //!< Contains the roots of this SLP
+	//! Returns vertex corresponding the nth root
+	/**
+	 * @param n 		root index
+	 * @param vertex 	the new root
+	 * @return 			itself for chaining
+	 */
+	SLPSet& replace_root(size_type n, SLPVertex v) {
+		roots[n] = v;
+		return *this;
+	}
+
+	//! Inverts the nth root.
+	/**
+	 * @param n root index
+	 * @return  itself for chaining
+	 */
+	SLPSet& invert_root(size_type n) {
+		roots[n] = roots[n].negate();
+		return *this;
+	}
+
+	//! Returns the word produced by #n-th root.
+	/**
+	 * @param n root index
+	 * @return the word produced by the root
+	 */
+	SLPProducedWord produced_word(size_type n) const {
+		return SLPProducedWord(roots[n]);
+	}
+
+	//! Returns number of roots
+	size_type roots_num() const {
+		return roots.size();
+	}
+
+	//!The implementation of equality operator for #SLPSet.
+	/**
+	 * Compares the number of SLPs, and then compares them one by one.
+	 */
+	bool operator==(const SLPSet& other) const;
+
+	bool operator!=(const SLPSet& other) const {
+		return !(*this == other);
+	}
+
+protected:
+	std::vector<SLPVertex> roots;     //!< Contains the roots of this SLP
 };
 
 //! Compose current program with another one
@@ -463,7 +486,6 @@ class SLPSet {
  * TODO: Move it to Automorphism class, because it has no sense for abstract SLPS
  */
 //SLPSet& compose_with(const SLPSet& other);
-
 //! Check whether or not this program produces the same words as the other one
 /**
  * We check if \p$i\p$-th root in both programs give the same words.
@@ -479,7 +501,6 @@ class SLPSet {
  * TODO: Put it somewhere, probably into MatchingTable
  */
 //bool equal_to(const SLPSet& other) const;
-
 //! Reduce words produces by this SLP.
 /**
  * Take each vertex and build a new program such that it produces the freely
@@ -493,50 +514,49 @@ class SLPSet {
  * TODO: Put it into SLPVertex, or maybe some external function, or...
  */
 //SLPSet free_reduction() const;
-
 struct BasicVertex {
-  public:
-    SLPVertex left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
-    SLPVertex right_child;           //!< Right part of the rule.
-    TerminalSymbol terminal_symbol;  //!< INVALID_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
-    LongInteger length;              //!< Length of word produced by the vertex
-    unsigned int height;             //!< Height of subtree
+public:
+	SLPVertex left_child; //!< Left part of the rule. Use SignedVertex::Null if child is absent.
+	SLPVertex right_child;           //!< Right part of the rule.
+	TerminalSymbol terminal_symbol; //!< INVALID_TERMINAL, if non-terminal. Otherwise the number of the symbol, greater that zero.
+	LongInteger length;              //!< Length of word produced by the vertex
+	unsigned int height;             //!< Height of subtree
 
-    BasicVertex();
+	BasicVertex();
 };
 
 inline SLPVertex SLPVertex::left_child() const {
-  if (!ptr_) {
-   return Null;
-  }
-  if (negative_) {
-   return (ptr_->right_child).negate();
-  } else {
-   return ptr_->left_child;
-  }
+	if (!ptr_) {
+		return Null;
+	}
+	if (negative_) {
+		return (ptr_->right_child).negate();
+	} else {
+		return ptr_->left_child;
+	}
 }
 
 inline SLPVertex SLPVertex::right_child() const {
-  if (!ptr_) {
-   return Null;
-  }
-  if (negative_) {
-    return ptr_->left_child.negate();
-  } else {
-    return ptr_->right_child;
-  }
+	if (!ptr_) {
+		return Null;
+	}
+	if (negative_) {
+		return ptr_->left_child.negate();
+	} else {
+		return ptr_->right_child;
+	}
 }
 
 inline TerminalSymbol SLPVertex::terminal_symbol() const {
-  return ptr_ ? ptr_->terminal_symbol : INVALID_TERMINAL;
+	return ptr_ ? ptr_->terminal_symbol : INVALID_TERMINAL;
 }
 
 inline LongInteger SLPVertex::length() const {
-     return ptr_ ? ptr_->length : 0;
-   }
+	return ptr_ ? ptr_->length : 0;
+}
 
 inline unsigned int SLPVertex::height() const {
-  return ptr_ ? ptr_->height : 0;
+	return ptr_ ? ptr_->height : 0;
 }
 
 //!Namespace for some undocumented internal structures
