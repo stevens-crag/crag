@@ -17,30 +17,30 @@ namespace crag {
 /**
  * Represents a free group automorphism.
  */
-class FreeGroupAutomorphism {//TODO endomorphism
+class EndomorphismSLP {//TODO endomorphism
 public:
 	typedef typename SLPSet::size_type size_type;
 
-	FreeGroupAutomorphism() = delete;
+	EndomorphismSLP() = delete;
 
-	FreeGroupAutomorphism& operator=(const FreeGroupAutomorphism&) = delete;
+	EndomorphismSLP& operator=(const EndomorphismSLP&) = delete;
 
 	//! Constructs the identity automorphism of the free group with n generators
-	FreeGroupAutomorphism(size_type generators_num): slp_(generators_num) {}
+	EndomorphismSLP(size_type generators_num): slp_(generators_num) {}
 
 	//! Copy constructor
-	explicit FreeGroupAutomorphism(const FreeGroupAutomorphism& x)
+	explicit EndomorphismSLP(const EndomorphismSLP& x)
 				: slp_(x.slp_) {}
 
 	//! Move constructor
-	FreeGroupAutomorphism(FreeGroupAutomorphism&& x)
+	EndomorphismSLP(EndomorphismSLP&& x)
 		: slp_(std::move(x.slp_)) {}
 
 	//! The Nielsen automorphism of the free group with n generators that just inverts the specified terminal and fixes all other terminals
-	FreeGroupAutomorphism(size_type generators_num, TerminalSymbol inverted_terminal);
+	EndomorphismSLP(size_type generators_num, TerminalSymbol inverted_terminal);
 
 	//! The Nielsen automorphism of the free group with n generators that maps the specified terminal to the product of another two
-	FreeGroupAutomorphism(size_type generators_num,
+	EndomorphismSLP(size_type generators_num,
 			TerminalSymbol mapped_terminal,//TODO better name
 			SLPVertex left_terminal_vertex,
 			SLPVertex right_terminal_vertexl);
@@ -53,7 +53,7 @@ public:
 	 * @param inverted_terminal the inverted terminal symbol
 	 * @return itself after the composition
 	 */
-	FreeGroupAutomorphism& composeWithNielsen(TerminalSymbol inverted_terminal);
+	EndomorphismSLP& composeWithNielsen(TerminalSymbol inverted_terminal);
 
 	//! Composes the current automorphism with the specified Nielsen automorphism
 	/**
@@ -65,7 +65,7 @@ public:
 	 * @param right_terminal_vertexlvertex representing right terminal in the product
 	 * @return itself after the composition
 	 */
-	FreeGroupAutomorphism& composeWithNielsen(TerminalSymbol mapped_terminal,
+	EndomorphismSLP& composeWithNielsen(TerminalSymbol mapped_terminal,
 			SLPVertex left_terminal_vertex,
 			SLPVertex right_terminal_vertex);
 
@@ -74,7 +74,7 @@ public:
 	 * Applies the automorphism a to the given one. It constructs a new automorphism and returns it.
 	 * The computational complexity is O(n ln n), where n is the size of the slp representing automorphism a.
 	 */
-	FreeGroupAutomorphism& apply(const FreeGroupAutomorphism& a);
+	EndomorphismSLP& apply(const EndomorphismSLP& a);
 
 	//! The image of the terminal t.
 	/**

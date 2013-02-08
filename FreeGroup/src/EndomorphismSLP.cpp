@@ -5,16 +5,16 @@
  *      Author: pmorar
  */
 
-#include "../include/FreeGroupAutomorhpism.h"
+#include "../include/EndomorphismSLP.h"
 #include <sstream>
 
 namespace crag {
-FreeGroupAutomorphism::FreeGroupAutomorphism(size_type generators_num, TerminalSymbol inverted_terminal)
+EndomorphismSLP::EndomorphismSLP(size_type generators_num, TerminalSymbol inverted_terminal)
 	: slp_(generators_num) {
 	slp_.invert_root(inverted_terminal - 1);
 }
 
-FreeGroupAutomorphism::FreeGroupAutomorphism(size_type generators_num,
+EndomorphismSLP::EndomorphismSLP(size_type generators_num,
 		TerminalSymbol mapped_terminal,//TODO better name
 		SLPVertex left_terminal_vertex,
 		SLPVertex right_terminal_vertex)
@@ -23,12 +23,12 @@ FreeGroupAutomorphism::FreeGroupAutomorphism(size_type generators_num,
 			SLPVertex::concatenate(left_terminal_vertex, right_terminal_vertex));
 }
 
-FreeGroupAutomorphism& FreeGroupAutomorphism::composeWithNielsen(TerminalSymbol inverted_terminal) {
+EndomorphismSLP& EndomorphismSLP::composeWithNielsen(TerminalSymbol inverted_terminal) {
 	slp_.invert_root(inverted_terminal - 1);
 	return *this;
 }
 
-FreeGroupAutomorphism& FreeGroupAutomorphism::composeWithNielsen(TerminalSymbol mapped_terminal,
+EndomorphismSLP& EndomorphismSLP::composeWithNielsen(TerminalSymbol mapped_terminal,
 			SLPVertex left_terminal_vertex,
 			SLPVertex right_terminal_vertex) {
 	auto left = slp_.root(left_terminal_vertex.terminal_symbol() - 1);
@@ -45,7 +45,7 @@ FreeGroupAutomorphism& FreeGroupAutomorphism::composeWithNielsen(TerminalSymbol 
 	return *this;
 }
 
-FreeGroupAutomorphism& FreeGroupAutomorphism::apply(const FreeGroupAutomorphism& a) {//TODO operator *
+EndomorphismSLP& EndomorphismSLP::apply(const EndomorphismSLP& a) {//TODO operator *
 	if (generators_num() != a.generators_num()) {
 		std::stringstream s("generators num == ");
 		s << generators_num() << " != a.generators_num == " << a.generators_num();

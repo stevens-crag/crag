@@ -6,7 +6,7 @@
  */
 
 #include "gtest/gtest.h"
-#include "../include/FreeGroupAutomorhpism.h"
+#include "../include/EndomorphismSLP.h"
 
 namespace crag {
 
@@ -30,7 +30,7 @@ bool compare(const SLPVertex& v1, const SLPVertex& v2) {
 }
 
 //! Compares two automorphisms
-bool compareFGAutomorphisms(const FreeGroupAutomorphism& a1, const FreeGroupAutomorphism& a2) {
+bool compareFGAutomorphisms(const EndomorphismSLP& a1, const EndomorphismSLP& a2) {
 	if (&a1 == &a2)
 			return true;
 	if (a1.generators_num() != a2.generators_num())
@@ -53,13 +53,13 @@ class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
       {
       }
 
-	FreeGroupAutomorphism::size_type gen_num;
+	EndomorphismSLP::size_type gen_num;
 	TerminalSymbol changed_symbol;
 	SLPVertex left_child, right_child;
-	FreeGroupAutomorphism nielsen1;
-	FreeGroupAutomorphism nielsen2;
+	EndomorphismSLP nielsen1;
+	EndomorphismSLP nielsen2;
 
-	bool is_nielsen1(const FreeGroupAutomorphism& a) {
+	bool is_nielsen1(const EndomorphismSLP& a) {
 		if (a.generators_num() != gen_num)
 					return false;
 		for (TerminalSymbol t = 1; t <= gen_num; ++t) {
@@ -70,7 +70,7 @@ class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
 		return v.is_negative() && v.terminal_symbol() == changed_symbol;
 	}
 
-	bool is_nielsen2(const FreeGroupAutomorphism& a) {
+	bool is_nielsen2(const EndomorphismSLP& a) {
 		if (a.generators_num() != gen_num)
 			return false;
 		for (TerminalSymbol t = 1; t <= gen_num; ++t) {
@@ -91,7 +91,7 @@ class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
 
 TEST_F(FreeGroupAutomorphismConstructorsTest, SimpleConstructor) {
 for (int i = 0, n = 0; i < 10; ++i, n += i) {
-  FreeGroupAutomorphism a(n);
+  EndomorphismSLP a(n);
   ASSERT_EQ(a.generators_num(), n);
 }
 }
@@ -102,24 +102,24 @@ TEST_F(FreeGroupAutomorphismConstructorsTest, NielsenConstructors) {
 }
 
 TEST_F(FreeGroupAutomorphismConstructorsTest, SimpleCopyConstructor) {
-	FreeGroupAutomorphism a1(nielsen2);
+	EndomorphismSLP a1(nielsen2);
 	EXPECT_EQ(a1.generators_num(), gen_num);
 	EXPECT_TRUE(is_nielsen2(a1));
 }
 
 TEST_F(FreeGroupAutomorphismConstructorsTest, SimpleMoveConstructor) {
-	FreeGroupAutomorphism a1(std::move(nielsen2));
+	EndomorphismSLP a1(std::move(nielsen2));
 	EXPECT_EQ(a1.generators_num(), gen_num);
 	EXPECT_EQ(nielsen2.generators_num(), 0);
 	EXPECT_TRUE(is_nielsen2(a1));
 }
 
 TEST_F(FreeGroupAutomorphismConstructorsTest, CompositionWithNielsen) {
-	FreeGroupAutomorphism a1(gen_num);
+	EndomorphismSLP a1(gen_num);
 	a1.composeWithNielsen(changed_symbol);
 	EXPECT_TRUE(is_nielsen1(a1));
 
-	FreeGroupAutomorphism a2(gen_num);
+	EndomorphismSLP a2(gen_num);
 	a2.composeWithNielsen(changed_symbol, left_child, right_child);
 	EXPECT_TRUE(is_nielsen2(a2));
 }
@@ -127,22 +127,22 @@ TEST_F(FreeGroupAutomorphismConstructorsTest, CompositionWithNielsen) {
 
 
 TEST_F(FreeGroupAutomorphismConstructorsTest, ApplicationOfTwoNielsen) {
-	FreeGroupAutomorphism a_ref(gen_num);
+	EndomorphismSLP a_ref(gen_num);
 	a_ref.composeWithNielsen(changed_symbol);
 	a_ref.composeWithNielsen(changed_symbol, left_child, right_child);
 
-	FreeGroupAutomorphism a_ref2(a_ref);
+	EndomorphismSLP a_ref2(a_ref);
 	a_ref2.composeWithNielsen(1, left_child, right_child);
 	a_ref2.composeWithNielsen(2, right_child, left_child);
-	FreeGroupAutomorphism a_cp(a_ref2);
+	EndomorphismSLP a_cp(a_ref2);
 	a_ref.composeWithNielsen(changed_symbol);
 	a_ref.composeWithNielsen(changed_symbol, left_child, right_child);
 
-	FreeGroupAutomorphism a1(gen_num, changed_symbol, left_child, right_child);
-	a1.apply(FreeGroupAutomorphism(gen_num, changed_symbol));
+	EndomorphismSLP a1(gen_num, changed_symbol, left_child, right_child);
+	a1.apply(EndomorphismSLP(gen_num, changed_symbol));
 	EXPECT_TRUE(compareFGAutomorphisms(a1, a_ref));
 
-	FreeGroupAutomorphism a2(a_ref);
+	EndomorphismSLP a2(a_ref);
 	a2.apply(a_cp);
 	EXPECT_TRUE(compareFGAutomorphisms(a2, a_ref2));
 }
