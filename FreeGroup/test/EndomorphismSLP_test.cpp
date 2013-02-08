@@ -40,23 +40,14 @@ bool compareFGAutomorphisms(const EndomorphismSLP<rank>& a1, const EndomorphismS
 	return true;
 }
 
-//class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
-//    protected:
-//	FreeGroupAutomorphismConstructorsTest() :
-//		gen_num(5),
-//		changed_symbol(3),
-//		left_child(SLPVertex::terminal_vertex(2).negate()),
-//		right_child(SLPVertex::terminal_vertex(1)),
-//		nielsen1(gen_num, changed_symbol),
-//		nielsen2(gen_num, changed_symbol, left_child, right_child)
-//      {
-//      }
-//
-//	EndomorphismSLP::size_type gen_num;
-//	TerminalSymbol changed_symbol;
-//	SLPVertex left_child, right_child;
-//	EndomorphismSLP nielsen1;
-//	EndomorphismSLP nielsen2;
+class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
+	static const int gen_num = 10;
+    protected:
+	FreeGroupAutomorphismConstructorsTest() :
+		id(EndomorphismSLP<gen_num>::identity())
+      {
+      }
+	EndomorphismSLP<gen_num> id;
 //
 //	bool is_nielsen1(const EndomorphismSLP& a) {
 //		if (a.generators_num() != gen_num)
@@ -86,7 +77,7 @@ bool compareFGAutomorphisms(const EndomorphismSLP<rank>& a1, const EndomorphismS
 //				v.right_child().is_negative() == right_child.is_negative();
 //	}
 //
-//  };
+  };
 //
 //TEST_F(FreeGroupAutomorphismConstructorsTest, SimpleConstructor) {
 //for (int i = 0, n = 0; i < 10; ++i, n += i) {
