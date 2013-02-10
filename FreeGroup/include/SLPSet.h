@@ -6,7 +6,7 @@
  */
 
 #ifndef SLPSET_H
-#define	SLPSET_H
+#define SLPSET_H
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
@@ -18,6 +18,7 @@ typedef mpz_class LongInteger;
 #include <unordered_map>
 #include <functional>
 #include <queue>
+#include <iostream>
 
 namespace crag {
 typedef unsigned int TerminalSymbol;
@@ -102,6 +103,10 @@ class SLPVertex {
       return right_child() != Null;
     }
 
+    inline LongInteger split_point() const {
+      return left_child().length();
+    }
+
     inline TerminalSymbol terminal_symbol() const;
 
     bool is_terminal() const {
@@ -124,7 +129,6 @@ class SLPVertex {
 
     std::shared_ptr<BasicVertex> ptr_;  //!< The pointer to SLPVertex
     bool negative_;                     //!< True if we need "inverse" vertex
-
 };
 
 
@@ -145,7 +149,7 @@ class SLPPostorderInspector
 
     //! Inspect the subtree of #root
     SLPPostorderInspector(const SLPVertex& root)
-      : current_path_({root}) {
+      : current_path_({PathState({root, false})}) {
       goto_leftmost_terminal();
     }
 
@@ -153,7 +157,7 @@ class SLPPostorderInspector
 
     //! Get current vertex
     const SLPVertex& current_vertex() const {
-      return current_path_.back();
+      return current_path_.back().vertex;
     }
 
     //! True if there are no more vertices, we have visited everything
@@ -166,7 +170,12 @@ class SLPPostorderInspector
     void go_to_next_vertex();
 
   private:
-    std::vector< SLPVertex > current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack
+    struct PathState {
+      SLPVertex vertex;
+      bool is_right_child;
+    };
+
+    std::vector<PathState> current_path_; //!< Way to the current vertex in the container. We are using this vector like a stack. Each tuple is <Vertex, is_right_child>
 
     //! Go from the current_path_.back() to the leftmost terminal
     void goto_leftmost_terminal();
@@ -337,7 +346,17 @@ class SLPMatchingTable {
         LongInteger start; //!< The beginning of the first match
         LongInteger step;  //!< The distance between the matches
         LongInteger count; //!< The number of matches
+
+        bool operator==(const MatchResultSequence& other) const {
+          return start == other.start && step == other.step && count == other.count;
+        }
+
+        bool operator!=(const MatchResultSequence& other) const {
+          return !(*this == other);
+        }
     };
+
+    const static MatchResultSequence NO_MATCHES;
 
     //! Return all matches of the pattern around the "split point"
     /**
@@ -356,12 +375,10 @@ class SLPMatchingTable {
 
 
   protected:
-    //! Helper function which looks for pattern in text[begin..end]
-    std::pair<MatchResultSequence, MatchResultSequence> local_search(
-        const SLPVertex&  pattern, const SLPVertex&  text, LongInteger begin, LongInteger end);
-
     std::unordered_map<std::pair<SLPVertex, SLPVertex>, MatchResultSequence> match_table_; //! The actual storage for the calculated values.
 };
+
+::std::ostream& operator<<(::std::ostream& os, const SLPMatchingTable::MatchResultSequence& match);
 
 //! class of straight line program collection
 /**
@@ -470,6 +487,110 @@ inline LongInteger SLPVertex::length() const {
 inline unsigned int SLPVertex::height() const {
   return ptr_ ? ptr_->height : 0;
 }
-}
-#endif	/* SLPSET_H */
 
+//!Namespace for some undocumented internal structures
+namespace internal {
+
+//In-order inspector of tree with constraints, required to fill matching table
+class SLPMatchingInspector {
+  public:
+    SLPMatchingInspector() = delete;
+    SLPMatchingInspector(const LongInteger& pattern_length, const SLPVertex& text, const LongInteger& left_bound, const LongInteger& interval_length)
+      : parent_stack_()
+      , pattern_length_(pattern_length)
+      , text_position_({text, -left_bound})
+      , left_bound_(left_bound)
+      , interval_length_(interval_length)
+    {
+      if (left_bound_ < 0) {
+        interval_length_ += left_bound_;
+        left_bound_ = 0;
+        text_position_.distance_from_left_border = 0;
+      }
+
+      if (left_bound_ + interval_length_ > text.length()) {
+        interval_length_ = text.length() - left_bound_;
+      }
+
+      if (interval_length_ < 0) {
+        interval_length_ = 0;
+      }
+      go_further();
+    }
+
+    bool inspection_ended() const {
+      return text_position_.vertex == SLPVertex::Null && parent_stack_.empty();
+    }
+
+    void go_next() {
+      text_position_.distance_from_left_border += text_position_.vertex.left_child().length();
+      text_position_.vertex = text_position_.vertex.right_child();
+      go_further();
+    }
+
+    const SLPVertex& current_text() const {
+      return text_position_.vertex;
+    }
+
+    LongInteger current_distance_from_left_border() const {
+      return text_position_.distance_from_left_border;
+    }
+
+    const LongInteger& left_border() const {
+      return left_bound_;
+    }
+
+    const LongInteger& interval_length() const {
+      return interval_length_;
+    }
+
+  private:
+    struct TextPosition {
+      SLPVertex vertex;
+      LongInteger distance_from_left_border;
+    };
+    std::vector<TextPosition> parent_stack_;
+    LongInteger pattern_length_;
+    TextPosition text_position_;
+    LongInteger left_bound_;
+    LongInteger interval_length_;
+
+    bool position_is_suitable() const {
+      if (text_position_.vertex == SLPVertex::Null ||
+          interval_length_ - text_position_.distance_from_left_border < pattern_length_ ||
+          text_position_.distance_from_left_border + text_position_.vertex.length()  < pattern_length_
+      ) {
+        return false;
+      }
+      return true;
+    }
+
+    void go_further();
+
+};
+
+//! Find sequence containing all elements of two sequences and only them
+SLPMatchingTable::MatchResultSequence join_sequences(SLPMatchingTable::MatchResultSequence first,
+                                                     SLPMatchingTable::MatchResultSequence second);
+
+//! Find sequence containing elements presented in both sequences
+SLPMatchingTable::MatchResultSequence intersect_sequences(SLPMatchingTable::MatchResultSequence first,
+                                                     SLPMatchingTable::MatchResultSequence second);
+
+//! Find coherent entries of pattern with some bounded inspector
+SLPMatchingTable::MatchResultSequence local_search(const SLPVertex& pattern,
+                                                   SLPMatchingInspector* inspector,
+                                                   SLPMatchingTable* matching_table);
+//! SLPMatchingTable::match subroutine
+SLPMatchingTable::MatchResultSequence nontrivial_match(const SLPVertex& large_pattern_part,
+                                                       const SLPVertex& small_pattern_part,
+                                                       bool small_pattern_is_after,
+                                                       const SLPVertex& text,
+                                                       SLPMatchingTable* matching_table);
+
+} //namespace internal
+} //namespace crag
+namespace std {
+  void swap(crag::SLPMatchingTable::MatchResultSequence& first, crag::SLPMatchingTable::MatchResultSequence& second);
+}
+#endif  /* SLPSET_H */

@@ -19,6 +19,23 @@ namespace {
     EXPECT_TRUE(SLPPostorderInspector().inspection_ended());
   }
 
+  TEST(Inspector, SameChildren) {
+    SLPVertex a = SLPVertex::terminal_vertex(1);
+    SLPVertex a2 = SLPVertex::concatenate(a, a);
+
+    SLPPostorderInspector inspector(a2);
+    ASSERT_FALSE(inspector.inspection_ended());
+    EXPECT_EQ(inspector.current_vertex(), a);
+    inspector.go_to_next_vertex();
+    ASSERT_FALSE(inspector.inspection_ended());
+    EXPECT_EQ(inspector.current_vertex(), a);
+    inspector.go_to_next_vertex();
+    ASSERT_FALSE(inspector.inspection_ended());
+    EXPECT_EQ(inspector.current_vertex(), a2);
+    inspector.go_to_next_vertex();
+    ASSERT_TRUE(inspector.inspection_ended());
+  }
+
   TEST(Inspector, LeftTree) {
     SLPVertex a = SLPVertex::terminal_vertex(1);
     SLPVertex b = SLPVertex::terminal_vertex(2);
