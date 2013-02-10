@@ -181,13 +181,6 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
     large_pattern_part_left_bound -= small_pattern_part.length();
   }
 
-//  std::cout << "small pattern is after: " << small_pattern_is_after << std::endl;
-//  std::cout << "left bound: " << large_pattern_part_left_bound << std::endl;
-//  std::cout << "text: " << text.length() << ',' << text.height() << std::endl;
-//  std::cout << "large_pattern: " << large_pattern_part.length() << ',' << large_pattern_part.height() << std::endl;
-//  std::cout << "small_pattern: " << small_pattern_part.length() << ',' << small_pattern_part.height() << std::endl;
-
-
   SLPMatchingInspector large_part_hunter(
       large_pattern_part.length(), //pattern length
       text, //text
@@ -274,16 +267,6 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
           approved_candidates.count += count_left_cut;
         }
       }
-
-//      std::cout << "found " << large_part_matches << std::endl;
-//      std::cout << "first candidate start " << first_candidate_start << std::endl;
-//      std::cout << "last candidate start " << last_candidate_start << std::endl;
-//      std::cout << "seaside candidates bound " << seaside_candidates_bound << std::endl;
-//      std::cout << "seaside matches " << seaside_matches << std::endl;
-//      std::cout << "seaside approved candidates " << seaside_approved_candidates << std::endl;
-//      std::cout << "continental candidate start " << continental_candidate_start << std::endl;
-//      std::cout << "continental matches " << continental_matches << std::endl;
-//      std::cout << "approved candidates: " << approved_candidates << std::endl;
 
       result = internal::join_sequences(result, approved_candidates);
     }
