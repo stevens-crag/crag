@@ -114,7 +114,9 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
 
   MatchResultSequence match_result;
 
-  if (pattern.length() == 1) {//Trivial case
+  if (pattern == text) { //If we are checking the same vertex
+    match_result = {0, 1, 1};
+  } else if (pattern.length() == 1) {//Trivial case
     SLPVertex pattern_vertex = SLPProducedWord(pattern)[0];
     if (text.length() == 1) {
       if (terminals_equal(pattern_vertex, SLPProducedWord(text)[0])) {
