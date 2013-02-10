@@ -129,7 +129,6 @@ class SLPVertex {
 
     std::shared_ptr<BasicVertex> ptr_;  //!< The pointer to SLPVertex
     bool negative_;                     //!< True if we need "inverse" vertex
-
 };
 
 
@@ -504,12 +503,17 @@ class SLPMatchingInspector {
       , interval_length_(interval_length)
     {
       if (left_bound_ < 0) {
+        interval_length_ += left_bound_;
         left_bound_ = 0;
         text_position_.distance_from_left_border = 0;
       }
 
       if (left_bound_ + interval_length_ > text.length()) {
         interval_length_ = text.length() - left_bound_;
+      }
+
+      if (interval_length_ < 0) {
+        interval_length_ = 0;
       }
       go_further();
     }

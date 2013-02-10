@@ -368,6 +368,17 @@ TEST(SLPVertexHashtable, Test) {
   EXPECT_EQ(result->second, 1);
 }
 
+std::string get_vertex_text_as_string(const SLPVertex& parent_vertex) {
+  std::string presentation;
+
+  for(const auto & current_vertex : SLPProducedWord(parent_vertex)) {
+    presentation.push_back('a' - 1 + current_vertex.terminal_symbol());
+  }
+
+  return presentation;
+}
+
+
 class FilledMatchingTable : public SLPMatchingTable {
   public:
     FilledMatchingTable(const SLPVertex& pattern, const SLPVertex& text)
@@ -398,6 +409,9 @@ class FilledMatchingTable : public SLPMatchingTable {
             }
 
             size_t last_possible_match = text_inspector.current_vertex().split_point().get_ui();
+//            std::cout << get_vertex_text_as_string(pattern_inspector.current_vertex()) << " in "
+//                << get_vertex_text_as_string(text_inspector.current_vertex())
+//                << " from " << current_match << " to " << last_possible_match << std::endl;
 
             current_match = current_text.find(current_pattern, current_match);
             while (current_match <= last_possible_match && current_match != std::string::npos) {
@@ -424,7 +438,7 @@ class FilledMatchingTable : public SLPMatchingTable {
 };
 
 
-TEST(FilledMatchingTable, Example) {
+TEST(FilledMatchingTable, Example1) {
   SLPVertex a = SLPVertex::terminal_vertex(1);
   SLPVertex a2 = SLPVertex::concatenate(a, a);
   SLPVertex a4 = SLPVertex::concatenate(a2, a2);
@@ -452,6 +466,31 @@ TEST(FilledMatchingTable, Example) {
   EXPECT_EQ(FilledMatchingTable::MatchResultSequence({1, 1, 4}), matching_table.matches(a3,text));
   EXPECT_EQ(FilledMatchingTable::MatchResultSequence({0, 1, 4}), matching_table.matches(pattern,text));
 }
+
+TEST(FilledMatchingTable, Example2) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex ba = SLPVertex::concatenate(b, a);
+  SLPVertex bab = SLPVertex::concatenate(ba, b);
+  SLPVertex baba = SLPVertex::concatenate(bab, a);
+
+  FilledMatchingTable table(ba, baba);
+  EXPECT_EQ(Seq({2, 1, 1}), table.matches(ba, baba));
+}
+
+TEST(FilledMatchingTable, Example3) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex ba = SLPVertex::concatenate(b, a);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex baab = SLPVertex::concatenate(ba, ab);
+
+  FilledMatchingTable table(baab, baab);
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(baab, baab));
+}
+
 
 TEST(LocalSearch, Trivial) {
   SLPVertex a = SLPVertex::terminal_vertex(1);
@@ -582,37 +621,53 @@ TEST(LocalSearch, SimpleNontrivialSplitted) {
 
 }
 
+SLPVertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  int random_word = rand() % (1 << WORD_SIZE);
+  std::vector<unsigned int> random_word_split;
+  for (unsigned int i = 1; i < WORD_SIZE; ++i) {
+    random_word_split.push_back(i);
+  }
+
+  std::random_shuffle(random_word_split.begin(), random_word_split.end());
+
+  std::vector<SLPVertex> word_presentation;
+  for (unsigned int i = 0; i < WORD_SIZE; ++i) {
+    word_presentation.push_back(((random_word & (1 << i)) ? b : a));
+  }
+
+  for (unsigned int split : random_word_split) {
+    SLPVertex new_vertex = SLPVertex::concatenate(word_presentation[split - 1], word_presentation[split]);
+    for (unsigned int i = split - new_vertex.left_child().length().get_ui(); i < split + new_vertex.right_child().length(); ++i) {
+      word_presentation[i] = new_vertex;
+    }
+  }
+
+  return word_presentation.front();
+}
+
+std::string get_vertex_height_in_inorder(const SLPVertex& vertex) {
+  std::ostringstream split_string;
+  internal::SLPMatchingInspector inspector(1, vertex, 0, vertex.length());
+  while (!inspector.inspection_ended()) {
+    split_string << inspector.current_text().height() << ",";
+
+    inspector.go_next();
+  }
+
+  return split_string.str();
+}
+
 TEST(LocalSearch, RandomWord) {
   const unsigned int WORD_SIZE = 16;
   int REPEAT = 10000;
 
-  SLPVertex a = SLPVertex::terminal_vertex(1);
-  SLPVertex b = SLPVertex::terminal_vertex(2);
-
   srand(time(NULL));
 
   while (--REPEAT >= 0) {
-    int random_word = rand() % (1 << WORD_SIZE);
-    std::vector<unsigned int> random_word_split;
-    for (unsigned int i = 1; i < WORD_SIZE; ++i) {
-      random_word_split.push_back(i);
-    }
-
-    std::random_shuffle(random_word_split.begin(), random_word_split.end());
-
-    std::vector<SLPVertex> word_presentation;
-    for (unsigned int i = 0; i < WORD_SIZE; ++i) {
-      word_presentation.push_back(((random_word & (1 << i)) ? b : a));
-    }
-
-    for (unsigned int split : random_word_split) {
-      SLPVertex new_vertex = SLPVertex::concatenate(word_presentation[split - 1], word_presentation[split]);
-      for (unsigned int i = split - new_vertex.left_child().length().get_ui(); i < split + new_vertex.right_child().length(); ++i) {
-        word_presentation[i] = new_vertex;
-      }
-    }
-
-    SLPVertex text = word_presentation.front();
+    SLPVertex text = get_random_slp_on_2_letters(WORD_SIZE);
 
     int random_pattern_number = rand() % (2 * WORD_SIZE - 1);
     SLPPostorderInspector pattern_getter(text);
@@ -635,20 +690,11 @@ TEST(LocalSearch, RandomWord) {
     internal::SLPMatchingInspector text_inspector(pattern.length(), text, left_boundary, text_length);
     FilledMatchingTable matching_table(pattern, text);
 
-    std::string pattern_string;
-    for(const auto & vertex : SLPProducedWord(pattern)) {
-      pattern_string.push_back(vertex.terminal_symbol() == 1 ? 'a' : 'b');
-    }
+    auto pattern_string = get_vertex_text_as_string(pattern);
 
-    std::string text_string;
-    for(const auto & vertex : SLPProducedWord(text)) {
-      text_string.push_back(vertex.terminal_symbol() == 1 ? 'a' : 'b');
-    }
+    auto text_string = get_vertex_text_as_string(text);
 
-    std::ostringstream split_string;
-    for(const auto & split : random_word_split) {
-      split_string << split << ',';
-    }
+    std::string split_string = get_vertex_height_in_inorder(text);
 
     unsigned int last_match_position = left_boundary;
 
@@ -662,19 +708,19 @@ TEST(LocalSearch, RandomWord) {
           ASSERT_LE(next_match_to_check + pattern.length().get_ui(), right_boundary)
               << "Local search found match of " << pattern_string
               << " in " << text_string << "[" << left_boundary << ":" << right_boundary
-              << "] out of boundaries. Split string: " << split_string.str()
+              << "] out of boundaries. Split string: " << split_string
               << " pattern #" << random_pattern_number;
           last_match_position = text_string.find(pattern_string, last_match_position);
           ASSERT_NE(std::string::npos, last_match_position)
               << "Naive algorithm can't find any more matches of " << pattern_string
               << " in " << text_string << "[" << left_boundary << ":" << right_boundary
               << "], while local search found " << next_match_to_check
-              << " Split string: " << split_string.str()
+              << " Split string: " << split_string
               << " pattern #" << random_pattern_number;
           ASSERT_EQ(next_match_to_check, last_match_position)
               << "Naive algorithm can't find match " << next_match_to_check << " of " << pattern_string
               << " in " << text_string << "[" << left_boundary << ":" << right_boundary
-              << "], found " << last_match_position << " instead. Split string: " << split_string.str()
+              << "], found " << last_match_position << " instead. Split string: " << split_string
               << " pattern #" << random_pattern_number;
           ++last_match_position;
         }
@@ -691,10 +737,141 @@ TEST(LocalSearch, RandomWord) {
       << "Naive algorithm found one more match of " << pattern_string
       << " in " << text_string << "[" << left_boundary << ":" << right_boundary
       << "] at position" << last_match_position
-      << " Split string: " << split_string.str()
+      << " Split string: " << split_string
       << " pattern #" << random_pattern_number;
   }
 }
+
+TEST(SLPMatchingTable, Trivial) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex a_copy = SLPVertex::terminal_vertex(1);
+  SLPVertex a2 = SLPVertex::concatenate(a, a_copy);
+
+  SLPMatchingTable matching_table;
+
+  EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(a, a));
+  EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(a, a_copy));
+  EXPECT_EQ(Seq({0, 1, 2}), matching_table.matches(a, a2));
+}
+
+TEST(SLPMatchingTable, Example1) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+
+  SLPMatchingTable matching_table;
+
+  EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(a, ab));
+  EXPECT_EQ(Seq({1, 1, 1}), matching_table.matches(b, ab));
+  EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(ab, ab));
+}
+
+TEST(SLPMatchingTable, Example2) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+  SLPVertex ba = SLPVertex::concatenate(b, a);
+  SLPVertex bb = SLPVertex::concatenate(b, b);
+  SLPVertex bba = SLPVertex::concatenate(bb, a);
+
+  SLPMatchingTable matching_table;
+
+  EXPECT_EQ(NO_MATCHES, matching_table.matches(ba, bb));
+  EXPECT_EQ(Seq({1, 1, 1}), matching_table.matches(ba, bba));
+}
+
+TEST(SLPMatchingTable, Example3) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex ba = SLPVertex::concatenate(b, a);
+  SLPVertex bab = SLPVertex::concatenate(ba, b);
+  SLPVertex baba = SLPVertex::concatenate(bab, a);
+
+  SLPMatchingTable table;
+  EXPECT_EQ(Seq({2, 1, 1}), table.matches(ba, baba));
+}
+
+TEST(SLPMatchingTable, Example4) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex bb = SLPVertex::concatenate(b, b);
+  SLPVertex bbb = SLPVertex::concatenate(bb, b);
+  SLPVertex abbb = SLPVertex::concatenate(a, bbb);
+
+  SLPMatchingTable table;
+  EXPECT_EQ(Seq({1, 1, 1}), table.matches(bb, abbb));
+}
+
+TEST(SLPMatchingTable, Example5) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex aa = SLPVertex::concatenate(a, a);
+  SLPVertex aab = SLPVertex::concatenate(aa, b);
+  SLPVertex baab = SLPVertex::concatenate(b, aab);
+
+  SLPMatchingTable table;
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(aa, aa));
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(aa, aab));
+  EXPECT_EQ(Seq({1, 1, 1}), table.matches(aa, baab));
+  EXPECT_EQ(Seq({1, 1, 1}), table.matches(aab, baab));
+}
+
+TEST(SLPMatchingTable, Example6) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+
+  SLPVertex aa = SLPVertex::concatenate(a, a);
+  SLPVertex aaa = SLPVertex::concatenate(aa, a);
+  SLPVertex a5 = SLPVertex::concatenate(aa, aaa);
+  SLPVertex a6 = SLPVertex::concatenate(a5, a);
+
+  SLPMatchingTable table;
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(aa, aa));
+  EXPECT_EQ(Seq({0, 1, 2}), table.matches(aa, aaa));
+  EXPECT_EQ(Seq({0, 1, 3}), table.matches(aa, a5));
+  EXPECT_EQ(Seq({3, 1, 2}), table.matches(aa, a6));
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(aaa, aaa));
+  EXPECT_EQ(Seq({0, 1, 3}), table.matches(aaa, a5));
+  EXPECT_EQ(Seq({2, 1, 2}), table.matches(aaa, a6));
+  EXPECT_EQ(Seq({0, 1, 1}), table.matches(a5, a5));
+  EXPECT_EQ(Seq({0, 1, 2}), table.matches(a5, a6));
+}
+
+
+TEST(SLPMatchingTable, StressTest) {
+  const unsigned int WORD_SIZE = 10;
+  int repeat = 5000;
+
+  srand(time(NULL));
+
+  while (--repeat >= 0) {
+    SLPVertex slp = get_random_slp_on_2_letters(WORD_SIZE);
+
+    SLPMatchingTable real_matching_table;
+    FilledMatchingTable computed_matching_table(slp, slp);
+
+    SLPPostorderInspector text(slp);
+    unsigned int text_vertex_number = 0;
+
+    while (!text.inspection_ended()) {
+      ++text_vertex_number;
+
+      SLPPostorderInspector pattern(slp);
+      unsigned int pattern_vertex_number = 0;
+      while (!pattern.inspection_ended()) {
+        ++pattern_vertex_number;
+        ASSERT_EQ(computed_matching_table.matches(pattern.current_vertex(), text.current_vertex()), real_matching_table.matches(pattern.current_vertex(), text.current_vertex()))
+          << "pattern #" << pattern_vertex_number << "(" << get_vertex_text_as_string(pattern.current_vertex()) << "," << get_vertex_height_in_inorder(pattern.current_vertex()) << ")"
+          << ", text #" << text_vertex_number << "(" << get_vertex_text_as_string(text.current_vertex()) << "," << get_vertex_height_in_inorder(text.current_vertex()) << ")";
+        pattern.go_to_next_vertex();
+      }
+      text.go_to_next_vertex();
+    }
+  }
+}
+
+
 
 } //namespace
 } //namespace crag

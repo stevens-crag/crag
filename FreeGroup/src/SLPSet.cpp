@@ -176,9 +176,17 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
                                                        const SLPVertex& text,
                                                        SLPMatchingTable* matching_table) {
   LongInteger large_pattern_part_left_bound = text.split_point() - large_pattern_part.length();
+
   if (small_pattern_is_after) {
     large_pattern_part_left_bound -= small_pattern_part.length();
   }
+
+//  std::cout << "small pattern is after: " << small_pattern_is_after << std::endl;
+//  std::cout << "left bound: " << large_pattern_part_left_bound << std::endl;
+//  std::cout << "text: " << text.length() << ',' << text.height() << std::endl;
+//  std::cout << "large_pattern: " << large_pattern_part.length() << ',' << large_pattern_part.height() << std::endl;
+//  std::cout << "small_pattern: " << small_pattern_part.length() << ',' << small_pattern_part.height() << std::endl;
+
 
   SLPMatchingInspector large_part_hunter(
       large_pattern_part.length(), //pattern length
@@ -191,6 +199,7 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
 
   while(!large_part_hunter.inspection_ended()) {
     auto large_part_matches = internal::local_search(large_pattern_part, &large_part_hunter, matching_table);
+
     if (large_part_matches.count > 0) {
       SLPMatchingTable::MatchResultSequence small_part_candidates;
       if (small_pattern_is_after) {
@@ -205,47 +214,87 @@ SLPMatchingTable::MatchResultSequence internal::nontrivial_match(const SLPVertex
             large_part_matches.step,
             large_part_matches.count
         };
+
+        if (small_part_candidates.start < 0) {
+          LongInteger count_left_cut;
+          LongInteger new_start;
+          mpz_fdiv_qr(count_left_cut.get_mpz_t(), new_start.get_mpz_t(), small_part_candidates.start.get_mpz_t(), small_part_candidates.step.get_mpz_t());
+          small_part_candidates.start = new_start;
+          small_part_candidates.count += count_left_cut;
+        }
       }
+
 
       const LongInteger& first_candidate_start = small_part_candidates.start;
       LongInteger last_candidate_start = small_part_candidates.start + small_part_candidates.step * (small_part_candidates.count - 1);
 
-      LongInteger seaside_candidates_bound = (small_pattern_is_after ? last_candidate_start : first_candidate_start) - small_pattern_part.length();
+      LongInteger seaside_candidates_bound = (small_pattern_is_after ? last_candidate_start - small_pattern_part.length(): first_candidate_start);
 
       SLPMatchingInspector seaside_hunter(
           small_pattern_part.length(),
           text,
           seaside_candidates_bound,
-          seaside_candidates_bound + 2 * small_pattern_part.length()
+          2 * small_pattern_part.length()
       );
 
       auto seaside_matches = internal::local_search(small_pattern_part, &seaside_hunter, matching_table);
       auto seaside_approved_candidates = internal::intersect_sequences(small_part_candidates, seaside_matches);
 
       LongInteger continental_candidate_start = small_pattern_is_after ? first_candidate_start : last_candidate_start;
-
       SLPMatchingInspector continental_hunter(
           small_pattern_part.length(),
           text,
           continental_candidate_start,
-          continental_candidate_start + small_pattern_part.length()
+          small_pattern_part.length()
       );
 
       auto continental_matches = internal::local_search(small_pattern_part, &continental_hunter, matching_table);
       SLPMatchingTable::MatchResultSequence approved_candidates;
-
       if (continental_matches.count > 0) {
         SLPMatchingTable::MatchResultSequence continental_approved_candidates = small_part_candidates;
         LongInteger small_pattern_part_length_in_large_steps;
-        mpz_cdiv_q(small_pattern_part_length_in_large_steps.get_mpz_t(), small_pattern_part.length().get_mpz_t(), large_part_matches.step.get_mpz_t());
+        LongInteger small_pattern_shift;
+        mpz_cdiv_qr(small_pattern_part_length_in_large_steps.get_mpz_t(), small_pattern_shift.get_mpz_t(), small_pattern_part.length().get_mpz_t(), large_part_matches.step.get_mpz_t());
         continental_approved_candidates.count -= small_pattern_part_length_in_large_steps;
+        if (!small_pattern_is_after) {
+          continental_approved_candidates.start += small_pattern_part.length() - small_pattern_shift;
+        }
         approved_candidates = internal::join_sequences(continental_approved_candidates, seaside_approved_candidates);
       } else {
         approved_candidates = seaside_approved_candidates;
       }
 
+      if (approved_candidates.count > 0 && small_pattern_is_after) {
+        approved_candidates.start -= large_pattern_part.length();
+        if (approved_candidates.start < 0) {
+          LongInteger count_left_cut;
+          LongInteger new_start;
+          mpz_fdiv_qr(count_left_cut.get_mpz_t(), new_start.get_mpz_t(), approved_candidates.start.get_mpz_t(), approved_candidates.step.get_mpz_t());
+          approved_candidates.start = new_start;
+          approved_candidates.count += count_left_cut;
+        }
+      }
+
+//      std::cout << "found " << large_part_matches << std::endl;
+//      std::cout << "first candidate start " << first_candidate_start << std::endl;
+//      std::cout << "last candidate start " << last_candidate_start << std::endl;
+//      std::cout << "seaside candidates bound " << seaside_candidates_bound << std::endl;
+//      std::cout << "seaside matches " << seaside_matches << std::endl;
+//      std::cout << "seaside approved candidates " << seaside_approved_candidates << std::endl;
+//      std::cout << "continental candidate start " << continental_candidate_start << std::endl;
+//      std::cout << "continental matches " << continental_matches << std::endl;
+//      std::cout << "approved candidates: " << approved_candidates << std::endl;
+
       result = internal::join_sequences(result, approved_candidates);
     }
+  }
+
+  if (result.count == 0) {
+    return SLPMatchingTable::NO_MATCHES;
+  }
+
+  if (result.count == 1) {
+    result.step = 1;
   }
 
   return result;
@@ -266,10 +315,10 @@ void internal::SLPMatchingInspector::go_further() {
 }
 
 SLPMatchingTable::MatchResultSequence internal::join_sequences(SLPMatchingTable::MatchResultSequence first, SLPMatchingTable::MatchResultSequence second) {
-  if (first.step == 0 || first.count == 0) {
+  if (first.step == 0 || first.count <= 0) {
     return second;
   }
-  if (second.step == 0  || second.count == 0) {
+  if (second.step == 0  || second.count <= 0) {
     return first;
   }
   //if one of the sequences is just one element, then the behavior should be different
@@ -433,8 +482,8 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
     }
 
     auto joined_result = join_sequences(current_result, current_match);
-    if (current_result.count != 0 &&
-        (joined_result.count == 0 ||
+    if (current_result.count > 0 &&
+        (joined_result.count <= 0 ||
          joined_result.step > pattern.length() //any two consequent matches must have some common point
         )) {
       return current_result;
