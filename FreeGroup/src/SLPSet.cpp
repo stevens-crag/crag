@@ -102,6 +102,11 @@ bool terminals_equal(const SLPVertex& lhs, const SLPVertex& rhs) {
 
 SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex& pattern,
                                               const SLPVertex& text) {
+
+  if (pattern.length() == 0 || text.length() == 0) {
+    return NO_MATCHES;
+  }
+
   auto match_result_iterator = match_table_.find(std::make_pair(pattern, text));
 
   if (match_result_iterator != match_table_.end()) { //if already calculated
@@ -148,7 +153,19 @@ SLPMatchingTable::MatchResultSequence SLPMatchingTable::matches(const SLPVertex&
       }
     }
   } else  {//we have pattern.length > 1 => text.length > 1
-    if (pattern.left_child().length() >= pattern.right_child().length()) {//Right child is smaller
+    if (pattern.is_negative()) {//minor optimization
+      auto inversed_result = this->matches(pattern.negate(), text.negate());
+
+      if (inversed_result.count <= 0) {
+        match_result = NO_MATCHES;
+      } else {
+        match_result = {
+            text.length() - pattern.length() - inversed_result.start - inversed_result.step * (inversed_result.count - 1),
+            inversed_result.step,
+            inversed_result.count
+        };
+      }
+    } else if (pattern.left_child().length() >= pattern.right_child().length()) {//Right child is smaller
       match_result = internal::nontrivial_match(
           pattern.left_child(),
           pattern.right_child(),
@@ -478,7 +495,6 @@ SLPMatchingTable::MatchResultSequence internal::local_search(const SLPVertex& pa
   }
   return current_result;
 }
-
 
 ::std::ostream& operator<<(::std::ostream& os, const SLPMatchingTable::MatchResultSequence& match) {
   return os << '{' << match.start << ',' << match.step << ',' << match.count << '}';  // whatever needed to print bar to os

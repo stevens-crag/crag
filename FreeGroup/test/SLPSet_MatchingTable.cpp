@@ -838,6 +838,19 @@ TEST(SLPMatchingTable, Example6) {
   EXPECT_EQ(Seq({0, 1, 2}), table.matches(a5, a6));
 }
 
+TEST(SLPMatchingTable, InversedTest) {
+  SLPVertex a = SLPVertex::terminal_vertex(1);
+  SLPVertex b = SLPVertex::terminal_vertex(2);
+
+  SLPVertex ab = SLPVertex::concatenate(a, b);
+  SLPVertex a_1b = SLPVertex::concatenate(a.negate(), b);
+  SLPVertex b_1a_1b = SLPVertex::concatenate(b.negate(), a_1b);
+
+  SLPMatchingTable matching_table;
+
+  EXPECT_EQ(Seq({1, 1, 1}), matching_table.matches(ab, b_1a_1b.negate()));
+  EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(ab.negate(), b_1a_1b));
+}
 
 TEST(SLPMatchingTable, StressTest) {
   const unsigned int WORD_SIZE = 10;
