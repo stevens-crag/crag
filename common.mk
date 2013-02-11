@@ -123,6 +123,11 @@ $(GTEST_DIR)/gtest_main.a : $(GTEST_DIR)/gtest-all.o $(GTEST_DIR)/gtest_main.o
 ## compile object files for unit tests
 $(OBJ_DIR)/unittest_%.o : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS) 
 	$(CXX) $(CPPFLAGS) $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/unittest_%.d : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS)
+	if [ ! -d $(OBJ_DIR) ]; then mkdir -p $(OBJ_DIR); fi
+	$(SHELL) -ec '$(CXX) $(CPPFLAGS) -MM $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) $< | sed "s:$*.o:$(OBJ_DIR)/& $@:g"' > $@
+
 	
 tests: $(BIN_DIR)/all_unittests
 $(BIN_DIR)/all_unittests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o) $(GTEST_DIR)/gtest_main.a \
@@ -144,4 +149,4 @@ clean:
 	
 # Include all the dependency files, this will  automatically remake them if they are
 # out of date
-include $(foreach file,$(SRC) $(MAIN),$(OBJ_DIR)/$(file).d)
+include $(foreach file,$(SRC) $(MAIN) $(LIBTESTS:$(TESTS_DIR)/%.cpp=unittest_%),$(OBJ_DIR)/$(file).d)

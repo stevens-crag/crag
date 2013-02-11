@@ -115,6 +115,14 @@ namespace {
     EXPECT_EQ(d.left_child().right_child(), a.negate());
     EXPECT_EQ(d.right_child(), c.negate());
   }
+
+  TEST(LongInteger, Swap) {
+    LongInteger a = 1;
+    LongInteger b = 2;
+    swap(a, b);
+    EXPECT_EQ(a.get_si(), 2);
+    EXPECT_EQ(b.get_si(), 1);
+  }
 }
 }
 
