@@ -10,44 +10,45 @@
 
 namespace crag {
 
-//! Compares two vertices by comparing two words produced by them
-bool compare(const SLPVertex& v1, const SLPVertex& v2) {
-	if (&v1 == &v2)
-		return true;
-	if (v1.length() != v2.length())
-		return false;
-	SLPProducedWord w1(v1);
-	SLPProducedWord w2(v2);
-	for (auto it1 = w1.begin(), it2 = w2.begin();
-			it1 != w1.end();//already checked that the length are the same
-			++it1, ++it2) {
-		auto t1 = *it1;
-		auto t2 = *it2;
-		if (t1.is_negative() != t2.is_negative() || t1.terminal_symbol() != t2.terminal_symbol())
-			return false;
-	}
-	return true;
-}
-
-//! Compares two automorphisms
-template<int rank>
-bool compareFGAutomorphisms(const EndomorphismSLP<rank>& a1, const EndomorphismSLP<rank>& a2) {
-	if (&a1 == &a2)
-			return true;
-	for (TerminalSymbol i = 1; i < a1.generators_num(); ++i)
-		if (!compare(a1.slp(i), a2.slp(i)))
-			return false;
-	return true;
-}
-
+////! Compares two vertices by comparing two words produced by them
+//bool compare(const SLPVertex& v1, const SLPVertex& v2) {
+//	if (&v1 == &v2)
+//		return true;
+//	if (v1.length() != v2.length())
+//		return false;
+//	SLPProducedWord w1(v1);
+//	SLPProducedWord w2(v2);
+//	for (auto it1 = w1.begin(), it2 = w2.begin();
+//			it1 != w1.end();//already checked that the length are the same
+//			++it1, ++it2) {
+//		auto t1 = *it1;
+//		auto t2 = *it2;
+//		if (t1.is_negative() != t2.is_negative() || t1.terminal_symbol() != t2.terminal_symbol())
+//			return false;
+//	}
+//	return true;
+//}
+//
+////! Compares two automorphisms
+//template<int rank>
+//bool compareFGAutomorphisms(const EndomorphismSLP<rank>& a1, const EndomorphismSLP<rank>& a2) {
+//	if (&a1 == &a2)
+//			return true;
+//	for (TerminalSymbol i = 1; i < a1.generators_num(); ++i)
+//		if (!compare(a1.slp(i), a2.slp(i)))
+//			return false;
+//	return true;
+//}
+//
 class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
-	static const int gen_num = 10;
     protected:
+	typedef unsigned int test_terminal_symbol;
 	FreeGroupAutomorphismConstructorsTest() :
-		id(EndomorphismSLP<gen_num>::identity())
+		id(EndomorphismSLP<test_terminal_symbol>::identity())
       {
       }
-	EndomorphismSLP<gen_num> id;
+	EndomorphismSLP<test_terminal_symbol> id;
+};
 //
 //	bool is_nielsen1(const EndomorphismSLP& a) {
 //		if (a.generators_num() != gen_num)
@@ -77,7 +78,7 @@ class FreeGroupAutomorphismConstructorsTest : public ::testing::Test {
 //				v.right_child().is_negative() == right_child.is_negative();
 //	}
 //
-  };
+//  };
 //
 //TEST_F(FreeGroupAutomorphismConstructorsTest, SimpleConstructor) {
 //for (int i = 0, n = 0; i < 10; ++i, n += i) {
