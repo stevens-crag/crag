@@ -3,8 +3,6 @@
 
 namespace crag {
 
-namespace crag {
-
 const SLPVertex SLPVertex::Null; //define static in cpp file
 
 inline BasicVertex::BasicVertex()
@@ -95,7 +93,6 @@ SLPProducedWord::value_type SLPProducedWord::operator [](LongInteger index) cons
 
   return current_vertex;
 }
-
 
 const SLPMatchingTable::MatchResultSequence SLPMatchingTable::NO_MATCHES;
 
