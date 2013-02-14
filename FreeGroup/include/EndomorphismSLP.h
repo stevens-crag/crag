@@ -5,78 +5,87 @@
  *      Author: pmorar
  */
 
-#ifndef CRAG_FREE_GROUPS_INCLUDE_ENDOMORPHISM_SLP_H_
-#define CRAG_FREE_GROUPS_INCLUDE_ENDOMORPHISM_SLP_H_
+#ifndef CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
+#define CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
 
 #include <map>
+#include <random>
+#include <assert.h>
 #include "SLPSet.h"
 
 namespace crag {
-
 
 /**
  * Represents a free group endomorphism using straight-line programs.
  * @tparam TerminalSymbol terminal symbols class
  */
-template<typename TerminalSymbol>
+template<typename TerminalSymbol = unsigned int>
 class EndomorphismSLP {
 public:
+
+  //use default copy/move constructors/assignments
 
 	//! Returns the identity automorphism
 	static EndomorphismSLP identity() {
 		return EndomorphismSLP();
 	}
 
-	//! Returns the Nielsen automorphism that inverts the specified terminal sybmbol.
+	//! Returns the automorphism inverting the specified terminal symbbol.
 	/**
-	 * @param  inverted  inverted terminal symbol
+	 * @param symbol inverted terminal symbol, must be > 0
 	 */
-	static EndomorphismSLP nielsenAutomorphism(TerminalSymbol inverted) {
-		EndomorphismSLP tmp;
-		tmp.images_.insert(inverted,
-				SLPVertex::terminal_vertex(inverted).negate());
-		return tmp;
+	static EndomorphismSLP inverter(const TerminalSymbol& symbol) {
+	  assert(symbol > 0);
+		return EndomorphismSLP(symbol);
 	}
 
-	//! Returns the Nielsen automorphism that maps a terminal to a product of two terminals
+	//! Returns the automorphism mapping #symbol to the product #symbol #right_multiplier.
 	/**
-	 * The automorhism maps #multiplied terminal symbol to the product #multiplied #right-multiplier
-	 * of two terminal symbols.
-	 * @param	multiplied			mapped terminal symbol
+	 * @param symbol mapped terminal symbol, must be > 0
 	 * @param	right_multiplier	right multiplier
 	 */
-	static EndomorphismSLP nielsenAutomorphism(TerminalSymbol multiplied, TerminalSymbol right_multiplier) {
-		auto image_vertex = SLPVertex::concatenate(
-				SLPVertex::terminal_vertex(multiplied),
-				SLPVertex::terminal_vertex(right_multiplier));
-		EndomorphismSLP tmp;
-		tmp.images_.insert(multiplied, image_vertex);
+	static EndomorphismSLP right_multiplier(const TerminalSymbol& symbol, const TerminalSymbol& right_multiplier) {
+	  assert(symbol > 0);
+	  EndomorphismSLP tmp;
+	  auto image_vertex = SLPVertex::concatenate(
+      SLPVertex::terminal_vertex(symbol),
+      SLPVertex::terminal_vertex(right_multiplier));
+	  tmp.images_.insert(symbol, image_vertex);
 		return tmp;
 	}
 
-	//! Copy constructor
-	explicit EndomorphismSLP(const EndomorphismSLP& e)
-				: images_(e.images) {}
-
-	//! Move constructor
-	EndomorphismSLP(EndomorphismSLP&& e)
-		: images_(std::move(e.images_)) {}
-
-	//! Assignment operator
-	EndomorphismSLP& operator=(const EndomorphismSLP& e) {
-		if (this != &e) {
-			images_ = e.images_;
-		}
-		return *this;
+	//! Returns the automorphism mapping #symbol to the product #left_multiplier #symbol.
+	/**
+	 * @param  left_multiplier  left multiplier
+	 * @param symbol mapped terminal symbol, must be > 0
+	 */
+	static EndomorphismSLP left_multiplier(const TerminalSymbol& left_multiplier, const TerminalSymbol& symbol) {
+	  assert(symbol > 0);
+	  EndomorphismSLP tmp;
+	  auto image_vertex = SLPVertex::concatenate(
+      SLPVertex::terminal_vertex(left_multiplier),
+      SLPVertex::terminal_vertex(symbol));
+	  tmp.images_.insert(symbol, image_vertex);
+		return tmp;
 	}
 
-	//! Move operator
-	EndomorphismSLP& operator=(EndomorphismSLP&& e) {
-		if (this != &e) {
-			images_ = std::move(e.images_);
-		}
-		return *this;
+	//! Compose automorphisms specified by the range
+	template<typename Iterator>
+	static EndomorphismSLP compose(Iterator begin, Iterator end) {
+	  EndomorphismSLP tmp;
+	  for(;begin != end; ++begin)
+	    tmp *= *begin;
+	  return tmp;
 	}
+
+	//! Compose #num automorphism produced by #producer
+  template<typename Producer>
+  static EndomorphismSLP compose(unsigned int num, Producer& producer) {
+    EndomorphismSLP tmp;
+    for (unsigned int i = 0; i < num; ++i)
+      tmp *= producer();
+    return tmp;
+  }
 
 	//! Compose with the given endomorphism.
 	EndomorphismSLP& operator*=(const EndomorphismSLP& a);
@@ -94,16 +103,26 @@ public:
 
 	//! Returns the root of the straight-line program representing the terminal symbol.
 	SLPVertex slp(const TerminalSymbol& t) const {
-		auto result = images_.find(t);
+	  const bool t_sign = t > 0;
+	  const TerminalSymbol& positive_t = t_sign ? t : -t;
+		auto result = images_.find(positive_t);
 		if (result == images_.end()) //if it is not in images_, then it is the identity map.
 			return SLPVertex::terminal_vertex(t);
 		else
-			return result->second;
+			return t_sign
+			    ? result->second
+			    : result->second.negate();
 	}
 
-protected:
+private:
 	//! The default constructor.
 	EndomorphismSLP() {}
+
+	EndomorphismSLP(const TerminalSymbol& inverted) {
+		images_.insert(inverted,
+						SLPVertex::terminal_vertex(inverted).negate());
+	}
+
 	//! The representation of images of terminal symbols by straight-line programs
 	/**
 	 * If there is no entry for a given terminal symbol, then its image is the terminal itself.
@@ -111,88 +130,52 @@ protected:
 	std::map<TerminalSymbol, SLPVertex> images_;
 };
 
+
+
 //! Automorphisms generator
 /**
  * @tparam TerminalSymbol terminal symbol representation. We suppose that its default constructor creates 'null'
  * 	symbol, which we can increment using operator++ to enumerate first terminal symbols
  */
-template <typename TerminalSymbol>
-class AutomorphismSLPGenerator {
+template <typename TerminalSymbol = unsigned int,
+    typename RandomEngine = std::default_random_engine,
+    typename RandomDistribution = std::uniform_int_distribution>
+class UniformAutomorphismSLPGenerator {
 public:
-	typedef typename std::vector<EndomorphismSLP<TerminalSymbol>>::size_type size_type;
-
-	//! Interface of random integers generator.
-	class RandomGeneratorInterface {//TODO(pmorar) check whether there are any interfaces like this in crag
-		//! Returns a random integer from [0,.. n).
-		size_type rnd(int n) = 0;
-	};
-
-
-	const size_type NIELSEN_TYPE_1_COUNT;
-	const size_type NIELSEN_TYPE_2_COUNT;
-	const size_type COUNT;
+	typedef unsigned int size_type;//TODO it is TerminalSymbol index type
+	typedef typename RandomEngine::result_type seed_type;
 
 	//! Constructs a generator of automorphisms of the free group of the given rank.
-	AutomorphismSLPGenerator(size_type rank)
-		: NIELSEN_TYPE_1_COUNT(rank),
-		  NIELSEN_TYPE_2_COUNT(rank * (rank - 1)),
-		  COUNT(NIELSEN_TYPE_1_COUNT + NIELSEN_TYPE_2_COUNT),
-		  type1_nielsen(NIELSEN_TYPE_1_COUNT),
-		  type2_nielsen(NIELSEN_TYPE_2_COUNT)
-	{
-		TerminalSymbol terminal(++TerminalSymbol());//the first terminal symbol
-		for (unsigned int i = 0; i < rank; ++i, ++terminal) {
-			type1_nielsen.push_back(EndomorphismSLP<TerminalSymbol>::nielsenAutomorphism(terminal));
-			TerminalSymbol right_multiplier_terminal(++TerminalSymbol());//the first terminal symbol
-			for (unsigned int j = 0; j < rank; ++i, ++right_multiplier_terminal) {
-				if (j == i)
-					continue;
-				type1_nielsen.push_back(terminal, right_multiplier_terminal);
-			}
-		}
-	}
+	UniformAutomorphismSLPGenerator(size_type rank)
+		: UniformAutomorphismSLPGenerator(rank, RandomEngine())
+	{}
 
-	//! Returns the Nielsen automorphism with the given index
-	/**
-	 * The indices from [0,..#NIELSEN_TYPE_1_COUNT) are for Nielsen automorphisms inverting a vertex,
-	 * and the indices from [#NIELSEN_TYPE_1_COUNT,..#COUNT) are for Nielsen automorphism mapping
-	 * a vertex to a product of another ones.
-	 * @param index a number from [0,..,#COUNT)
-	 */
-	const EndomorphismSLP<TerminalSymbol>& get(size_type index) const {
-			if (index >= NIELSEN_TYPE_1_COUNT) {
-				return type2_nielsen[index - NIELSEN_TYPE_1_COUNT];
-			}
-			return type1_nielsen[index];
-		}
+	//! Constructs a generator of automorphisms of the free group of the given rank.
+	  UniformAutomorphismSLPGenerator(size_type rank, seed_type seed)
+	    : UniformAutomorphismSLPGenerator(rank, RandomEngine(seed))
+	  {}
 
-	//! Returns the Nielsen automorphism inverting a vertex corresponding to the given index.
-	/**
-	 * @param index a number from [0,..,#NIELSEN_TYPE_1_COUNT)
-	 */
-	const EndomorphismSLP<TerminalSymbol>& getType1(size_type index) const {
-		return type1_nielsen[index];
-	}
+	//! Constructs a generator of automorphisms of the free group of the given rank.
+	UniformAutomorphismSLPGenerator(size_type rank, RandomEngine& random_engine)
+    : RIGHT_MULTIPLIERS_COUNT(2 * rank * (rank - 1)),
+      INVERTERS_COUNT(rank),
+      random_(std::bind(RandomDistribution(0, COUNT), random_engine))
+  {}
 
-	//! Returns the Nielsen automorphism mapping a vertex to the product of another ones corresponding to the given index.
-	/**
-	 * @param index a number from [0,..,#NIELSEN_TYPE_2_COUNT)
-	 */
-	const EndomorphismSLP<TerminalSymbol>& getType2(size_type index) const {
-		return type2_nielsen[index];
-	}
-
-	//! Generates random automorphism as a composition of #num Nielsen automorphisms using random generator rnd
-	EndomorphismSLP<TerminalSymbol> random_automorphism(unsigned int num, RandomGeneratorInterface* rnd) {
-		auto endomorphism = EndomorphismSLP<TerminalSymbol>::identity();
-		for (int i = 0; i < num; ++i) {
-			endomorphism *= get(rnd->rnd(COUNT));
-		}
-		return endomorphism;
+	//! Generates random automorphism as a composition of #num Nielsen automorphisms
+	EndomorphismSLP<TerminalSymbol> operator()() {
+	  return EndomorphismSLP<TerminalSymbol>::identity();//TODO make generation
 	}
 
 
 private:
+	const size_type RIGHT_MULTIPLIERS_COUNT;
+  const size_type LEFT_MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT;
+  const size_type MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT + LEFT_MULTIPLIERS_COUNT;
+  const size_type INVERTERS_COUNT;
+  const size_type COUNT = MULTIPLIERS_COUNT + INVERTERS_COUNT;
+
+  auto random_;
 	//we don't use static fields because order of initialization is not defined
 	//and static fields which are objects are not recommended to use
 	std::vector<EndomorphismSLP<TerminalSymbol>> type1_nielsen;
@@ -239,4 +222,4 @@ EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(con
 
 
 } /* namespace crag */
-#endif /* CRAG_FREE_GROUPS_INCLUDE_ENDOMORPHISM_SLP_H_ */
+#endif /* CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_ */
