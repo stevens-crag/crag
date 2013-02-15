@@ -19,7 +19,7 @@ namespace crag {
  * Represents a free group endomorphism using straight-line programs.
  * @tparam TerminalSymbol terminal symbols class
  */
-template<typename TerminalSymbol = unsigned int>
+template<typename TerminalSymbol = int>
 class EndomorphismSLP {
 public:
 
@@ -69,22 +69,20 @@ public:
 		return tmp;
 	}
 
-	//! Compose automorphisms specified by the range
+	//! Returns the composition of endomorphisms specified by the range
 	template<typename Iterator>
-	static EndomorphismSLP compose(Iterator begin, Iterator end) {
-	  EndomorphismSLP tmp;
-	  for(;begin != end; ++begin)
-	    tmp *= *begin;
-	  return tmp;
+	static EndomorphismSLP composition(Iterator begin, Iterator end) {
+	  return identity().compose_with(begin, end);
 	}
 
-	//! Compose #num automorphism produced by #producer
-  template<typename Producer>
-  static EndomorphismSLP compose(unsigned int num, Producer& producer) {
-    EndomorphismSLP tmp;
-    for (unsigned int i = 0; i < num; ++i)
-      tmp *= producer();
-    return tmp;
+	//! Returns the composition of #num endomorphisms produced by #producer
+	/**
+	 * @param num      the number of endomorphisms to compose
+	 * @param producer endomorphisms generator (using operator())
+	 */
+  template<typename Generator>
+  static EndomorphismSLP composition(unsigned int num, Generator& generator) {
+    return identity().compose_with(num, generator);
   }
 
 	//! Compose with the given endomorphism.
@@ -95,6 +93,27 @@ public:
 		EndomorphismSLP result(*this);
 		return result *= a;
 	}
+
+	//! Compose with endomorphisms specified by the range.
+	template<typename Iterator>
+  EndomorphismSLP& compose_with(Iterator begin, Iterator end) {
+  for(;begin != end; ++begin)
+    (*this) *= *begin;
+  return *this;
+	}
+
+	//! Compose with #num automorphism produced by #producer
+	/**
+	   * @param num the number of endomorphisms to compose with
+	   * @param producer endomorphisms generator (using operator())
+	   */
+  template<typename Generator>
+  EndomorphismSLP& compose_with(unsigned int num, Generator& generator) {
+    for (unsigned int i = 0; i < num; ++i)
+      (*this) *= generator();
+    return *this;
+  }
+
 
 	//! Returns the image of the terminal.
 	SLPProducedWord image(const TerminalSymbol& t) const {
@@ -134,52 +153,80 @@ private:
 
 //! Automorphisms generator
 /**
- * @tparam TerminalSymbol terminal symbol representation. We suppose that its default constructor creates 'null'
- * 	symbol, which we can increment using operator++ to enumerate first terminal symbols
+ * @tparam TerminalSymbol          terminal symbol representation. We suppose it has a constructor taking index
+ * @tparam RandomEngine            engine generating uniformly random non-negative numbers. See std::random library documentation.
+ * @tparam TerminalSymbolIndexType terminal symbol index type
  */
-template <typename TerminalSymbol = unsigned int,
-    typename RandomEngine = std::default_random_engine,
-    typename RandomDistribution = std::uniform_int_distribution>
+template <typename TerminalSymbol = int,
+  typename RandomEngine = std::default_random_engine,
+  typename TerminalSymbolIndexType = int>
 class UniformAutomorphismSLPGenerator {
 public:
-	typedef unsigned int size_type;//TODO it is TerminalSymbol index type
-	typedef typename RandomEngine::result_type seed_type;
+	typedef TerminalSymbolIndexType index_type;
 
 	//! Constructs a generator of automorphisms of the free group of the given rank.
-	UniformAutomorphismSLPGenerator(size_type rank)
+	/**
+	 * @param rank free group rank > 0
+	 */
+	UniformAutomorphismSLPGenerator(index_type rank)
 		: UniformAutomorphismSLPGenerator(rank, RandomEngine())
 	{}
 
 	//! Constructs a generator of automorphisms of the free group of the given rank.
-	  UniformAutomorphismSLPGenerator(size_type rank, seed_type seed)
-	    : UniformAutomorphismSLPGenerator(rank, RandomEngine(seed))
-	  {}
-
-	//! Constructs a generator of automorphisms of the free group of the given rank.
-	UniformAutomorphismSLPGenerator(size_type rank, RandomEngine& random_engine)
-    : RIGHT_MULTIPLIERS_COUNT(2 * rank * (rank - 1)),
-      INVERTERS_COUNT(rank),
-      random_(std::bind(RandomDistribution(0, COUNT), random_engine))
+	/**
+	 * @param rank free group rank > 0
+	 * @param seed random engine seed for creation of a new one
+	 */
+  UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
+    : UniformAutomorphismSLPGenerator(rank, RandomEngine(seed))
   {}
 
-	//! Generates random automorphism as a composition of #num Nielsen automorphisms
+	//! Constructs a generator of automorphisms of the free group of the given rank.
+	/**
+	 * @param rank free group rank > 0
+	 * @param random_engine random engine
+	 */
+	UniformAutomorphismSLPGenerator(index_type rank, RandomEngine& random_engine)
+    : RANK(rank),
+      RIGHT_MULTIPLIERS_COUNT(2 * rank * (rank - 1)),
+      INVERTERS_COUNT(rank),
+      random_engine_(random_engine),
+      random_distr_(0, COUNT - 1) {
+	  assert(rank > 0);
+  }
+
+	//! Generates a random automorphism
 	EndomorphismSLP<TerminalSymbol> operator()() {
-	  return EndomorphismSLP<TerminalSymbol>::identity();//TODO make generation
+	  index_type r_val = random_distr_(random_engine_);
+	  if (r_val < MULTIPLIERS_COUNT) {
+      const bool inverted = r_val % 2;
+      r_val >>= 1;
+      const index_type symbol_index = 1 + (r_val % RANK);
+      const TerminalSymbol symbol(symbol_index);
+      index_type multiplier_index = 1 + r_val / RANK;
+      if (multiplier_index >= symbol_index)
+        ++multiplier_index;//correction for the skipping of the symbol when pick the multiplier
+      const TerminalSymbol multiplier(inverted ? - multiplier_index : multiplier_index);
+      if (r_val < RIGHT_MULTIPLIERS_COUNT)
+        return EndomorphismSLP<TerminalSymbol>::right_multiplier(symbol, multiplier);
+      else
+        return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, symbol);
+    } else {
+      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(r_val));
+    }
 	}
 
 
 private:
-	const size_type RIGHT_MULTIPLIERS_COUNT;
-  const size_type LEFT_MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT;
-  const size_type MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT + LEFT_MULTIPLIERS_COUNT;
-  const size_type INVERTERS_COUNT;
-  const size_type COUNT = MULTIPLIERS_COUNT + INVERTERS_COUNT;
-
-  auto random_;
-	//we don't use static fields because order of initialization is not defined
-	//and static fields which are objects are not recommended to use
-	std::vector<EndomorphismSLP<TerminalSymbol>> type1_nielsen;
-	std::vector<EndomorphismSLP<TerminalSymbol>> type2_nielsen;
+	const index_type RANK;
+	const index_type RIGHT_MULTIPLIERS_COUNT;
+  const index_type LEFT_MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT;
+  const index_type MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT + LEFT_MULTIPLIERS_COUNT;
+  const index_type INVERTERS_COUNT;
+  const index_type COUNT = MULTIPLIERS_COUNT + INVERTERS_COUNT;
+  //! Random generator, which is a binding of provided distribution and uniform random engine.
+  RandomEngine random_engine_;
+  std::uniform_int_distribution<index_type> random_distr_;
 };
 
 
