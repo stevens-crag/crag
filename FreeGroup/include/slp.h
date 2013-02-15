@@ -9,5 +9,6 @@
 #define SLP_H_
 
 #include "slp_vertex.h"
+#include "slp_inspector.h"
 
 #endif /* SLP_H_ */

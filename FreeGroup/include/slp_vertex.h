@@ -5,8 +5,8 @@
  *      Author: dpantele
  */
 
-#ifndef SLP_VERTEX_H_
-#define SLP_VERTEX_H_
+#ifndef CRAG_FREEGROUP_SLP_VERTEX_H_
+#define CRAG_FREEGROUP_SLP_VERTEX_H_
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
@@ -19,12 +19,11 @@ namespace slp {
 //! Basic interface for vertex. Also represents empty vertex, use Vertex::Null as empty vertex
 class Vertex {
   public:
-    typedef ::std::shared_ptr<Vertex> VertexPtr;
-    typedef ::std::shared_ptr<const Vertex> ConstVertexPtr;
+    typedef ::std::shared_ptr<Vertex> Ptr;
 
     virtual ~Vertex() {} //We are required to have virtual destructor
 
-    const static VertexPtr Null; //!< Use this vertex to represent invalid (or empty) vertex
+    const static Ptr Null; //!< Use this vertex to represent invalid (or empty) vertex
 
     bool operator==(const Vertex& other) const {
       return typeid(*this) == typeid(other) && call_is_same_vertex(other);
@@ -35,11 +34,11 @@ class Vertex {
     }
 
     //! Return
-    virtual VertexPtr negate() const {
+    virtual Ptr negate() const {
       return Null;
     }
 
-    virtual VertexPtr left_child() const {
+    virtual Ptr left_child() const {
       return Null;
     }
 
@@ -47,7 +46,7 @@ class Vertex {
       return false;
     }
 
-    virtual VertexPtr right_child() const {
+    virtual Ptr right_child() const {
       return Null;
     }
 
@@ -67,36 +66,43 @@ class Vertex {
       return 0;
     }
 
-  private:
-    Vertex() {} //!< Default constructor generating empty vertex. Use #Null instead of it
-
-    virtual VertexPtr clone() const {
+    virtual Ptr clone() const {
       return Null;
     }
+
+    static Ptr create() {
+      if (Null) {
+        return Null;
+      }
+      return ::std::shared_ptr<Vertex>(new Vertex());
+    }
+
+  protected:
+    Vertex() {} //!< Default constructor generating empty vertex. Use #Null instead of it
 
     virtual bool call_is_same_vertex(const Vertex& other) const {
       return true;
     }
 
-    bool is_same_vertex(const Vertex& other) {
+    bool is_same_vertex(const Vertex& other) const {
       return true;
     }
 };
 
-const static Vertex::VertexPtr Vertex::Null = ::std::make_shared<Vertex>();
+const Vertex::Ptr Vertex::Null = Vertex::create();
 
 //! Terminal vertex in a SLP. Produces word of length 1.
 template <typename TerminalSymbol>
-class TerminalVertex : public Vertex {
+class TerminalVertexTemplate : public Vertex {
   public:
-    TerminalVertex() = delete;
+    TerminalVertexTemplate() = delete;
 
-    static VertexPtr create(const TerminalSymbol& terminal_symbol) {
-      return ::std::make_shared<TerminalVertex>(terminal_symbol);
+    static Ptr create(const TerminalSymbol& terminal_symbol) {
+      return ::std::shared_ptr<TerminalVertexTemplate>(new TerminalVertexTemplate(terminal_symbol));
     }
 
-    virtual Vertex negate() const {
-      return ::std::make_shared<TerminalVertex>(-terminal_symbol_);
+    virtual Ptr negate() const {
+      return ::std::shared_ptr<TerminalVertexTemplate>(new TerminalVertexTemplate(-terminal_symbol_));
     }
 
     virtual LongInteger length() const {
@@ -107,7 +113,7 @@ class TerminalVertex : public Vertex {
       return 1;
     }
 
-    virtual size_t vertex_hash() {
+    virtual size_t vertex_hash() const {
       return hash_(terminal_symbol_);
     }
 
@@ -119,42 +125,44 @@ class TerminalVertex : public Vertex {
       return terminal_symbol();
     }
 
+    virtual Ptr clone() const {
+      return ::std::make_shared<TerminalVertexTemplate>(*this);
+    }
+
+  protected:
+
+    virtual bool call_is_same_vertex(const Vertex& other) const {
+      return is_same_vertex(dynamic_cast<const TerminalVertexTemplate&>(other));
+    }
+
+    bool is_same_vertex(const TerminalVertexTemplate& other) const {
+      return this->terminal_symbol_ == other.terminal_symbol_;
+    }
   private:
     ::std::hash<TerminalSymbol> hash_;
     TerminalSymbol terminal_symbol_;
 
-    explicit TerminalVertex(const TerminalSymbol& terminal_symbol)
+    explicit TerminalVertexTemplate(const TerminalSymbol& terminal_symbol)
       : terminal_symbol_(terminal_symbol)
     { }
 
-    virtual VertexPtr clone() const {
-      return ::std::make_shared<TerminalVertex>(*this);
-    }
-
-    virtual bool call_is_same_vertex(const Vertex& other) const {
-      return is_same_vertex(dynamic_cast<const TerminalVertex&>(other));
-    }
-
-    bool is_same_vertex(const TerminalVertex& other) {
-      return this->terminal_symbol_ == other.terminal_symbol_;
-    }
 };
 
 template <typename TerminalSymbol>
-::std::ostream& operator << (::std::ostream& stream, const TerminalVertex<TerminalSymbol>& vertex) {
-  return ::std::ostream << vertex.terminal_symbol();
+::std::ostream& operator << (::std::ostream& stream, const TerminalVertexTemplate<TerminalSymbol>& vertex) {
+  return stream << vertex.terminal_symbol();
 }
 
 //! Non-terminal vertex in a SLP, represent rule A->BC
 class NonterminalVertex : public Vertex {
   private:
     struct BasicVertex {
-      VertexPtr left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
-      VertexPtr right_child;           //!< Right part of the rule.
+      Ptr left_child;            //!< Left part of the rule. Use SignedVertex::Null if child is absent.
+      Ptr right_child;           //!< Right part of the rule.
       LongInteger length;              //!< Length of word produced by the vertex
       unsigned int height;             //!< Height of subtree
 
-      BasicVertex(VertexPtr left_child, VertexPtr right_child, LongInteger length, LongInteger height)
+      BasicVertex(Ptr left_child, Ptr right_child, LongInteger length, unsigned int height)
         : left_child(left_child)
         , right_child(right_child)
         , length(length)
@@ -164,22 +172,22 @@ class NonterminalVertex : public Vertex {
   public:
     NonterminalVertex() = delete;
 
-    static VertexPtr create(const VertexPtr& left_child, const VertexPtr& right_child) {
-      return ::std::make_shared<NonterminalVertex>(
-          BasicVertex(
+    static Ptr create(const Ptr& left_child, const Ptr& right_child) {
+      return ::std::shared_ptr<NonterminalVertex>(new NonterminalVertex(
+          ::std::make_shared<BasicVertex>(
               left_child->clone(),
               right_child->clone(),
               left_child->length() + right_child->length(),
               ::std::max(left_child->height(), right_child->height()) + 1
           ),
-          false);
+          false));
     }
 
-    virtual VertexPtr negate() const {
-      return ::std::make_shared<NonterminalVertex>(basic_vertex_, !is_negative_);
+    virtual Ptr negate() const {
+      return ::std::shared_ptr<NonterminalVertex>(new NonterminalVertex(basic_vertex_, !is_negative_));
     }
 
-    virtual VertexPtr left_child() const {
+    virtual Ptr left_child() const {
       if (is_negative_) {
         return basic_vertex_->right_child->negate();
       } else {
@@ -195,11 +203,11 @@ class NonterminalVertex : public Vertex {
       }
     }
 
-    virtual VertexPtr right_child() const {
+    virtual Ptr right_child() const {
       if (is_negative_) {
-        return basic_vertex_->right_child->negate();
+        return basic_vertex_->left_child->negate();
       } else {
-        return basic_vertex_->left_child;
+        return basic_vertex_->right_child;
       }
     }
 
@@ -219,8 +227,22 @@ class NonterminalVertex : public Vertex {
       return basic_vertex_->height;
     }
 
-    virtual size_t vertex_hash() {
+    virtual size_t vertex_hash() const {
       return is_negative_ ? (~ptr_hash_(basic_vertex_)) : ptr_hash_(basic_vertex_);
+    }
+
+    virtual Ptr clone() const {
+      return ::std::make_shared<NonterminalVertex>(*this);
+    }
+
+  protected:
+
+    virtual bool call_is_same_vertex(const Vertex& other) const {
+      return is_same_vertex(dynamic_cast<const NonterminalVertex&>(other));
+    }
+
+    bool is_same_vertex(const NonterminalVertex& other) const {
+      return this->basic_vertex_ == other.basic_vertex_ && this->is_negative_ == other.is_negative_;
     }
 
   private:
@@ -233,17 +255,6 @@ class NonterminalVertex : public Vertex {
       , is_negative_(is_negative)
     {  }
 
-    virtual VertexPtr clone() const {
-      return ::std::make_shared<TerminalVertex>(*this);
-    }
-
-    virtual bool call_is_same_vertex(const Vertex& other) const {
-      return is_same_vertex(dynamic_cast<const NonterminalVertex&>(other));
-    }
-
-    bool is_same_vertex(const NonterminalVertex& other) {
-      return this->basic_vertex_ == other.basic_vertex_ && this->is_negative_ && other.is_negative_;
-    }
 };
 }//namespace slp
 }//namespace crag
@@ -278,4 +289,4 @@ namespace std {
 } //namespace std
 
 
-#endif /* SLP_VERTEX_H_ */
+#endif /* CRAG_FREEGROUP_SLP_VERTEX_H_ */
