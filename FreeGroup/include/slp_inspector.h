@@ -158,7 +158,7 @@ class Inspector : public OrderPolicy {
       do {
         process_current_task();
       } while(current_task_.command != InspectorTask::Command::VISIT);
-      return this;
+      return *this;
     }
 
     const Vertex::Ptr& operator*() const {
@@ -179,7 +179,7 @@ class Inspector : public OrderPolicy {
 
     std::vector<InspectorTask> task_stack_;
 
-    using OrderPolicy::initital_task;
+    using OrderPolicy::initial_task;
     using OrderPolicy::process;
 
     void process_current_task() {
