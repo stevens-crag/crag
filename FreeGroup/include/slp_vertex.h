@@ -61,7 +61,7 @@ class Vertex {
 
     bool operator==(const Vertex& other) const {
       return (!vertex_) ?
-          !other.vertex_ :
+          !other.vertex_ : other.vertex_ &&
           typeid(*vertex_) == typeid(*other.vertex_) && vertex_->call_is_same_vertex(*other.vertex_);
     }
 
@@ -215,7 +215,7 @@ class BasicNonterminalVertex : public internal::BasicVertex {
     static const ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash;
 
     virtual size_t vertex_hash() const {
-      return 0;
+      return negate_node_ ? ~ptr_hash(node_data_ptr_) : ptr_hash(node_data_ptr_);
     }
 
     virtual Vertex negate() const;
