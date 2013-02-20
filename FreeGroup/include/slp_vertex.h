@@ -24,6 +24,18 @@ class BasicVertex {
     LongInteger length_;
     unsigned int height_;
 
+    BasicVertex()
+      : length_(0)
+      , height_(0)
+    { }
+
+    BasicVertex(LongInteger&& length, unsigned int height)
+      : length_(::std::move(length))
+      , height_(height)
+    { }
+
+    virtual ~BasicVertex() {}
+
     virtual Vertex left_child() const;
     virtual Vertex right_child() const;
     virtual Vertex negate() const;
@@ -39,14 +51,6 @@ class BasicVertex {
     bool is_same_vertex(const BasicVertex& other) const {
       return true;
     }
-
-    virtual ~BasicVertex() {}
-    BasicVertex() = delete;
-    BasicVertex(LongInteger&& length, unsigned int height)
-      : length_(::std::move(length))
-      , height_(height)
-    { }
-
 };
 }
 
@@ -103,7 +107,15 @@ class Vertex {
 const Vertex Vertex::Null;
 const LongInteger Vertex::LongZero;
 
-Vertex internal::BasicVertex::negate() const {
+inline Vertex internal::BasicVertex::negate() const {
+  return Vertex::Null;
+}
+
+inline Vertex internal::BasicVertex::left_child() const {
+  return Vertex::Null;
+}
+
+inline Vertex internal::BasicVertex::right_child() const {
   return Vertex::Null;
 }
 
@@ -111,14 +123,14 @@ Vertex internal::BasicVertex::negate() const {
 namespace internal {
 
 template <typename TerminalSymbol>
-class BasicTerminalVertex : BasicVertex {
+class BasicTerminalVertex : public BasicVertex {
   public:
     TerminalSymbol terminal_symbol_;
 
     virtual Vertex negate() const;
 
     virtual size_t vertex_hash() const {
-      return hash_(terminal_symbol_);
+      return terminal_symbol_hash(terminal_symbol_);
     }
 
     virtual bool call_is_same_vertex(const BasicVertex& other) const {
@@ -135,7 +147,7 @@ class BasicTerminalVertex : BasicVertex {
     { }
 
   private:
-    static ::std::hash<TerminalSymbol> hash_;
+    const static ::std::hash<TerminalSymbol> terminal_symbol_hash;
 };
 }
 
@@ -161,7 +173,7 @@ class TerminalVertexTemplate : public Vertex {
     }
 
     const TerminalSymbol& terminal_symbol() const {
-      return terminal_vertex_ptr_->terminal_symbol_;
+      return terminal_vertex_ptr_ ? terminal_vertex_ptr_->terminal_symbol_ : NullTerminalSymbol;
     }
 
     operator TerminalSymbol() const {
@@ -170,6 +182,7 @@ class TerminalVertexTemplate : public Vertex {
 
   private:
     const internal::BasicTerminalVertex<TerminalSymbol>* terminal_vertex_ptr_;
+    const static TerminalSymbol NullTerminalSymbol;
 
 };
 
@@ -184,7 +197,10 @@ Vertex internal::BasicTerminalVertex<TerminalSymbol>::negate() const {
 }
 
 template <typename TerminalSymbol>
-::std::hash<TerminalSymbol> internal::BasicTerminalVertex<TerminalSymbol>::hash_;
+const ::std::hash<TerminalSymbol> internal::BasicTerminalVertex<TerminalSymbol>::terminal_symbol_hash = ::std::hash<TerminalSymbol>();
+
+template <typename TerminalSymbol>
+const TerminalSymbol TerminalVertexTemplate<TerminalSymbol>::NullTerminalSymbol = TerminalSymbol();
 
 namespace internal {
 struct NonterminalVertexNodeData {
@@ -196,6 +212,7 @@ class BasicNonterminalVertex : public internal::BasicVertex {
   public:
     ::std::shared_ptr<NonterminalVertexNodeData> node_data_ptr_;
     bool negate_node_;
+    static const ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash;
 
     virtual size_t vertex_hash() const {
       return 0;
@@ -227,10 +244,10 @@ class BasicNonterminalVertex : public internal::BasicVertex {
       , node_data_ptr_(std::move(node_data_ptr))
       , negate_node_(negate_node)
     { }
-
-
 };
 }
+
+const ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
 
 //! Non-terminal vertex in a SLP, represent rule A->BC
 class NonterminalVertex : public Vertex {
@@ -238,9 +255,9 @@ class NonterminalVertex : public Vertex {
     NonterminalVertex() = delete;
 
     template <typename LeftVertexT, typename RightVertexT>
-    NonterminalVertex(LeftVertexT& left, RightVertexT& right)
+    NonterminalVertex(LeftVertexT&& left, RightVertexT&& right)
       : Vertex(::std::make_shared<internal::BasicNonterminalVertex>(
-          ::std::make_shared<internal::NonterminalVertexNodeData>({left, right}),
+          ::std::make_shared<internal::NonterminalVertexNodeData>(internal::NonterminalVertexNodeData({left, right})),
           false
         ))
     { }
@@ -255,7 +272,7 @@ class NonterminalVertex : public Vertex {
 
 Vertex internal::BasicNonterminalVertex::negate() const {
   return NonterminalVertex(::std::make_shared<BasicNonterminalVertex>(
-      ::std::shared_ptr<BasicNonterminalVertex>(node_data_ptr_),
+      ::std::shared_ptr<NonterminalVertexNodeData>(node_data_ptr_),
       !negate_node_
   ));
 }
