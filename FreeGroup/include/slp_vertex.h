@@ -104,9 +104,6 @@ class Vertex {
 
 };
 
-const Vertex Vertex::Null;
-const LongInteger Vertex::LongZero;
-
 inline Vertex internal::BasicVertex::negate() const {
   return Vertex::Null;
 }
@@ -118,7 +115,6 @@ inline Vertex internal::BasicVertex::left_child() const {
 inline Vertex internal::BasicVertex::right_child() const {
   return Vertex::Null;
 }
-
 
 namespace internal {
 
@@ -247,8 +243,6 @@ class BasicNonterminalVertex : public internal::BasicVertex {
 };
 }
 
-const ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
-
 //! Non-terminal vertex in a SLP, represent rule A->BC
 class NonterminalVertex : public Vertex {
   public:
@@ -257,7 +251,7 @@ class NonterminalVertex : public Vertex {
     template <typename LeftVertexT, typename RightVertexT>
     NonterminalVertex(LeftVertexT&& left, RightVertexT&& right)
       : Vertex(::std::make_shared<internal::BasicNonterminalVertex>(
-          ::std::make_shared<internal::NonterminalVertexNodeData>(internal::NonterminalVertexNodeData({left, right})),
+          ::std::shared_ptr<internal::NonterminalVertexNodeData>(new internal::NonterminalVertexNodeData({left, right})),
           false
         ))
     { }
@@ -269,14 +263,6 @@ class NonterminalVertex : public Vertex {
       : Vertex(std::move(vertex))
     { }
 };
-
-Vertex internal::BasicNonterminalVertex::negate() const {
-  return NonterminalVertex(::std::make_shared<BasicNonterminalVertex>(
-      ::std::shared_ptr<NonterminalVertexNodeData>(node_data_ptr_),
-      !negate_node_
-  ));
-}
-
 }//namespace slp
 }//namespace crag
 
