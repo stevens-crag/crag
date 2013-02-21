@@ -13,6 +13,7 @@
 
 namespace crag {
 namespace slp {
+
 namespace inspector{
 
 struct InspectorTask {
@@ -161,7 +162,7 @@ class Inspector : public OrderPolicy {
     Inspector& next() {
       do {
         process_current_task();
-      } while(current_task_.command != InspectorTask::Command::VISIT);
+      } while(!stopped() && current_task_.command != InspectorTask::Command::VISIT);
       return *this;
     }
 
