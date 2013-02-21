@@ -111,7 +111,7 @@ class Postorder : public OrderPolicy {
         return InspectorTask(
           current_task.vertex.right_child(),
           InspectorTask::Command::GO_LEFT,
-          current_task.left_siblings_length
+          current_task.left_siblings_length + current_task.vertex.left_child().length()
         );
       } else {
         return InspectorTask::DO_NOTHING;
@@ -172,6 +172,10 @@ class Inspector : public OrderPolicy {
 
     const Vertex& vertex() const {
       return current_task_.vertex;
+    }
+
+    const LongInteger& vertex_left_siblings_length() const {
+      return current_task_.left_siblings_length;
     }
 
     bool stopped() const {
