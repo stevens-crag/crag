@@ -94,6 +94,10 @@ class Vertex {
       return vertex_ ? vertex_->vertex_hash() : 0;
     }
 
+    operator bool() const {
+      return vertex_;
+    }
+
   protected:
     ::std::shared_ptr<internal::BasicVertex> vertex_;
     Vertex() {} //!< Default constructor generating empty vertex. Use #Null instead of it
