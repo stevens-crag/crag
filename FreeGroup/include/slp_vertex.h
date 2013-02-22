@@ -61,8 +61,8 @@ class Vertex {
 
     bool operator==(const Vertex& other) const {
       return (!vertex_) ?
-          !other.vertex_ : other.vertex_ &&
-          typeid(*vertex_) == typeid(*other.vertex_) && vertex_->call_is_same_vertex(*other.vertex_);
+          !other.vertex_ :
+          (other.vertex_ && typeid(*vertex_) == typeid(*other.vertex_) && vertex_->call_is_same_vertex(*other.vertex_));
     }
 
     bool operator!=(const Vertex& other) const {
@@ -94,8 +94,8 @@ class Vertex {
       return vertex_ ? vertex_->vertex_hash() : 0;
     }
 
-    operator bool() const {
-      return vertex_;
+    bool operator!() const {
+      return !vertex_.get();
     }
 
   protected:
