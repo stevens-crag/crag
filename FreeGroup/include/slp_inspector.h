@@ -32,7 +32,7 @@ struct InspectorTask {
 
     InspectorTask()
       : vertex(Vertex::Null)
-      , command(Command::GO_LEFT)
+      , command(Command::VISIT)
       , left_siblings_length()
     { }
 
@@ -41,6 +41,18 @@ struct InspectorTask {
       , command(command)
       , left_siblings_length(left_siblings_length)
     { }
+
+    static InspectorTask for_current(const InspectorTask& current, Command&& command) {
+      return InspectorTask(current.vertex, std::move(command), current.left_siblings_length);
+    }
+
+    static InspectorTask for_left_child(const InspectorTask& current, Command&& command) {
+      return InspectorTask(current.vertex.left_child(), std::move(command), current.left_siblings_length);
+    }
+
+    static InspectorTask for_right_child(const InspectorTask& current, Command&& command) {
+      return InspectorTask(current.vertex.right_child(), std::move(command), current.left_siblings_length + current.vertex.left_child().length());
+    }
 
 };
 
@@ -65,13 +77,8 @@ class OrderPolicy {
 class Preorder : public OrderPolicy {
   protected:
     InspectorTask process(const InspectorTask& current_task) {
-      schedule(InspectorTask(
-        current_task.vertex.right_child(),
-        InspectorTask::Command::VISIT,
-        current_task.left_siblings_length + current_task.vertex.left_child().length()
-      ));
-
-      return InspectorTask(current_task.vertex.left_child(), InspectorTask::Command::VISIT, current_task.left_siblings_length);
+      schedule(InspectorTask::for_right_child(current_task, InspectorTask::Command::VISIT));
+      return InspectorTask::for_left_child(current_task, InspectorTask::Command::VISIT);
     }
 
     InspectorTask initial_task(const Vertex& root) {
@@ -83,14 +90,10 @@ class Inorder : public OrderPolicy {
   protected:
     InspectorTask process(const InspectorTask& current_task) {
       if (current_task.command == InspectorTask::Command::VISIT) {
-        return InspectorTask(
-          current_task.vertex.right_child(),
-          InspectorTask::Command::GO_LEFT,
-          current_task.left_siblings_length + current_task.vertex.left_child().length()
-        );
+        return InspectorTask::for_right_child(current_task, InspectorTask::Command::GO_LEFT);
       } else {
-        schedule(InspectorTask(current_task.vertex, InspectorTask::Command::VISIT, current_task.left_siblings_length));
-        return InspectorTask(current_task.vertex.left_child(), InspectorTask::Command::GO_LEFT, current_task.left_siblings_length);
+        schedule(InspectorTask::for_current(current_task, InspectorTask::Command::VISIT));
+        return InspectorTask::for_left_child(current_task, InspectorTask::Command::GO_LEFT);
       }
     }
     InspectorTask initial_task(const Vertex& root) {
@@ -102,17 +105,11 @@ class Postorder : public OrderPolicy {
   protected:
     InspectorTask process(const InspectorTask& current_task) {
       if (current_task.command == InspectorTask::Command::GO_LEFT) {
-        schedule(InspectorTask(current_task.vertex, InspectorTask::Command::GO_RIGHT, current_task.left_siblings_length));
-
-        return InspectorTask(current_task.vertex.left_child(), InspectorTask::Command::GO_LEFT, current_task.left_siblings_length);
+        schedule(InspectorTask::for_current(current_task, InspectorTask::Command::GO_RIGHT));
+        return InspectorTask::for_left_child(current_task, InspectorTask::Command::GO_LEFT);
       } else if (current_task.command == InspectorTask::Command::GO_RIGHT) {
-        schedule(InspectorTask(current_task.vertex, InspectorTask::Command::VISIT, current_task.left_siblings_length));
-
-        return InspectorTask(
-          current_task.vertex.right_child(),
-          InspectorTask::Command::GO_LEFT,
-          current_task.left_siblings_length + current_task.vertex.left_child().length()
-        );
+        schedule(InspectorTask::for_current(current_task, InspectorTask::Command::VISIT));
+        return InspectorTask::for_right_child(current_task, InspectorTask::Command::GO_LEFT);
       } else {
         return InspectorTask::DO_NOTHING;
       }
@@ -153,13 +150,17 @@ class Inspector : public OrderPolicy {
       return Inspector(*this).next();
     }
 
-    bool operator==(const Inspector& other) {
+    bool operator==(const Inspector& other) const {
       return stopped() ? other.stopped() : !other.stopped() &&
               current_task_.left_siblings_length == other.current_task_.left_siblings_length &&
-              (*vertex()) == (*other.vertex());
+              vertex() == other.vertex();
     }
 
-    Inspector& next() {
+    bool operator!=(const Inspector& other) const {
+      return !(*this==other);
+    }
+
+    virtual Inspector& next() {
       do {
         process_current_task();
       } while(!stopped() && current_task_.command != InspectorTask::Command::VISIT);
@@ -191,17 +192,21 @@ class Inspector : public OrderPolicy {
     using OrderPolicy::initial_task;
     using OrderPolicy::process;
 
+    void fallback_to_scheduled() {
+      if (task_stack_.empty()) {
+        current_task_ = InspectorTask::DO_NOTHING;
+        return;
+      }
+
+      current_task_ = std::move(task_stack_.back());
+      task_stack_.pop_back();
+    }
+
     void process_current_task() {
       current_task_ = std::move(process(current_task_));
 
       if (!is_task_valid(current_task_)) {
-        if (task_stack_.empty()) {
-          current_task_ = InspectorTask::DO_NOTHING;
-          return;
-        }
-
-        current_task_ = std::move(task_stack_.back());
-        task_stack_.pop_back();
+        fallback_to_scheduled();
       }
     }
 
