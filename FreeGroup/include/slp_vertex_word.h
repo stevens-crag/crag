@@ -5,6 +5,7 @@
  *      Author: dpantele
  */
 
+#pragma once
 #ifndef CRAG_FREEEGROUP_SLP_VERTEX_WORD_H_
 #define CRAG_FREEEGROUP_SLP_VERTEX_WORD_H_
 

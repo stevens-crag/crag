@@ -5,12 +5,13 @@
  *      Author: dpantele
  */
 
-#ifndef SLP_H_
-#define SLP_H_
+#pragma once
+#ifndef CRAG_FREEGROUP_SLP_H_
+#define CRAG_FREEGROUP_SLP_H_
 
 #include "slp_vertex.h"
 #include "slp_inspector.h"
 #include "slp_vertex_word.h"
 #include "arithmetic_sequence.h"
 
-#endif /* SLP_H_ */
+#endif /* CRAG_FREEGROUP_SLP_H_ */

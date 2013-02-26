@@ -5,6 +5,7 @@
  *      Author: dpantele
  */
 
+#pragma once
 #ifndef CRAG_FREEGROUP_SLP_INSPECTOR_H_
 #define CRAG_FREEGROUP_SLP_INSPECTOR_H_
 

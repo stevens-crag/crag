@@ -5,6 +5,7 @@
  *      Author: dpantele
  */
 
+#pragma once
 #ifndef CRAG_FREEGROUP_ARITHMETIC_SEQUENCE_H_
 #define CRAG_FREEGROUP_ARITHMETIC_SEQUENCE_H_
 
