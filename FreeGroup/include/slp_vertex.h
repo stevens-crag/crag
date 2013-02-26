@@ -35,6 +35,7 @@ class BasicVertex {
     { }
 
     virtual ~BasicVertex() {}
+    //Because of this destructor we have no move constructor
 
     virtual Vertex left_child() const;
     virtual Vertex right_child() const;
@@ -94,9 +95,11 @@ class Vertex {
       return vertex_ ? vertex_->vertex_hash() : 0;
     }
 
-    bool operator!() const {
-      return !vertex_.get();
+    explicit operator bool() const {
+      return static_cast<bool>(vertex_);
     }
+
+    //All copy/move constructors must be defined by default
 
   protected:
     ::std::shared_ptr<internal::BasicVertex> vertex_;
