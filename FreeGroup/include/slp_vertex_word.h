@@ -41,13 +41,15 @@ class TerminalVertexInspector : public Inspector<OrderPolicy> {
         return; //We have to go backwards
       }
 
-      do {
+      while (this->current_task_.vertex.height() > 1 ||
+             this->current_task_.command != Super::InspectorTask::Command::VISIT ||
+             position != this->current_task_.left_siblings_length) {
         if (this->current_task_.left_siblings_length + this->current_task_.vertex.length() < position) {
           this->fallback_to_scheduled(); //We have to skip current subtree
         } else {
           this->process_current_task();
         }
-      } while (this->current_task_.vertex.height() > 1 || this->current_task_.command != Super::InspectorTask::Command::VISIT);
+      }
       //While we are not visiting terminal or null
     }
 };

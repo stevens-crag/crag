@@ -91,6 +91,9 @@ namespace {
     VertexCharWord w(abc);
 
     EXPECT_EQ("abc", ::std::string(w.begin(), w.end()));
+    EXPECT_EQ('a', *(w.begin() + 0));
+    EXPECT_EQ('b', *(w.begin() + 1));
+    EXPECT_EQ('c', *(w.begin() + 2));
   }
 
 
@@ -129,6 +132,11 @@ namespace {
 
         VertexCharWord word(current_slp);
         ASSERT_EQ(current_word_string, std::string(word.begin(), word.end()));
+
+        for (size_t i = 0; i < current_word_string.size(); ++i) {
+          ASSERT_EQ(current_word_string[i], *(word.begin() + i)) <<
+              "word.begin() + " << i << " does not refer to " << current_word_string[i];
+        }
 
       } while(std::next_permutation(current_word_split.begin(), current_word_split.end()));
       ++current_word;
