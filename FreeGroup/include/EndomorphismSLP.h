@@ -8,7 +8,7 @@
 #ifndef CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
 #define CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
 
-#include <map>
+#include <unordered_map>
 #include <random>
 #include <assert.h>
 #include "slp.h"
@@ -112,9 +112,9 @@ public:
 
 
 	//! Returns the image of the terminal.
-	SLPProducedWord image(const TerminalSymbol& t) const {
+  slp::VertexWord<TerminalSymbol> image(const TerminalSymbol& t) const {
 	  bool is_positive = is_positive_terminal_symbol(t);
-		return SLPProducedWord(is_positive ? slp(t) : slp(-t).negate());
+		return slp::VertexWord<TerminalSymbol>(is_positive ? slp(t) : slp(-t).negate());
 	}
 
 	//! Returns the root of the straight-line program representing the positive terminal symbol.
@@ -135,7 +135,7 @@ private:
 
   //! Checks whether the symbol is not inverse.
   static bool is_positive_terminal_symbol(const TerminalSymbol& symbol) {
-    static TerminalSymbol null_symbol();
+    static const TerminalSymbol null_symbol;
     return symbol > null_symbol;
   }
 
@@ -151,7 +151,7 @@ private:
 	/**
 	 * If there is no entry for a given terminal symbol, then its image is the terminal itself.
 	 */
-	std::map<TerminalSymbol, slp::Vertex> images_;
+	std::unordered_map<TerminalSymbol, slp::Vertex> images_;
 };
 
 
@@ -235,19 +235,19 @@ private:
 };
 
 namespace internal {
-  class EndomorphismSLPToCopyInspector: public slp::Inspector<slp::inspector::Postorder> {
+  class EndomorphismSLPToCopyTaskAcceptor: public slp::inspector::TaskAcceptor {
     const std::unordered_map<slp::Vertex, slp::Vertex>& copied_vertices_;
 
-    EndomorphismSLPToCopyInspector(const std::unordered_map<slp::Vertex, slp::Vertex>& new_vertices)
+    EndomorphismSLPToCopyTaskAcceptor(const std::unordered_map<slp::Vertex, slp::Vertex>& new_vertices)
       : copied_vertices_(new_vertices) {
     }
 
-    bool is_task_valid(const InspectorTask& task) {
-      return slp::Inspector::is_task_valid(task) &&
+    bool accept(const slp::inspector::InspectorTask& task) {
+          return slp::inspector::TaskAcceptor::accept(task) &&
           copied_vertices_.find(task.vertex) == copied_vertices_.end();//we have not copied the vertex yet
     }
   };
-}
+} //namespace internal
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
@@ -257,7 +257,8 @@ EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(con
 		const slp::Vertex image_root = root_iterator->second;
 		//for each root we go over the tree using inspector,
 		//attach terminal vertices to the roots of our endomorphism, and copy the tree above
-		internal::EndomorphismSLPToCopyInspector inspector(image_root);
+		internal::EndomorphismSLPToCopyTaskAcceptor task_acceptor(new_vertices);
+		slp::Inspector<slp::inspector::Postorder> inspector(image_root, &task_acceptor);
 		while (!inspector.stopped()) {
 			const slp::Vertex& current_vertex = *inspector;
 			if (new_vertices.find(current_vertex) == new_vertices.end()) {//it was not copied yet
