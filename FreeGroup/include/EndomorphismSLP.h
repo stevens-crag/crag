@@ -11,7 +11,7 @@
 #include <map>
 #include <random>
 #include <assert.h>
-#include "SLPSet.h"
+#include "slp.h"
 
 namespace crag {
 
@@ -35,7 +35,7 @@ public:
 	 * @param symbol inverted terminal symbol, must be > 0
 	 */
 	static EndomorphismSLP inverter(const TerminalSymbol& symbol) {
-	  assert(symbol > 0);
+	  assert(is_positive_terminal_symbol(symbol));
 		return EndomorphismSLP(symbol);
 	}
 
@@ -45,12 +45,10 @@ public:
 	 * @param	right_multiplier	right multiplier
 	 */
 	static EndomorphismSLP right_multiplier(const TerminalSymbol& symbol, const TerminalSymbol& right_multiplier) {
-	  assert(symbol > 0);
+	  assert(is_positive_terminal_symbol(symbol));
 	  EndomorphismSLP tmp;
-	  auto image_vertex = SLPVertex::concatenate(
-      SLPVertex::terminal_vertex(symbol),
-      SLPVertex::terminal_vertex(right_multiplier));
-	  tmp.images_.insert(symbol, image_vertex);
+	  tmp.images_.insert(symbol,
+	      slp::NonterminalVertex(terminal_vertex(symbol), terminal_vertex(right_multiplier)));
 		return tmp;
 	}
 
@@ -60,12 +58,10 @@ public:
 	 * @param symbol mapped terminal symbol, must be > 0
 	 */
 	static EndomorphismSLP left_multiplier(const TerminalSymbol& left_multiplier, const TerminalSymbol& symbol) {
-	  assert(symbol > 0);
+	  assert(is_positive_terminal_symbol(symbol));
 	  EndomorphismSLP tmp;
-	  auto image_vertex = SLPVertex::concatenate(
-      SLPVertex::terminal_vertex(left_multiplier),
-      SLPVertex::terminal_vertex(symbol));
-	  tmp.images_.insert(symbol, image_vertex);
+	  tmp.images_.insert(symbol,
+	          slp::NonterminalVertex(terminal_vertex(left_multiplier), terminal_vertex(symbol)));
 		return tmp;
 	}
 
@@ -104,9 +100,9 @@ public:
 
 	//! Compose with #num automorphism produced by #producer
 	/**
-	   * @param num the number of endomorphisms to compose with
-	   * @param producer endomorphisms generator (using operator())
-	   */
+   * @param num the number of endomorphisms to compose with
+   * @param producer endomorphisms generator (using operator())
+   */
   template<typename Generator>
   EndomorphismSLP& compose_with(unsigned int num, Generator& generator) {
     for (unsigned int i = 0; i < num; ++i)
@@ -117,36 +113,45 @@ public:
 
 	//! Returns the image of the terminal.
 	SLPProducedWord image(const TerminalSymbol& t) const {
-		return SLPProducedWord(slp(t));
+	  bool is_positive = is_positive_terminal_symbol(t);
+		return SLPProducedWord(is_positive ? slp(t) : slp(-t).negate());
 	}
 
-	//! Returns the root of the straight-line program representing the terminal symbol.
-	SLPVertex slp(const TerminalSymbol& t) const {
-	  const bool t_sign = t > 0;
-	  const TerminalSymbol& positive_t = t_sign ? t : -t;
-		auto result = images_.find(positive_t);
+	//! Returns the root of the straight-line program representing the positive terminal symbol.
+	/**
+	 * @param t positive terminal symbol
+	 */
+	slp::Vertex slp(const TerminalSymbol& t) const {
+	  assert(is_positive_terminal_symbol(t));
+		auto result = images_.find(t);
 		if (result == images_.end()) //if it is not in images_, then it is the identity map.
-			return SLPVertex::terminal_vertex(t);
+			return terminal_vertex(t);
 		else
-			return t_sign
-			    ? result->second
-			    : result->second.negate();
+			return result->second;
 	}
 
 private:
+  typedef typename slp::TerminalVertexTemplate<TerminalSymbol> terminal_vertex;
+
+  //! Checks whether the symbol is not inverse.
+  static bool is_positive_terminal_symbol(const TerminalSymbol& symbol) {
+    static TerminalSymbol null_symbol();
+    return symbol > null_symbol;
+  }
+
 	//! The default constructor.
 	EndomorphismSLP() {}
 
 	EndomorphismSLP(const TerminalSymbol& inverted) {
 		images_.insert(inverted,
-						SLPVertex::terminal_vertex(inverted).negate());
+		  terminal_vertex(inverted).negate());
 	}
 
 	//! The representation of images of terminal symbols by straight-line programs
 	/**
 	 * If there is no entry for a given terminal symbol, then its image is the terminal itself.
 	 */
-	std::map<TerminalSymbol, SLPVertex> images_;
+	std::map<TerminalSymbol, slp::Vertex> images_;
 };
 
 
@@ -229,33 +234,47 @@ private:
   std::uniform_int_distribution<index_type> random_distr_;
 };
 
+namespace internal {
+  class EndomorphismSLPToCopyInspector: public slp::Inspector<slp::inspector::Postorder> {
+    const std::unordered_map<slp::Vertex, slp::Vertex>& copied_vertices_;
 
+    EndomorphismSLPToCopyInspector(const std::unordered_map<slp::Vertex, slp::Vertex>& new_vertices)
+      : copied_vertices_(new_vertices) {
+    }
+
+    bool is_task_valid(const InspectorTask& task) {
+      return slp::Inspector::is_task_valid(task) &&
+          copied_vertices_.find(task.vertex) == copied_vertices_.end();//we have not copied the vertex yet
+    }
+  };
+}
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
-	std::unordered_map<SLPVertex, SLPVertex> new_vertices;//a's vertices to new vertices correspondence
+	std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-	for (auto iterator: a.images_) {
-		const SLPVertex image_root = iterator->second;
-		//for each root we go over the tree using postorder inspector,
+	for (auto root_iterator: a.images_) {
+		const slp::Vertex image_root = root_iterator->second;
+		//for each root we go over the tree using inspector,
 		//attach terminal vertices to the roots of our endomorphism, and copy the tree above
-		SLPPostorderInspector inspector(image_root);
-		while (!inspector.inspection_ended()) {
-			const SLPVertex& current_vertex = inspector.current_vertex();
+		internal::EndomorphismSLPToCopyInspector inspector(image_root);
+		while (!inspector.stopped()) {
+			const slp::Vertex& current_vertex = *inspector;
 			if (new_vertices.find(current_vertex) == new_vertices.end()) {//it was not copied yet
-				if (current_vertex.is_terminal()) {//remap terminals to our roots
-					auto our_root = slp(current_vertex.terminal_symbol());
-					auto pair = std::make_pair(current_vertex,
-							current_vertex.is_negative() ? our_root.negate() : our_root);
-					new_vertices.insert(pair);
+			  terminal_vertex t_vertex(current_vertex);
+				if (t_vertex != slp::Vertex::Null) {//the vertex is terminal so map it to our corresponding root
+				  const TerminalSymbol& symbol = t_vertex.terminal_symbol();
+				  bool is_positive = is_positive_terminal_symbol(symbol);
+					auto our_root = slp(is_positive ? symbol : -symbol);
+					new_vertices.insert(std::make_pair(current_vertex,
+              is_positive ? slp(symbol) : slp(-symbol).negate()));
 				} else {//for a nonterminal we already processed its children because postorder inspector
-					auto left = new_vertices.find(current_vertex.left_child());
-					auto right = new_vertices.find(current_vertex.right_child());
-					auto new_vertex = SLPVertex::concatenate(left->second, right->second);
-					new_vertices.insert(std::make_pair(current_vertex, new_vertex));
+					auto left = new_vertices.find(current_vertex.left_child())->second;
+					auto right = new_vertices.find(current_vertex.right_child())->second;
+					new_vertices.insert(std::make_pair(current_vertex, slp::NonterminalVertex(left, right)));
 				}
 			}
-			inspector.go_to_next_vertex();
+			++inspector;
 		}
 	}
 
