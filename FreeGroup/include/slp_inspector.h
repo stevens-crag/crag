@@ -37,10 +37,10 @@ struct InspectorTask {
       , left_siblings_length()
     { }
 
-    InspectorTask(const Vertex& vertex, Command&& command, const LongInteger& left_siblings_length)
-      : vertex(vertex)
-      , command(command)
-      , left_siblings_length(left_siblings_length)
+    InspectorTask(Vertex vertex, Command command, LongInteger left_siblings_length)
+      : vertex(::std::move(vertex))
+      , command(::std::move(command))
+      , left_siblings_length(::std::move(left_siblings_length))
     { }
 
     static InspectorTask for_current(const InspectorTask& current, Command&& command) {
@@ -53,6 +53,10 @@ struct InspectorTask {
 
     static InspectorTask for_right_child(const InspectorTask& current, Command&& command) {
       return InspectorTask(current.vertex.right_child(), std::move(command), current.left_siblings_length + current.vertex.left_child().length());
+    }
+
+    explicit operator bool() const {
+      return static_cast<bool>(vertex);
     }
 
 };
@@ -121,6 +125,20 @@ class Postorder : public OrderPolicy {
     }
 };
 
+//We can't use virtual functions from constructors, and we have to call next() in constructor.
+//So we require to pass some functor which accepts tasks while we construct inspector
+class TaskAcceptor {
+  public:
+    virtual ~TaskAcceptor() {}
+    virtual bool accept(const InspectorTask& task) {
+      return task != InspectorTask::DO_NOTHING && task.vertex != Vertex::Null;
+    }
+
+    TaskAcceptor* clone() const {
+      return new TaskAcceptor(*this);
+    }
+};
+
 
 }//namespace inspector
 
@@ -129,26 +147,44 @@ class Inspector : public OrderPolicy {
   public:
     Inspector()
       : current_task_(InspectorTask::DO_NOTHING)
+      , task_checker_(nullptr)
     { }
 
-    virtual ~Inspector() {}
+    virtual ~Inspector() {
+      delete task_checker_;
+    }
 
-    Inspector(const Vertex& root)
-      : current_task_(this->initial_task(root)) {
-      if (!is_task_valid(current_task_)) {
+    Inspector(const Inspector& other)
+      : current_task_(other.current_task_)
+      , scheduled_tasks_(other.scheduled_tasks_)
+      , task_checker_(other.task_checker_ ? other.task_checker_->clone() : nullptr)
+    { }
+
+    Inspector(const Vertex& root, inspector::TaskAcceptor* task_acceptor)
+      : current_task_(this->initial_task(root))
+      , task_checker_(task_acceptor)
+    {
+      if (!task_checker_->accept(current_task_)) {
         current_task_ = InspectorTask::DO_NOTHING;
       }
+
       if (current_task_.command != InspectorTask::Command::VISIT) {
         next();
       }
     }
 
+    Inspector(const Vertex& root)
+      : Inspector(root, new inspector::TaskAcceptor())
+    { }
+
     Inspector& operator++() {
       return next();
     }
 
-    Inspector operator++(int) const {
-      return Inspector(*this).next();
+    Inspector operator++(int) {
+      Inspector copy(*this);
+      ++*this;
+      return copy;
     }
 
     bool operator==(const Inspector& other) const {
@@ -162,9 +198,14 @@ class Inspector : public OrderPolicy {
     }
 
     virtual Inspector& next() {
+      if (stopped()) {
+        return *this;
+      }
+
       do {
         process_current_task();
       } while(!stopped() && current_task_.command != InspectorTask::Command::VISIT);
+
       return *this;
     }
 
@@ -181,45 +222,64 @@ class Inspector : public OrderPolicy {
     }
 
     bool stopped() const {
-      return current_task_ == InspectorTask::DO_NOTHING;
+      return !current_task_;
     }
 
   protected:
     typedef inspector::InspectorTask InspectorTask;
-    InspectorTask current_task_;
-
-    ::std::vector<InspectorTask> task_stack_;
-
     using OrderPolicy::initial_task;
     using OrderPolicy::process;
 
+    InspectorTask current_task_;
+    inspector::TaskAcceptor* task_checker_;
+
+    ::std::vector<InspectorTask> scheduled_tasks_;
+
     void fallback_to_scheduled() {
-      if (task_stack_.empty()) {
+      if (scheduled_tasks_.empty()) {
         current_task_ = InspectorTask::DO_NOTHING;
         return;
       }
 
-      current_task_ = std::move(task_stack_.back());
-      task_stack_.pop_back();
+      current_task_ = std::move(scheduled_tasks_.back());
+      scheduled_tasks_.pop_back();
     }
 
     void process_current_task() {
       current_task_ = std::move(process(current_task_));
 
-      if (!is_task_valid(current_task_)) {
+      if (!task_checker_->accept(current_task_)) {
         fallback_to_scheduled();
       }
     }
 
-    void schedule(InspectorTask&& task) {
-      if (is_task_valid(task)) {
-        task_stack_.push_back(std::move(task));
+
+
+    void schedule(InspectorTask&& task) final {//marking this as final to safely use in constructor
+      if (task_checker_->accept(task)) {
+        scheduled_tasks_.push_back(std::move(task));
       }
     }
 
-    virtual bool is_task_valid(const InspectorTask& task) {
-      return task != InspectorTask::DO_NOTHING && task.vertex != Vertex::Null;
+    void initialize_if_required() {
+      if (scheduled_tasks_.size() == 1 && !current_task_) { //need initialization
+        init();
+      }
     }
+
+    //We would do it in constructor, but is_task_valid must be virtual, and next() depends on it also
+    virtual void init() {
+      if (!task_checker_->accept(scheduled_tasks_.back())) { //fist task is invalid, so we do stop
+        scheduled_tasks_.pop_back();
+      } else {
+        current_task_ = ::std::move(scheduled_tasks_.back());
+        scheduled_tasks_.pop_back(); //at this point initialize_if_required() don't call init() anymore
+        if (current_task_.command != InspectorTask::Command::VISIT) {
+          next();
+        }
+      }
+    }
+
 };
 
 typedef Inspector<inspector::Postorder> PostorderInspector;

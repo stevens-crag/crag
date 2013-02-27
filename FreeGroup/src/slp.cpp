@@ -67,7 +67,7 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeti
 
   mpz_fdiv_qr(steps_inside_starts_interval, residue, distance_between_starts, step_.get_mpz_t());
 
-  if (mpz_sgn(residue) != 0) { //starts are not coherent with step
+  if (mpz_cmp_ui(residue, 0) != 0) { //starts are not coherent with step
     *this = FiniteAritmeticSequence();
   } else if (mpz_cmp(this->count_.get_mpz_t(), steps_inside_starts_interval) < 0) { //first sequence ends before second starts
     *this = FiniteAritmeticSequence();
@@ -156,6 +156,8 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
   return *this;
 }
 
-}
+const FiniteAritmeticSequence FiniteAritmeticSequence::Null = FiniteAritmeticSequence();
+
+} //namespace crag
 
 

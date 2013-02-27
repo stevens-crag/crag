@@ -90,6 +90,8 @@ class FiniteAritmeticSequence {
 
     FiniteAritmeticSequence& join_with(const FiniteAritmeticSequence& other);
     FiniteAritmeticSequence& intersect_with(const FiniteAritmeticSequence& other);
+
+    const static FiniteAritmeticSequence Null;
   private:
     LongInteger first_;
     LongInteger step_;
