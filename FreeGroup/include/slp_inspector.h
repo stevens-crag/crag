@@ -134,8 +134,8 @@ class TaskAcceptor {
       return task != InspectorTask::DO_NOTHING && task.vertex != Vertex::Null;
     }
 
-    TaskAcceptor* clone() const {
-      return new TaskAcceptor(*this);
+    ::std::unique_ptr<inspector::TaskAcceptor> clone() const {
+      return ::std::unique_ptr<inspector::TaskAcceptor>(new TaskAcceptor(*this));
     }
 };
 
@@ -150,9 +150,7 @@ class Inspector : public OrderPolicy {
       , task_checker_(nullptr)
     { }
 
-    virtual ~Inspector() {
-      delete task_checker_;
-    }
+    virtual ~Inspector() {}
 
     Inspector(const Inspector& other)
       : current_task_(other.current_task_)
@@ -160,9 +158,9 @@ class Inspector : public OrderPolicy {
       , task_checker_(other.task_checker_ ? other.task_checker_->clone() : nullptr)
     { }
 
-    Inspector(const Vertex& root, inspector::TaskAcceptor* task_acceptor)
+    Inspector(const Vertex& root, ::std::unique_ptr<inspector::TaskAcceptor>&& task_acceptor)
       : current_task_(this->initial_task(root))
-      , task_checker_(task_acceptor)
+      , task_checker_(::std::move(task_acceptor))
     {
       if (!task_checker_->accept(current_task_)) {
         current_task_ = InspectorTask::DO_NOTHING;
@@ -174,7 +172,7 @@ class Inspector : public OrderPolicy {
     }
 
     Inspector(const Vertex& root)
-      : Inspector(root, new inspector::TaskAcceptor())
+      : Inspector(root, ::std::unique_ptr<inspector::TaskAcceptor>(new inspector::TaskAcceptor()))
     { }
 
     Inspector& operator++() {
@@ -231,7 +229,7 @@ class Inspector : public OrderPolicy {
     using OrderPolicy::process;
 
     InspectorTask current_task_;
-    inspector::TaskAcceptor* task_checker_;
+    ::std::unique_ptr<inspector::TaskAcceptor> task_checker_;
 
     ::std::vector<InspectorTask> scheduled_tasks_;
 
