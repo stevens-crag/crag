@@ -13,5 +13,6 @@
 #include "slp_inspector.h"
 #include "slp_vertex_word.h"
 #include "arithmetic_sequence.h"
+#include "slp_pattern_matching.h"
 
 #endif /* CRAG_FREEGROUP_SLP_H_ */

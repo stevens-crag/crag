@@ -88,6 +88,14 @@ class FiniteAritmeticSequence {
       return !(*this == other);
     }
 
+    FiniteAritmeticSequence& fit_into(const LongInteger& left_bound, const LongInteger& right_bound);
+    FiniteAritmeticSequence& shift_right(const LongInteger& length) {
+      if (count_ != 0) {
+        first_ += length;
+      }
+      return *this;
+    }
+
     FiniteAritmeticSequence& join_with(const FiniteAritmeticSequence& other);
     FiniteAritmeticSequence& intersect_with(const FiniteAritmeticSequence& other);
 

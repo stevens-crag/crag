@@ -31,6 +31,34 @@ const inspector::InspectorTask inspector::InspectorTask::DO_NOTHING = inspector:
   return out << sequence.first() << " + " << sequence.step() << " * 0..." << sequence.count();
 }
 
+FiniteAritmeticSequence& FiniteAritmeticSequence::fit_into(const LongInteger& left_bound, const LongInteger& right_bound) {
+  if (count_ == 0) {
+    return *this;
+  }
+
+  //TODO: add static to speedup
+
+  if (first_ < left_bound) {
+    LongInteger count_reduce; //The number of steps which are outside of the boundary
+    LongInteger correct_begin_offset; //Distance between boundary and first match
+    LongInteger current_begin_offset = left_bound - first_;
+    mpz_cdiv_qr(count_reduce.get_mpz_t(), correct_begin_offset.get_mpz_t(), current_begin_offset.get_mpz_t(), step_.get_mpz_t());
+    count -= count_reduce;
+    first += current_begin_offset;
+    first -= correct_begin_offset;
+  }
+
+  LongInteger last_element = back();
+  if (last_element > right_bound) {
+    LongInteger count_reduce;
+    LongInteger current_end_offset = last_element - right_bound;
+    mpz_cdiv_q(count_reduce.get_mpz_t(), current_end_offset.get_mpz_t(), step_.get_mpz_t());
+    count_ -= count_reduce;
+  }
+  return *this;
+}
+
+
 FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeticSequence& other) {
   if (!*this) {
     return *this = other;
@@ -157,6 +185,36 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
 }
 
 const FiniteAritmeticSequence FiniteAritmeticSequence::Null = FiniteAritmeticSequence();
+
+namespace slp {
+
+const FiniteAritmeticSequence& PatternMatchesGenerator::next_match() {
+  current_match_ = FiniteAritmeticSequence::Null;
+  FiniteAritmeticSequence new_match;
+
+  while (!text_inspector_.stopped()) {
+    new_match = matching_table_->matches(pattern_, text_inspector_.vertex());
+    //Adjust match start
+    new_match.shift_right(text_inspector_.vertex_left_siblings_length());
+    //cut the sequence to begin after the large_pattern_part_left_bound
+    new_match.fit_into(first_lookup_begin_position_, last_lookup_begin_position_);
+    new_match.join_with(current_match_);
+
+    if (current_match_ &&
+        (!new_match ||
+          new_match.step > pattern_.length() //any two consequent matches must have some common point
+        )) {
+      return current_match_;
+    }
+    current_match_ = ::std::move(new_match);
+
+    ++text_inspector_;
+  }
+
+  return current_match_;
+}
+
+} //namespace slp
 
 } //namespace crag
 
