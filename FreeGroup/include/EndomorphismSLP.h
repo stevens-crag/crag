@@ -8,6 +8,7 @@
 #ifndef CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
 #define CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_
 
+#include <map>
 #include <unordered_map>
 #include <random>
 #include <assert.h>
@@ -22,6 +23,8 @@ namespace crag {
 template<typename TerminalSymbol = int>
 class EndomorphismSLP {
 public:
+
+  typedef typename std::map<TerminalSymbol, slp::Vertex>::size_type size_type;
 
   //use default copy/move constructors/assignments
 
@@ -46,9 +49,10 @@ public:
 	 */
 	static EndomorphismSLP right_multiplier(const TerminalSymbol& symbol, const TerminalSymbol& right_multiplier) {
 	  assert(is_positive_terminal_symbol(symbol));
+	  assert(symbol != right_multiplier);
 	  EndomorphismSLP tmp;
-	  tmp.images_.insert(symbol,
-	      slp::NonterminalVertex(terminal_vertex(symbol), terminal_vertex(right_multiplier)));
+	  tmp.images_.insert(std::make_pair(symbol,
+	      slp::NonterminalVertex(TerminalVertex(symbol), TerminalVertex(right_multiplier))));
 		return tmp;
 	}
 
@@ -59,9 +63,10 @@ public:
 	 */
 	static EndomorphismSLP left_multiplier(const TerminalSymbol& left_multiplier, const TerminalSymbol& symbol) {
 	  assert(is_positive_terminal_symbol(symbol));
+	  assert(left_multiplier != symbol);
 	  EndomorphismSLP tmp;
-	  tmp.images_.insert(symbol,
-	          slp::NonterminalVertex(terminal_vertex(left_multiplier), terminal_vertex(symbol)));
+	  tmp.images_.insert(std::make_pair(symbol,
+	          slp::NonterminalVertex(TerminalVertex(left_multiplier), TerminalVertex(symbol))));
 		return tmp;
 	}
 
@@ -125,17 +130,28 @@ public:
 	  assert(is_positive_terminal_symbol(t));
 		auto result = images_.find(t);
 		if (result == images_.end()) //if it is not in images_, then it is the identity map.
-			return terminal_vertex(t);
+			return TerminalVertex(t);
 		else
 			return result->second;
 	}
 
+	//! Returns the maximal terminal symbol with non-identity image.
+	TerminalSymbol max_non_trivial_image_symbol() const {
+	  if (images_.empty())
+	    return TerminalSymbol();
+	  return images_.rbegin()->first;
+	}
+
+	size_type non_trivial_images_num() const {
+	  return images_.size();
+	}
+
 private:
-  typedef typename slp::TerminalVertexTemplate<TerminalSymbol> terminal_vertex;
+  typedef typename slp::TerminalVertexTemplate<TerminalSymbol> TerminalVertex;
 
   //! Checks whether the symbol is not inverse.
   static bool is_positive_terminal_symbol(const TerminalSymbol& symbol) {
-    static const TerminalSymbol null_symbol;
+    static const TerminalSymbol null_symbol = TerminalSymbol();
     return symbol > null_symbol;
   }
 
@@ -143,15 +159,17 @@ private:
 	EndomorphismSLP() {}
 
 	EndomorphismSLP(const TerminalSymbol& inverted) {
-		images_.insert(inverted,
-		  terminal_vertex(inverted).negate());
+		images_.insert(std::make_pair(inverted,
+		  TerminalVertex(inverted).negate()));
 	}
 
 	//! The representation of images of terminal symbols by straight-line programs
 	/**
 	 * If there is no entry for a given terminal symbol, then its image is the terminal itself.
+	 * Also we use {@code std::map} instead of {@code std::unordered_map} because we would like
+	 * to iterate over the keys in the specific order defined by operator < for TerminalSymbol.
 	 */
-	std::unordered_map<TerminalSymbol, slp::Vertex> images_;
+	std::map<TerminalSymbol, slp::Vertex> images_;
 };
 
 
@@ -236,6 +254,7 @@ private:
 
 namespace internal {
   class EndomorphismSLPToCopyTaskAcceptor: public slp::inspector::TaskAcceptor {
+  public:
     const std::unordered_map<slp::Vertex, slp::Vertex>& copied_vertices_;
 
     EndomorphismSLPToCopyTaskAcceptor(const std::unordered_map<slp::Vertex, slp::Vertex>& new_vertices)
@@ -249,40 +268,48 @@ namespace internal {
   };
 } //namespace internal
 
+
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
 	std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-	for (auto root_iterator: a.images_) {
-		const slp::Vertex image_root = root_iterator->second;
+	for (auto root_entry: a.images_) {
+		const slp::Vertex image_root = root_entry.second;
 		//for each root we go over the tree using inspector,
 		//attach terminal vertices to the roots of our endomorphism, and copy the tree above
-		internal::EndomorphismSLPToCopyTaskAcceptor task_acceptor(new_vertices);
-		slp::Inspector<slp::inspector::Postorder> inspector(image_root, &task_acceptor);
+		slp::Inspector<slp::inspector::Postorder> inspector(image_root,
+		    ::std::unique_ptr<slp::inspector::TaskAcceptor>(new internal::EndomorphismSLPToCopyTaskAcceptor(new_vertices)));
 		while (!inspector.stopped()) {
 			const slp::Vertex& current_vertex = *inspector;
-			if (new_vertices.find(current_vertex) == new_vertices.end()) {//it was not copied yet
-			  terminal_vertex t_vertex(current_vertex);
-				if (t_vertex != slp::Vertex::Null) {//the vertex is terminal so map it to our corresponding root
-				  const TerminalSymbol& symbol = t_vertex.terminal_symbol();
-				  bool is_positive = is_positive_terminal_symbol(symbol);
-					auto our_root = slp(is_positive ? symbol : -symbol);
-					new_vertices.insert(std::make_pair(current_vertex,
-              is_positive ? slp(symbol) : slp(-symbol).negate()));
-				} else {//for a nonterminal we already processed its children because postorder inspector
-					auto left = new_vertices.find(current_vertex.left_child())->second;
-					auto right = new_vertices.find(current_vertex.right_child())->second;
-					new_vertices.insert(std::make_pair(current_vertex, slp::NonterminalVertex(left, right)));
-				}
-			}
+      TerminalVertex t_vertex(current_vertex);
+      if (t_vertex != slp::Vertex::Null) {//the vertex is terminal so map it to our corresponding root
+        const TerminalSymbol& symbol = t_vertex.terminal_symbol();
+        bool is_positive = is_positive_terminal_symbol(symbol);
+        auto our_root = slp(is_positive ? symbol : -symbol);
+        new_vertices.insert(std::make_pair(current_vertex,
+            is_positive ? slp(symbol) : slp(-symbol).negate()));
+      } else {//for a nonterminal we already processed its children because postorder inspector
+        auto left = new_vertices.find(current_vertex.left_child())->second;
+        auto right = new_vertices.find(current_vertex.right_child())->second;
+        new_vertices.insert(std::make_pair(current_vertex, slp::NonterminalVertex(left, right)));
+      }
 			++inspector;
 		}
 	}
 
+	std::map<TerminalSymbol, slp::Vertex> new_images;
 	//we update our roots to the new ones when necessary
-	for (auto iterator: a.images_) {
-		images_[iterator->first] = new_vertices.find(iterator->second);
+	for (auto root_entry: a.images_) {
+	  auto new_root = new_vertices.find(root_entry.second)->second;
+		new_images.insert(std::make_pair(root_entry.first, new_root));
 	}
+	//adding images that were not inserted
+	for (auto root_entry: images_) {
+	  if (new_images.find(root_entry.first) != new_images.end())
+	    new_images.insert(root_entry);
+  }
+	using std::swap;
+	swap(images_, new_images);
 	return *this;
 }
 
