@@ -17,27 +17,24 @@ typedef mpz_class LongInteger; //Note that actually we are tied to GMP, because 
 
 namespace crag {
 
+//! Finite arithmetic sequence
 class FiniteAritmeticSequence {
   public:
     FiniteAritmeticSequence()
       : first_(0)
       , step_(0)
-      , count_(0)
+      , last_(-1)
     { }
 
     FiniteAritmeticSequence(LongInteger first, LongInteger step, LongInteger count)
       : first_(::std::move(first))
       , step_(::std::move(step))
-      , count_(::std::move(count))
+      , last_(::std::move(((count -= 1) *= step) += first))
     {
-      if (count_ < 0 || step_ <= 0) {
-        count_ = 0;
-      }
-
-      if (count_ == 0) {
-        first_ = 0;
-        step_ = 0;
-      } else if (count_ == 1) {
+      if (step_ <= 0 || last_ < first_) {
+        first_ = step_ = 0;
+        last_ = -1;
+      } else if (last_ == first_) {
         step_ = 1;
       }
     }
@@ -48,24 +45,24 @@ class FiniteAritmeticSequence {
       return first_;
     }
 
-    LongInteger back() const {
-      return (*this)[count_ - 1];
+    const LongInteger& last() const {
+      return last_;
     }
 
-    const LongInteger& size() const {
-      return count_;
-    }
-
-    const LongInteger& count() const {
-      return size();
-    }
-
-    LongInteger operator[](const LongInteger& index) const {
-      return first_ + index * step_;
+    const LongInteger& back() const {
+      return last();
     }
 
     const LongInteger& step() const {
       return step_;
+    }
+
+    LongInteger count() const {
+      return (last_ < first_) ? LongInteger(0) : ((last_ - first_) / step_);
+    }
+
+    LongInteger operator[](LongInteger index) const {
+      return (index *= step_) + first_;
     }
 
     friend void swap(FiniteAritmeticSequence& first, FiniteAritmeticSequence& second) {
@@ -73,15 +70,15 @@ class FiniteAritmeticSequence {
 
       swap(first.first_, second.first_);
       swap(first.step_, second.step_);
-      swap(first.count_, second.count_);
+      swap(first.last_, second.last_);
     }
 
     explicit operator bool() const {
-      return count_ != 0;
+      return step_ != 0;
     }
 
     bool operator==(const FiniteAritmeticSequence& other) const {
-      return first_ == other.first_ && step_ == other.step_ && count_ == other.count_;
+      return first_ == other.first_ && step_ == other.step_ && last_ == other.last_;
     }
 
     bool operator!=(const FiniteAritmeticSequence& other) const {
@@ -90,9 +87,11 @@ class FiniteAritmeticSequence {
 
     FiniteAritmeticSequence& fit_into(const LongInteger& left_bound, const LongInteger& right_bound);
     FiniteAritmeticSequence& shift_right(const LongInteger& length) {
-      if (count_ != 0) {
+      if (*this) {
         first_ += length;
+        last_ += length;
       }
+
       return *this;
     }
 
@@ -103,7 +102,7 @@ class FiniteAritmeticSequence {
   private:
     LongInteger first_;
     LongInteger step_;
-    LongInteger count_;
+    LongInteger last_;
 };
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteAritmeticSequence& sequence);
