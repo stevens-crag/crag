@@ -40,11 +40,11 @@ namespace {
   TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
     int pattern_code;
     int text_code;
-    int lookup_from;
-    int lookup_length;
+    int lookup_from_int;
+    int lookup_length_int;
     ::std::vector<int> correct_path;
 
-    ::std::tie(pattern_code, text_code, lookup_from, lookup_length, correct_path) = GetParam();
+    ::std::tie(pattern_code, text_code, lookup_from_int, lookup_length_int, correct_path) = GetParam();
 
     TerminalVertex t('t');
     NonterminalVertex t2(t, t);
@@ -68,8 +68,17 @@ namespace {
       break;
     }
 
-    PatternMatchesGeneratorAccess generator(pattern, text, lookup_from, lookup_length);
-    InorderInspector& text_inspector = generator.get_inspector();
+    //Must update this code if you change constructors in PatternMatchesGenerator
+    LongInteger lookup_from = lookup_from_int;
+    LongInteger lookup_length = lookup_length_int;
+    LongInteger first_lookup_begin_position_ = lookup_from;
+    LongInteger first_lookup_end_position_(lookup_from + pattern.length());
+    LongInteger last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? (text.length() - pattern.length()) : (lookup_from - pattern.length()));
+    InorderInspector text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
+      first_lookup_end_position_, last_lookup_begin_position_
+    )));
+
+    InorderInspector& text_inspector = text_inspector_;
 
     for (auto correct_vertex : correct_path) {
       ASSERT_FALSE(text_inspector.stopped());

@@ -117,8 +117,7 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
 
   static mpz_t temp, //static here gives 5% performance
         step_2_inverse,
-        steps_gcd,
-        intersection_end;
+        steps_gcd;
   //mpz_inits(temp, step_2_inverse, steps_gcd, intersection_end, NULL);
 
   //Here temp is just coefficient in front of other.step in extended gcd, not used
@@ -140,8 +139,6 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
   } else {
     mpz_mul(step_2_inverse, step_2_inverse, temp); //step_2_inverse = (first_1 - first_2) * step_2_inverse
 
-    //now calculate the right boundary for the resulting sequence
-    //first, take first_2 + step_2 * count_2 as an assumption (it starts after, maybe it also ends after)
     //we store step_2 / gcd in this->step_
     mpz_divexact(this->step_.get_mpz_t(), this->step_.get_mpz_t(), steps_gcd);
 
@@ -157,9 +154,9 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
     }
 
     mpz_sub(temp, this->last_.get_mpz_t(), this->first_.get_mpz_t());
-    mpz_cdiv_r(temp, temp, this->step_.get_mpz_t());
+    mpz_fdiv_r(temp, temp, this->step_.get_mpz_t());
 
-    mpz_add(this->last_.get_mpz_t(), this->last_.get_mpz_t(), temp);
+    mpz_sub(this->last_.get_mpz_t(), this->last_.get_mpz_t(), temp);
 
     if (this->last_ < this->first_) {
       *this = FiniteAritmeticSequence();

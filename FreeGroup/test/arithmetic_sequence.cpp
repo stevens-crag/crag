@@ -157,6 +157,10 @@ TEST(IntersectArithmeticSequences, IntesectionOutOfBoundaries) {
   EXPECT_EQ(Seq(), Seq(55, 10, 10).intersect_with(Seq(30, 15, 3)));
 }
 
+TEST(IntersectArithmeticSequences, Example1) {
+  EXPECT_EQ(Seq(0, 1, 1), Seq(0, 11, 2).intersect_with(Seq(0, 10, 2)));
+}
+
 TEST(IntersectArithmeticSequences, StressTest) {
   for (unsigned int test_code = 0; test_code < 01000000u /*8^6*/; ++test_code) {
     //We encode current test data using 3 bits for each of sequence parameters;
@@ -182,7 +186,7 @@ TEST(IntersectArithmeticSequences, StressTest) {
     LongInteger current_second_steps = 0;
     LongInteger current_intersection_steps = 0;
 
-    while(current_first_steps < first.count() && current_second_steps < second.count()) {
+    while(current_first <= first.last() && current_second <= second.last()) {
       ASSERT_TRUE(current_first != current_second || current_first >= current_intersection) <<
           "Common point of sequences " << first << " and " << second << " not in " << intersection;
 
@@ -190,7 +194,8 @@ TEST(IntersectArithmeticSequences, StressTest) {
           "Extra point " << current_intersection << " in intersection " << intersection << " of " << first << " and " << second;
 
       if (current_first == current_second) {
-        ASSERT_LT(current_intersection_steps, intersection.count()) <<
+
+        ASSERT_LE(current_intersection, intersection.last()) <<
             "Intersection " << intersection << " of " << first << " and " << second << " is too short";
 
         current_intersection += intersection.step();
@@ -206,8 +211,10 @@ TEST(IntersectArithmeticSequences, StressTest) {
       }
     }
 
-    ASSERT_EQ(intersection.count(), current_intersection_steps) <<
-        "Intersection " << intersection << " of " << first << " and " << second << " is too long";
+    if (current_intersection_steps) {
+      ASSERT_EQ(intersection.last() + intersection.step(), current_intersection) <<
+          "Intersection " << intersection << " of " << first << " and " << second << " is too long";
+    }
 
   }
 }

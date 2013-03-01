@@ -29,7 +29,7 @@ class FiniteAritmeticSequence {
     FiniteAritmeticSequence(LongInteger first, LongInteger step, LongInteger count)
       : first_(::std::move(first))
       , step_(::std::move(step))
-      , last_(::std::move(((count -= 1) *= step) += first))
+      , last_(::std::move(((count -= 1) *= step_) += first_))
     {
       if (step_ <= 0 || last_ < first_) {
         first_ = step_ = 0;
@@ -58,7 +58,7 @@ class FiniteAritmeticSequence {
     }
 
     LongInteger count() const {
-      return (last_ < first_) ? LongInteger(0) : ((last_ - first_) / step_);
+      return (last_ < first_) ? LongInteger(0) : ((last_ - first_) / step_ + 1);
     }
 
     LongInteger operator[](LongInteger index) const {

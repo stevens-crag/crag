@@ -10,6 +10,7 @@
 #define CRAG_FREEGROUP_SLP_PATTERN_MATCHING_H_
 
 #include <unordered_map>
+#include <iostream>
 
 #include "slp_vertex.h"
 #include "slp_inspector.h"
@@ -93,7 +94,16 @@ class PatternMatchesGenerator {
       , pattern_(pattern)
       , text_(text)
       , matching_table_(matching_table)
-    { }
+    {
+      std::cout << "first_lookup_begin_position_: " << first_lookup_begin_position_ << std::endl;
+      std::cout << "first_lookup_end_position_: " << first_lookup_end_position_ << std::endl;
+      std::cout << "last_lookup_begin_position_: " << last_lookup_begin_position_ << std::endl;
+      std::cout << "4: " << lookup_from << std::endl;
+      std::cout << "5: " << lookup_length << std::endl;
+      std::cout << "6: " << pattern.length() << std::endl;
+      std::cout << "7: " << text.length() << std::endl;
+
+    }
 
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length)
       : PatternMatchesGenerator(pattern, text, lookup_from, lookup_length, ::std::make_shared<MatchingTable>())
