@@ -90,9 +90,10 @@ public:
 	EndomorphismSLP& operator*=(const EndomorphismSLP& a);
 
 	//! Compose with the given endomorphism.
-	EndomorphismSLP& operator*(const EndomorphismSLP& a) const {
+	EndomorphismSLP operator*(const EndomorphismSLP& a) const {
 		EndomorphismSLP result(*this);
-		return result *= a;
+		result *= a;
+		return result;
 	}
 
 	//! Compose with endomorphisms specified by the range.
@@ -272,44 +273,59 @@ namespace internal {
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
 	std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
+	using std::cout;
+	using std::endl;
 
-	for (auto root_entry: a.images_) {
+//	cout << "a.size = " << a.images_.size() << " our size = " << images_.size() << endl;
+	for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
 		const slp::Vertex image_root = root_entry.second;
+//		cout << "image_root height = " << image_root.height() << ", length = " << image_root.length() << endl;
 		//for each root we go over the tree using inspector,
 		//attach terminal vertices to the roots of our endomorphism, and copy the tree above
 		slp::Inspector<slp::inspector::Postorder> inspector(image_root,
 		    ::std::unique_ptr<slp::inspector::TaskAcceptor>(new internal::EndomorphismSLPToCopyTaskAcceptor(new_vertices)));
 		while (!inspector.stopped()) {
 			const slp::Vertex& current_vertex = *inspector;
+//			cout << "current_vertex height = " << current_vertex.height() << ", length = " << current_vertex.length() << endl;
       TerminalVertex t_vertex(current_vertex);
       if (t_vertex != slp::Vertex::Null) {//the vertex is terminal so map it to our corresponding root
         const TerminalSymbol& symbol = t_vertex.terminal_symbol();
+//        cout << "ts=" << symbol;
         bool is_positive = is_positive_terminal_symbol(symbol);
-        auto our_root = slp(is_positive ? symbol : -symbol);
-        new_vertices.insert(std::make_pair(current_vertex,
-            is_positive ? slp(symbol) : slp(-symbol).negate()));
+        auto terminal_replacement = is_positive ? slp(symbol) : slp(-symbol).negate();
+//        cout << ",replacement=" << static_cast<TerminalVertex>(terminal_replacement).terminal_symbol() << endl;
+        new_vertices.insert(std::make_pair(current_vertex, terminal_replacement));
       } else {//for a nonterminal we already processed its children because postorder inspector
-        auto left = new_vertices.find(current_vertex.left_child())->second;
-        auto right = new_vertices.find(current_vertex.right_child())->second;
+        auto left_val = new_vertices.find(current_vertex.left_child());
+        auto right_val = new_vertices.find(current_vertex.right_child());
+        assert(left_val != new_vertices.end() && right_val != new_vertices.end());
+        auto left = left_val->second;
+        auto right = right_val->second;
         new_vertices.insert(std::make_pair(current_vertex, slp::NonterminalVertex(left, right)));
       }
+//      cout << "++inspector" << endl;
 			++inspector;
 		}
 	}
-
+//	cout << "updating images" << endl;
 	std::map<TerminalSymbol, slp::Vertex> new_images;
-	//we update our roots to the new ones when necessary
 	for (auto root_entry: a.images_) {
+//	  cout << "new_image size = " << new_images.size() << endl;
 	  auto new_root = new_vertices.find(root_entry.second)->second;
 		new_images.insert(std::make_pair(root_entry.first, new_root));
 	}
+//	cout << "adding a is done. size = " << new_images.size() << endl;
+//	cout << "adding old images" << endl;
 	//adding images that were not inserted
 	for (auto root_entry: images_) {
-	  if (new_images.find(root_entry.first) != new_images.end())
+//	  cout << "new_image size = " << new_images.size() << endl;
+	  if (new_images.find(root_entry.first) == new_images.end())//it was not mapped by a
 	    new_images.insert(root_entry);
   }
+//	cout << "swapping" << endl;
 	using std::swap;
 	swap(images_, new_images);
+//	cout << "swapping is done" << endl;
 	return *this;
 }
 
