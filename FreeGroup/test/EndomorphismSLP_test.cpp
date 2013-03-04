@@ -12,14 +12,13 @@ namespace crag {
 
 
 //! Compares two endomorphisms by comparing images as strings -- very inefficient
-template<typename TerminalSymbol>
-bool compare_endomorphisms_directly(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
+bool compare_endomorphisms_directly(const EndomorphismSLP<int>& e1, const EndomorphismSLP<int>& e2) {
 	if (&e1 == &e2)
 			return true;
-	const TerminalSymbol max = e1.max_non_trivial_image_symbol();
+	const int max = e1.max_non_trivial_image_symbol();
 	if (max != e2.max_non_trivial_image_symbol())
 	  return false;
-	for (TerminalSymbol ts = TerminalSymbol(1); ts < max; ++ts) {
+	for (int ts = 1; ts < max; ++ts) {
 	  auto word1 = e1.image(ts);
 	  auto word2 = e2.image(ts);
 	  if (word1.size() != word2.size())
@@ -35,8 +34,7 @@ bool compare_endomorphisms_directly(const EndomorphismSLP<TerminalSymbol>& e1, c
 }
 
 //! Prints vertex
-template<typename TerminalSymbol>
-std::ostream& operator<<(std::ostream& out, const slp::VertexWord<TerminalSymbol>& word) {
+std::ostream& operator<<(std::ostream& out, const slp::VertexWord<int>& word) {
   for (auto wi = word.begin(); wi != word.end(); ++wi) {
     out << *wi;
   }
@@ -44,22 +42,30 @@ std::ostream& operator<<(std::ostream& out, const slp::VertexWord<TerminalSymbol
 }
 
 //! Return string representation of vertex
-template<typename TerminalSymbol>
-std::string to_string(const slp::VertexWord<TerminalSymbol>& word) {
+std::string to_string(const slp::VertexWord<int>& word) {
   std::stringstream out;
   out << word;
   return out.str();
 }
 
 //! Prints images of terminal symbols
-template<typename TerminalSymbol>
-std::ostream& operator<<(std::ostream& out, const EndomorphismSLP<TerminalSymbol>& e) {
-  const TerminalSymbol max = e.max_non_trivial_image_symbol();
+std::ostream& operator<<(std::ostream& out, const EndomorphismSLP<int>& e) {
+  const int max = e.max_non_trivial_image_symbol();
   out << "[max non trivial symbol=" << max;
-  for (TerminalSymbol ts = TerminalSymbol(1); ts < max; ++ts)
-    out << "," << std::endl << e.image(ts);
-  return out << "]";
+  for (int ts = 1; ts <= max; ++ts)
+    out << "," << std::endl << ts << " => " << e.image(ts);
+  return out << "]" << std::endl;
 }
+
+////! Prints images of terminal symbols
+//std::string find_image(unsigned int symbol, const std::vector<EndomorphismSLP<int>>& morphisms) {
+//  std::string intermediate_image = symbol;
+//  const int max = e.max_non_trivial_image_symbol();
+//  out << "[max non trivial symbol=" << max;
+//  for (int ts = 1; ts <= max; ++ts)
+//    out << "," << std::endl << ts << " => " << e.image(ts);
+//  return out << "]" << std::endl;
+//}
 
 
 class EndomorphismSLPTest : public ::testing::Test {
@@ -113,69 +119,61 @@ TEST_F(EndomorphismSLPTest, RightMultiplier) {
 }
 
 TEST_F(EndomorphismSLPTest, BasicComposition) {
-  auto e = EMorphism::right_multiplier(1, 2);
-  std::cout << "checking identites composition " << std::endl;
-  std::cout << EMorphism::identity();
-  std::cout << "checking other stuff" << std::endl;
   auto prod = EMorphism::right_multiplier(1, 2) * EMorphism::identity();
-//  auto prod = EMorphism::identity() * EMorphism::right_multiplier(1, 2);
+  EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("12", to_string(prod.image(1))) << prod;
 
-//  std::cout << to_string(prod.image(2)) << std::endl;
-//  std::cout << to_string(prod.image(1)) << std::endl;
-//  EXPECT_EQ(1, prod.max_non_trivial_image_symbol());
-//  EXPECT_EQ("12", to_string(prod.image(1)));
-//  EXPECT_TRUE(compare_endomorphisms_directly(e, prod)) << "e = " << e << ", prod = " << prod;
-//  prod = EMorphism::right_multiplier(1, 2) * EMorphism::identity();
-//  EXPECT_TRUE(compare_endomorphisms_directly(e, prod))  << "e = " << e << ", prod = " << prod;
+  prod = EMorphism::identity() * EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("12", to_string(prod.image(2))) << prod;
+
+  prod = EMorphism::right_multiplier(1, 2) * EMorphism::right_multiplier(1, 2);
+  EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("122", to_string(prod.image(1))) << prod;
+
+  prod = EMorphism::right_multiplier(1, 2) * EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(2, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("12", to_string(prod.image(1))) << prod;
+  EXPECT_EQ("122", to_string(prod.image(2))) << prod;
+
+  prod = EMorphism::right_multiplier(1, 2) * EMorphism::inverter(1);
+  EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("-2-1", to_string(prod.image(1))) << prod;
+
+  prod = EMorphism::inverter(1) * EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(2, prod.non_trivial_images_num()) << prod;
+  EXPECT_EQ("-1", to_string(prod.image(1))) << prod;
+  EXPECT_EQ("-12", to_string(prod.image(2))) << prod;
 }
-
-
-//TEST_F(EndomorphismSLPTest, BasicCompositionCommutativity) {
-//    std::vector<EMorphism> operand1, operand2;
-//    //filling operands
-//    for (int i = 1; i < 5; ++i)
-//        for (int j = 1; j < 5; ++j) {
-//          if (i == j)
-//            continue;
-//          auto right = EMorphism::right_multiplier(i, j);
-//          auto left = EMorphism::left_multiplier(i, j);
-//          operand1.push_back(left);
-//          operand1.push_back(right);
-//          operand2.push_back(left);
-//          operand2.push_back(right);
-//      }
-//    //checking commutativity
-//    for (auto e1: operand1)
-//      for (auto e2: operand2) {
-//        auto prod1 = e1 * e2;
-//        auto prod2 = e2 * e1;
-//        EXPECT_TRUE(compare_endomorphisms_directly(e1 * e2, e2 * e1))
-//          << "e1*e2=" << prod1 << std::endl << "e2*e1=" << prod2 << std::endl;
-//      }
-//}
 
 
 TEST_F(EndomorphismSLPTest, Composition1) {
   auto e = EMorphism::right_multiplier(1, 2);
   e *= EMorphism::right_multiplier(1, 2);
   EXPECT_EQ(1, e.non_trivial_images_num());
-  EXPECT_EQ("122", to_string(e.image(1))) << "Automorphism = " << e;
+  EXPECT_EQ("122", to_string(e.image(1))) << e;
 
-//  e *= EMorphism::inverter(3);
-//  EXPECT_EQ(2, e.non_trivial_images_num());
-//  EXPECT_EQ("122", to_string(e.image(1))) << "Automorphism = " << e;
-//  EXPECT_EQ("-3", to_string(e.image(3))) << "Automorphism = " << e;
-//
-//  e *= EMorphism::left_multiplier(3, 1);
-//  EXPECT_EQ(2, e.non_trivial_images_num());
-//  EXPECT_EQ("-3122", to_string(e.image(1))) << "Automorphism = " << e;
-//  EXPECT_EQ("-3", to_string(e.image(3))) << "Automorphism = " << e;
-//
-//  e *= EMorphism::left_multiplier(1, 2);
-//  EXPECT_EQ(3, e.non_trivial_images_num());
-//  EXPECT_EQ("-3122", to_string(e.image(1))) << "Automorphism = " << e;
-//  EXPECT_EQ("-3122", to_string(e.image(2))) << "Automorphism = " << e;
-//  EXPECT_EQ("-3", to_string(e.image(3))) << "Automorphism = " << e;
+  e *= EMorphism::inverter(3);
+  EXPECT_EQ(2, e.non_trivial_images_num());
+  EXPECT_EQ("122", to_string(e.image(1))) << e;
+  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+
+  e *= EMorphism::left_multiplier(3, 1);
+  EXPECT_EQ(2, e.non_trivial_images_num());
+  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
+  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+
+  e *= EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(3, e.non_trivial_images_num());
+  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
+  EXPECT_EQ("-31222", to_string(e.image(2))) << e;
+  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+
+  e *= EMorphism::inverter(2);
+  EXPECT_EQ(3, e.non_trivial_images_num());
+  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
+  EXPECT_EQ("-2-2-2-13", to_string(e.image(2))) << e;
+  EXPECT_EQ("-3", to_string(e.image(3))) << e;
 }
 
 
