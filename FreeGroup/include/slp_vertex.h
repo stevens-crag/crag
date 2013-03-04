@@ -210,6 +210,7 @@ namespace internal {
 struct NonterminalVertexNodeData {
   Vertex left_child;
   Vertex right_child;
+  size_t vertex_id;
 };
 
 class BasicNonterminalVertex : public internal::BasicVertex {
@@ -217,6 +218,7 @@ class BasicNonterminalVertex : public internal::BasicVertex {
     ::std::shared_ptr<NonterminalVertexNodeData> node_data_ptr_;
     bool negate_node_;
     static const ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash;
+    static size_t last_vertex_id_; //All vertices are enumerated
 
     virtual size_t vertex_hash() const {
       return negate_node_ ? ~ptr_hash(node_data_ptr_) : ptr_hash(node_data_ptr_);
@@ -237,7 +239,7 @@ class BasicNonterminalVertex : public internal::BasicVertex {
     }
 
     bool is_same_vertex(const BasicNonterminalVertex& other) const {
-      return node_data_ptr_ == other.node_data_ptr_ && negate_node_ == other.negate_node_;
+      return node_data_ptr_ == other.node_data_ptr_ && negate_node_ == other.negate_node_ && node_data_ptr_->vertex_id == other.node_data_ptr_->vertex_id;
     }
 
     BasicNonterminalVertex(::std::shared_ptr<NonterminalVertexNodeData>&& node_data_ptr, bool negate_node)
@@ -256,10 +258,13 @@ class NonterminalVertex : public Vertex {
   public:
     NonterminalVertex() = delete;
 
-    template <typename LeftVertexT, typename RightVertexT>
-    NonterminalVertex(LeftVertexT&& left, RightVertexT&& right)
+    NonterminalVertex(Vertex left, Vertex right)
       : Vertex(::std::make_shared<internal::BasicNonterminalVertex>(
-          ::std::shared_ptr<internal::NonterminalVertexNodeData>(new internal::NonterminalVertexNodeData({left, right})),
+          ::std::shared_ptr<internal::NonterminalVertexNodeData>(new internal::NonterminalVertexNodeData({
+            ::std::move(left),
+            ::std::move(right),
+            ++internal::BasicNonterminalVertex::last_vertex_id_
+          })),
           false
         ))
     { }
@@ -268,7 +273,7 @@ class NonterminalVertex : public Vertex {
     friend class internal::BasicNonterminalVertex;
 
     NonterminalVertex(::std::shared_ptr<internal::BasicNonterminalVertex>&& vertex)
-      : Vertex(std::move(vertex))
+      : Vertex(::std::move(vertex))
     { }
 };
 }//namespace slp

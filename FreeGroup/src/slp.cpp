@@ -22,6 +22,7 @@ Vertex internal::BasicNonterminalVertex::negate() const {
 }
 
 const ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
+size_t internal::BasicNonterminalVertex::last_vertex_id_;
 
 const inspector::InspectorTask inspector::InspectorTask::DO_NOTHING = inspector::InspectorTask();
 
