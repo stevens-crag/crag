@@ -10,6 +10,7 @@
 #define CRAG_FREEGROUP_SLP_INSPECTOR_H_
 
 #include <vector>
+#include "slp_vertex.h"
 
 
 /**
