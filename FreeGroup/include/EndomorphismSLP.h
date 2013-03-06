@@ -182,74 +182,80 @@ private:
  * @tparam TerminalSymbolIndexType terminal symbol index type
  */
 template <typename TerminalSymbol = int,
-  typename RandomEngine = std::default_random_engine,
-  typename TerminalSymbolIndexType = int>
+  typename RandomEngine = std::default_random_engine>
 class UniformAutomorphismSLPGenerator {
 public:
-	typedef TerminalSymbolIndexType index_type;
+  typedef int index_type;
 
-	//! Constructs a generator of automorphisms of the free group of the given rank.
-	/**
-	 * @param rank free group rank > 0
-	 */
-	UniformAutomorphismSLPGenerator(index_type rank)
-		: UniformAutomorphismSLPGenerator(rank, RandomEngine())
-	{}
+  //! Constructs a generator of automorphisms of the free group of the given rank.
+    /**
+     * @param rank free group rank > 0
+     */
+    UniformAutomorphismSLPGenerator(index_type rank)
+      : UniformAutomorphismSLPGenerator(rank, ::std::make_shared<RandomEngine>(new RandomEngine()), nullptr)
+    {}
 
-	//! Constructs a generator of automorphisms of the free group of the given rank.
-	/**
-	 * @param rank free group rank > 0
-	 * @param seed random engine seed for creation of a new one
-	 */
-  UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
-    : UniformAutomorphismSLPGenerator(rank, RandomEngine(seed))
-  {}
+    //! Constructs a generator of automorphisms of the free group of the given rank.
+    /**
+     * @param rank free group rank > 0
+     * @param seed random engine seed for creation of a new one
+     */
+    UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
+      : UniformAutomorphismSLPGenerator(rank, ::std::make_shared<RandomEngine>(new RandomEngine(seed)), nullptr)
+    {}
 
-	//! Constructs a generator of automorphisms of the free group of the given rank.
-	/**
-	 * @param rank free group rank > 0
-	 * @param random_engine random engine
-	 */
-	UniformAutomorphismSLPGenerator(index_type rank, RandomEngine& random_engine)
-    : RANK(rank),
-      RIGHT_MULTIPLIERS_COUNT(2 * rank * (rank - 1)),
-      INVERTERS_COUNT(rank),
-      random_engine_(random_engine),
-      random_distr_(0, COUNT - 1) {
-	  assert(rank > 0);
-  }
+    //! Constructs a generator of automorphisms of the free group of the given rank.
+    /**
+     * @param rank free group rank > 0
+     * @param random_engine random engine
+     */
+    UniformAutomorphismSLPGenerator(index_type rank, RandomEngine* random_engine)
+      : UniformAutomorphismSLPGenerator(rank, ::std::make_shared<RandomEngine>(nullptr), random_engine)
+    {}
 
 	//! Generates a random automorphism
 	EndomorphismSLP<TerminalSymbol> operator()() {
-	  index_type r_val = random_distr_(random_engine_);
+	  index_type r_val = random_distr_(*random_engine_);
+//	  std::cout << "rval=" << r_val << std::endl;
 	  if (r_val < MULTIPLIERS_COUNT) {
-      const bool inverted = r_val % 2;
-      r_val >>= 1;
-      const index_type symbol_index = 1 + (r_val % RANK);
-      const TerminalSymbol symbol(symbol_index);
-      index_type multiplier_index = 1 + r_val / RANK;
-      if (multiplier_index >= symbol_index)
-        ++multiplier_index;//correction for the skipping of the symbol when pick the multiplier
-      const TerminalSymbol multiplier(inverted ? - multiplier_index : multiplier_index);
-      if (r_val < RIGHT_MULTIPLIERS_COUNT)
-        return EndomorphismSLP<TerminalSymbol>::right_multiplier(symbol, multiplier);
+	    const bool right_multiplier = (r_val % 2) == 0;
+	    r_val >>= 1;
+	    const int mapped_symbol_index = 1 + ( r_val % RANK );
+      const TerminalSymbol mapped_symbol(mapped_symbol_index);
+      const int multiplier_index = 1 + ( r_val / RANK );
+      const TerminalSymbol multiplier(multiplier_index < mapped_symbol_index ? multiplier_index : multiplier_index + 1);
+
+//      std::cout << "rm=" << right_multiplier << ",mult=" << multiplier << ",map_s=" << mapped_symbol << std::endl;
+      if (right_multiplier)
+        return EndomorphismSLP<TerminalSymbol>::right_multiplier(mapped_symbol, multiplier);
       else
-        return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, symbol);
+        return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, mapped_symbol);
     } else {
-      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(r_val));
+      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(1 + r_val - MULTIPLIERS_COUNT));
     }
 	}
 
 
 private:
 	const index_type RANK;
-	const index_type RIGHT_MULTIPLIERS_COUNT;
+  const index_type RIGHT_MULTIPLIERS_COUNT;
   const index_type LEFT_MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT;
   const index_type MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT + LEFT_MULTIPLIERS_COUNT;
   const index_type INVERTERS_COUNT;
   const index_type COUNT = MULTIPLIERS_COUNT + INVERTERS_COUNT;
-  //! Random generator, which is a binding of provided distribution and uniform random engine.
-  RandomEngine random_engine_;
+
+	UniformAutomorphismSLPGenerator(index_type rank, const ::std::shared_ptr<RandomEngine>& random_engine_ptr, RandomEngine* random_engine)
+	    : RANK(rank),
+	      RIGHT_MULTIPLIERS_COUNT(rank * (rank - 1)),
+	      INVERTERS_COUNT(rank),
+	      random_engine_ptr_(random_engine_ptr),
+	      random_engine_(random_engine_ptr ? random_engine_ptr.get() : random_engine),
+	      random_distr_(0, COUNT - 1) {
+	    assert(rank > 0);
+	  }
+
+  ::std::shared_ptr<RandomEngine> random_engine_ptr_;
+  RandomEngine* random_engine_;
   std::uniform_int_distribution<index_type> random_distr_;
 };
 
