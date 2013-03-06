@@ -28,13 +28,17 @@ const inspector::InspectorTask inspector::InspectorTask::DO_NOTHING = inspector:
 
 }
 
-::std::ostream& operator<<(::std::ostream& out, const FiniteAritmeticSequence& sequence) {
+::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {
   return out << sequence.first() << ":" << sequence.last() << ".." << sequence.step();
 }
 
-FiniteAritmeticSequence& FiniteAritmeticSequence::fit_into(const LongInteger& left_bound, const LongInteger& right_bound) {
+FiniteArithmeticSequence& FiniteArithmeticSequence::fit_into(const LongInteger& left_bound, const LongInteger& right_bound) {
   if (!*this) {
     return *this;
+  }
+
+  if (left_bound > last_ || right_bound < first_) {
+    return *this = FiniteArithmeticSequence::Null;
   }
 
   //TODO: add static to speedup
@@ -52,11 +56,17 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::fit_into(const LongInteger& le
     last_ += right_bound;
   }
 
+  if (first_ > last_) {
+    *this = FiniteArithmeticSequence::Null;
+  } else if (first_ == last_) {
+    step_ = 1;
+  }
+
   return *this;
 }
 
 
-FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeticSequence& other) {
+FiniteArithmeticSequence& FiniteArithmeticSequence::join_with(const FiniteArithmeticSequence& other) {
   if (!*this) {
     return *this = other;
   }
@@ -66,11 +76,11 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeti
   }
 
   if (this->step_ != other.step_ && other.last_ != other.first_ && this->last_ != this->first_) {
-    return *this = FiniteAritmeticSequence();
+    return *this = FiniteArithmeticSequence();
   }
 
   if (first_ > other.first_) {
-    return *this = ::std::move(FiniteAritmeticSequence(other).join_with(*this));
+    return *this = ::std::move(FiniteArithmeticSequence(other).join_with(*this));
   }
 
   //Let make this a bit messy
@@ -93,9 +103,9 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeti
   mpz_fdiv_qr(steps_inside_starts_interval, residue, distance_between_starts, step_.get_mpz_t());
 
   if (mpz_cmp_ui(residue, 0) != 0) { //starts are not coherent with step
-    *this = FiniteAritmeticSequence();
+    *this = FiniteArithmeticSequence();
   } else if (other.first_ > this->last_ + this->step_) { //first sequence ends before second starts
-    *this = FiniteAritmeticSequence();
+    *this = FiniteArithmeticSequence();
   } else {
     if (other.last_ > this->last_) {
       this->last_ = other.last_;
@@ -106,13 +116,13 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::join_with(const FiniteAritmeti
   return *this;
 }
 
-FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAritmeticSequence& other) {
+FiniteArithmeticSequence& FiniteArithmeticSequence::intersect_with(const FiniteArithmeticSequence& other) {
   if (!*this || !other) {
-    return *this = FiniteAritmeticSequence();
+    return *this = FiniteArithmeticSequence();
   }
 
   if (other.first_ > this->first_) { //Ensure that this starts after other
-    return *this = ::std::move(FiniteAritmeticSequence(other).intersect_with(*this));
+    return *this = ::std::move(FiniteArithmeticSequence(other).intersect_with(*this));
   }
   //from this point we assign index 1 to the other sequence and index 2 to this sequence, so first_1 <= first_2
 
@@ -136,7 +146,7 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
   mpz_sub(temp, other.first_.get_mpz_t(), this->first_.get_mpz_t());
 
   if (!mpz_divisible_p(temp, steps_gcd)) { //if (first_2 - first_1) is not divisible by gcd, then sequences has completely different elements, not intersecting ever
-    *this = FiniteAritmeticSequence();
+    *this = FiniteArithmeticSequence();
   } else {
     mpz_mul(step_2_inverse, step_2_inverse, temp); //step_2_inverse = (first_1 - first_2) * step_2_inverse
 
@@ -160,7 +170,7 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
     mpz_sub(this->last_.get_mpz_t(), this->last_.get_mpz_t(), temp);
 
     if (this->last_ < this->first_) {
-      *this = FiniteAritmeticSequence();
+      *this = FiniteArithmeticSequence();
     } else if (this->last_ == this->first_) {
       this->step_ = 1;
     }
@@ -171,37 +181,201 @@ FiniteAritmeticSequence& FiniteAritmeticSequence::intersect_with(const FiniteAri
   return *this;
 }
 
-const FiniteAritmeticSequence FiniteAritmeticSequence::Null = FiniteAritmeticSequence();
+const FiniteArithmeticSequence FiniteArithmeticSequence::Null = FiniteArithmeticSequence();
 
 namespace slp {
 
-const FiniteAritmeticSequence& PatternMatchesGenerator::next_match() {
-  current_match_ = FiniteAritmeticSequence::Null;
+FiniteArithmeticSequence PatternMatchesGenerator::next_match() {
+  FiniteArithmeticSequence result = FiniteArithmeticSequence::Null;
 
   while (!text_inspector_.stopped()) {
-    FiniteAritmeticSequence new_match = FiniteAritmeticSequence::Null;//matching_table_->matches(pattern_, text_inspector_.vertex());
+    FiniteArithmeticSequence new_match = matching_table_->matches(pattern_, text_inspector_.vertex());
     //Adjust match start
     new_match.shift_right(text_inspector_.vertex_left_siblings_length());
     //cut the sequence to begin after the large_pattern_part_left_bound
     new_match.fit_into(first_lookup_begin_position_, last_lookup_begin_position_);
-    new_match.join_with(current_match_);
+    new_match.join_with(result);
 
-    if (current_match_ &&
+    if (result &&
         (!new_match ||
           new_match.step() > pattern_.length() //any two consequent matches must have some common point
         )) {
-      return current_match_;
+      return result;
     }
-    current_match_ = ::std::move(new_match);
+    result = ::std::move(new_match);
 
     ++text_inspector_;
   }
 
-  return current_match_;
+  return result;
 }
 
-} //namespace slp
+const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
+                                                      const Vertex& text) {
 
+  if (pattern.length() == 0) {
+    return FiniteArithmeticSequence::Null;
+  }
+
+  if (pattern.length() > text.length()) {
+    return FiniteArithmeticSequence::Null;
+  }
+
+  auto match_result_iterator = match_table_.find(std::make_pair(pattern, text));
+
+  if (match_result_iterator != match_table_.end()) { //if already calculated
+    return match_result_iterator->second;
+  }
+
+  FiniteArithmeticSequence match_result;
+
+  if (pattern == text) { //If we are checking the same vertex
+    match_result = FiniteArithmeticSequence(0, 1, 1);
+  } else if (pattern.length() == 1) {//Trivial case
+    Vertex pattern_vertex = pattern;
+    while (pattern_vertex.height() > 1) {
+      if (pattern_vertex.left_child() != Vertex::Null) {
+        pattern_vertex = pattern_vertex.left_child();
+      } else {
+        pattern_vertex = pattern_vertex.right_child();
+      }
+    }
+
+    Vertex text_letter_left_split = text; //the rightmost vertex in text.left_child()
+    if (text.height() > 1) {
+      text_letter_left_split = text.left_child();
+
+      while (text_letter_left_split.height() > 1) {
+        text_letter_left_split = text_letter_left_split.right_child() ? text_letter_left_split.right_child() : text_letter_left_split.left_child();
+      }
+    }
+
+
+    Vertex text_letter_right_split = text.right_child(); //the leftmost vertex in text.right_child()
+    while (text_letter_right_split.height() > 1) {
+      text_letter_right_split = text_letter_right_split.left_child() ? text_letter_right_split.left_child() : text_letter_right_split.right_child();
+    }
+
+    if (pattern_vertex == text_letter_right_split && pattern_vertex == text_letter_left_split) {
+      match_result = FiniteArithmeticSequence(text.left_child().length() - 1, 1, 2);
+    } else if (pattern_vertex == text_letter_right_split) {
+      match_result = FiniteArithmeticSequence(text.left_child().length(), 1, 1);
+    } else if (pattern_vertex == text_letter_left_split) {
+      match_result = FiniteArithmeticSequence(text.left_child().length() - 1, 1, 1);
+    }
+  } else  {//we have pattern.length > 1 => text.length > 1
+    if (pattern.left_child().length() >= pattern.right_child().length()) {//Right child is smaller
+      match_result = internal::nontrivial_match(
+          pattern.left_child(),
+          pattern.right_child(),
+          true,
+          text,
+          this
+      );
+    } else {
+      match_result = internal::nontrivial_match(
+          pattern.right_child(),
+          pattern.left_child(),
+          false,
+          text,
+          this
+      );
+    }
+  }
+
+  auto inserted_element = match_table_.insert(std::make_pair(std::make_pair(pattern, text), match_result));
+
+  return inserted_element.first->second;
+}
+
+namespace internal {
+
+FiniteArithmeticSequence nontrivial_match(
+    const Vertex& large_pattern_part,
+    const Vertex& small_pattern_part,
+    bool small_pattern_is_after,
+    const Vertex& text,
+    MatchingTable* matching_table) {
+
+  LongInteger large_pattern_part_left_bound = text.split_point() - large_pattern_part.length();
+
+  if (small_pattern_is_after) {
+    large_pattern_part_left_bound -= small_pattern_part.length();
+  }
+
+  PatternMatchesGenerator large_part_hunter(
+      large_pattern_part, //pattern
+      text, //text
+      large_pattern_part_left_bound, //the leftmost letter of text to consider
+      large_pattern_part.length() * 2 + small_pattern_part.length(),
+      matching_table
+  );
+
+  FiniteArithmeticSequence result;
+
+  while(large_part_hunter) {
+    auto large_part_matches = large_part_hunter.next_match();
+
+    if (large_part_matches) {
+      FiniteArithmeticSequence small_part_candidates = large_part_matches;
+      if (small_pattern_is_after) {
+        small_part_candidates.shift_right(large_pattern_part.length());
+      } else {
+        small_part_candidates.shift_right(-small_pattern_part.length());
+        small_part_candidates.fit_into(0, text.length());
+      }
+
+      LongInteger seaside_candidates_bound = (small_pattern_is_after ? small_part_candidates.last() - small_pattern_part.length(): small_part_candidates.first());
+
+      PatternMatchesGenerator seaside_hunter(
+          small_pattern_part,
+          text,
+          seaside_candidates_bound,
+          2 * small_pattern_part.length(),
+          matching_table
+      );
+
+      auto seaside_matches = seaside_hunter.next_match();
+      seaside_matches.intersect_with(small_part_candidates);
+
+      const LongInteger& continental_candidate_start = small_pattern_is_after ? small_part_candidates.first() : small_part_candidates.last();
+      PatternMatchesGenerator continental_hunter(
+          small_pattern_part,
+          text,
+          continental_candidate_start,
+          small_pattern_part.length(),
+          matching_table
+      );
+
+      auto continental_matches = continental_hunter.next_match();
+
+      FiniteArithmeticSequence& small_part_approved_candidates = seaside_matches;
+      if (continental_matches) {
+        continental_matches = small_part_candidates;
+        if (small_pattern_is_after) {
+          continental_matches.fit_into(continental_matches.first(), seaside_candidates_bound - 1);
+        } else {
+          continental_matches.fit_into(seaside_candidates_bound + 2 * small_pattern_part.length(), continental_matches.last());
+        }
+
+        small_part_approved_candidates.join_with(continental_matches);
+      }
+
+
+      if (small_pattern_is_after) {
+        small_part_approved_candidates.shift_right(-large_pattern_part.length());
+        small_part_approved_candidates.fit_into(0, text.length());
+      }
+
+      result.join_with(small_part_approved_candidates);
+    }
+  }
+
+  return result;
+}
+
+} //namespace internal
+} //namespace slp
 } //namespace crag
 
 

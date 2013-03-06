@@ -13,6 +13,7 @@
 typedef mpz_class LongInteger;
 
 #include <memory>
+#include <iostream>
 
 namespace crag {
 namespace slp {
@@ -84,6 +85,10 @@ class Vertex {
       return vertex_ ? vertex_->right_child() : Null;
     }
 
+    const LongInteger& split_point() const {
+      return vertex_ ? vertex_->left_child().length() : LongZero;
+    }
+
     const LongInteger& length() const {
       return vertex_ ? vertex_->length_ : LongZero;
     }
@@ -98,6 +103,10 @@ class Vertex {
 
     explicit operator bool() const {
       return static_cast<bool>(vertex_);
+    }
+
+    virtual void debug_print(::std::ostream* out) const {
+      (*out) << "Vertex::Null";
     }
 
     //All copy/move constructors must be defined by default
@@ -122,6 +131,10 @@ inline Vertex internal::BasicVertex::left_child() const {
 
 inline Vertex internal::BasicVertex::right_child() const {
   return Vertex::Null;
+}
+
+inline void PrintTo(const Vertex& vertex, ::std::ostream* os) {
+  vertex.debug_print(os);
 }
 
 namespace internal {
@@ -182,6 +195,10 @@ class TerminalVertexTemplate : public Vertex {
 
     operator TerminalSymbol() const {
       return terminal_symbol();
+    }
+
+    virtual void debug_print(::std::ostream* out) const {
+      (*out) << "TerminalVertex(" << terminal_symbol() << ')';
     }
 
   private:
@@ -268,6 +285,11 @@ class NonterminalVertex : public Vertex {
           false
         ))
     { }
+
+    virtual void debug_print(::std::ostream* out) const {
+      auto basic_vertex = dynamic_cast<internal::BasicNonterminalVertex*>(vertex_.get());
+      (*out) << "NonterminalVertex - " << length() << ',' << height() << " id:" << (basic_vertex->negate_node_ ? "-" : "") << basic_vertex->node_data_ptr_->vertex_id;
+    }
 
   private:
     friend class internal::BasicNonterminalVertex;

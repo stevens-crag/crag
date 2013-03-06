@@ -12,7 +12,7 @@
 namespace crag{
 namespace {
 
-typedef FiniteAritmeticSequence Seq;
+typedef FiniteArithmeticSequence Seq;
 
 TEST(JoinArithmeticSequences, EmptySequences) {
   EXPECT_EQ(Seq(1, 2, 1), Seq(1, 0, 1).join_with(Seq(1, 2, 1)))

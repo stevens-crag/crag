@@ -18,15 +18,15 @@ typedef mpz_class LongInteger; //Note that actually we are tied to GMP, because 
 namespace crag {
 
 //! Finite arithmetic sequence
-class FiniteAritmeticSequence {
+class FiniteArithmeticSequence {
   public:
-    FiniteAritmeticSequence()
+    FiniteArithmeticSequence()
       : first_(0)
       , step_(0)
       , last_(-1)
     { }
 
-    FiniteAritmeticSequence(LongInteger first, LongInteger step, LongInteger count)
+    FiniteArithmeticSequence(LongInteger first, LongInteger step, LongInteger count)
       : first_(::std::move(first))
       , step_(::std::move(step))
       , last_(::std::move(((count -= 1) *= step_) += first_))
@@ -65,7 +65,7 @@ class FiniteAritmeticSequence {
       return (index *= step_) + first_;
     }
 
-    friend void swap(FiniteAritmeticSequence& first, FiniteAritmeticSequence& second) {
+    friend void swap(FiniteArithmeticSequence& first, FiniteArithmeticSequence& second) {
       using std::swap;
 
       swap(first.first_, second.first_);
@@ -77,16 +77,16 @@ class FiniteAritmeticSequence {
       return step_ != 0;
     }
 
-    bool operator==(const FiniteAritmeticSequence& other) const {
+    bool operator==(const FiniteArithmeticSequence& other) const {
       return first_ == other.first_ && step_ == other.step_ && last_ == other.last_;
     }
 
-    bool operator!=(const FiniteAritmeticSequence& other) const {
+    bool operator!=(const FiniteArithmeticSequence& other) const {
       return !(*this == other);
     }
 
-    FiniteAritmeticSequence& fit_into(const LongInteger& left_bound, const LongInteger& right_bound);
-    FiniteAritmeticSequence& shift_right(const LongInteger& length) {
+    FiniteArithmeticSequence& fit_into(const LongInteger& left_bound, const LongInteger& right_bound);
+    FiniteArithmeticSequence& shift_right(const LongInteger& length) {
       if (*this) {
         first_ += length;
         last_ += length;
@@ -95,17 +95,17 @@ class FiniteAritmeticSequence {
       return *this;
     }
 
-    FiniteAritmeticSequence& join_with(const FiniteAritmeticSequence& other);
-    FiniteAritmeticSequence& intersect_with(const FiniteAritmeticSequence& other);
+    FiniteArithmeticSequence& join_with(const FiniteArithmeticSequence& other);
+    FiniteArithmeticSequence& intersect_with(const FiniteArithmeticSequence& other);
 
-    const static FiniteAritmeticSequence Null;
+    const static FiniteArithmeticSequence Null;
   private:
     LongInteger first_;
     LongInteger step_;
     LongInteger last_;
 };
 
-::std::ostream& operator<<(::std::ostream& out, const FiniteAritmeticSequence& sequence);
+::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence);
 
 } //namespace crag
 

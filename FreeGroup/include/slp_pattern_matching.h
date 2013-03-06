@@ -53,11 +53,11 @@ class MatchingTable {
      *
      * @return The sequence of the beginnings of matches.
      */
-    const FiniteAritmeticSequence& matches(const Vertex& pattern,
+    const FiniteArithmeticSequence& matches(const Vertex& pattern,
                                            const Vertex& text);
 
   protected:
-    ::std::unordered_map<std::pair<Vertex, Vertex>, FiniteAritmeticSequence> match_table_; //! The actual storage for the calculated values.
+    ::std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence> match_table_; //! The actual storage for the calculated values.
 };
 
 namespace inspector {
@@ -84,37 +84,43 @@ class BoundedTaskAcceptor : public TaskAcceptor {
 
 class PatternMatchesGenerator {
   public:
-    PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, ::std::shared_ptr<MatchingTable> matching_table)
-      : first_lookup_begin_position_(lookup_from)
-      , first_lookup_end_position_(lookup_from + pattern.length())
-      , last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? text.length() - pattern.length() : lookup_from - pattern.length())
-      , text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
-        first_lookup_end_position_, last_lookup_begin_position_
-      )))
-      , pattern_(pattern)
-      , text_(text)
-      , matching_table_(matching_table)
-    {
-      std::cout << "first_lookup_begin_position_: " << first_lookup_begin_position_ << std::endl;
-      std::cout << "first_lookup_end_position_: " << first_lookup_end_position_ << std::endl;
-      std::cout << "last_lookup_begin_position_: " << last_lookup_begin_position_ << std::endl;
-      std::cout << "4: " << lookup_from << std::endl;
-      std::cout << "5: " << lookup_length << std::endl;
-      std::cout << "6: " << pattern.length() << std::endl;
-      std::cout << "7: " << text.length() << std::endl;
+    PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, MatchingTable* matching_table)
+      : PatternMatchesGenerator(
+          pattern,
+          text,
+          lookup_from,
+          lookup_length,
+          nullptr,
+          matching_table
+        )
+    { }
 
-    }
+    PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, ::std::shared_ptr<MatchingTable> matching_table)
+      : PatternMatchesGenerator(
+          pattern,
+          text,
+          lookup_from,
+          lookup_length,
+          matching_table,
+          nullptr
+        )
+    { }
 
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length)
-      : PatternMatchesGenerator(pattern, text, lookup_from, lookup_length, ::std::make_shared<MatchingTable>())
-    {
-      next_match();
-    }
+      : PatternMatchesGenerator(
+          pattern,
+          text,
+          lookup_from,
+          lookup_length,
+          ::std::make_shared<MatchingTable>(),
+          nullptr
+        )
+    { }
 
-    const FiniteAritmeticSequence& next_match();
+    FiniteArithmeticSequence next_match();
 
-    const FiniteAritmeticSequence& current_match() const {
-      return current_match_;
+    explicit operator bool() const {
+      return !text_inspector_.stopped();
     }
   protected:
     LongInteger first_lookup_begin_position_;
@@ -123,10 +129,40 @@ class PatternMatchesGenerator {
     InorderInspector text_inspector_;
     const Vertex& pattern_;
     const Vertex& text_;
-    FiniteAritmeticSequence current_match_;
-    ::std::shared_ptr<MatchingTable> matching_table_;
+    ::std::shared_ptr<MatchingTable> inline_matching_table_; //If matching table is not passed from outside, we create it here
+    MatchingTable* matching_table_;                          //Use this pointer to get access to matching table
+
+    PatternMatchesGenerator(
+        const Vertex& pattern,
+        const Vertex& text,
+        LongInteger lookup_from,
+        LongInteger lookup_length,
+        ::std::shared_ptr<MatchingTable> inline_matching_table,
+        MatchingTable* matching_table
+    )
+      : first_lookup_begin_position_(lookup_from)
+      , first_lookup_end_position_(lookup_from + pattern.length())
+      , last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? text.length() - pattern.length() : lookup_from - pattern.length())
+      , text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
+          first_lookup_end_position_, last_lookup_begin_position_
+        )))
+      , pattern_(pattern)
+      , text_(text)
+      , inline_matching_table_(inline_matching_table)
+      , matching_table_(inline_matching_table ? inline_matching_table.get() : matching_table)
+    { }
+
 };
 
+namespace internal {
+FiniteArithmeticSequence nontrivial_match(
+    const Vertex& large_pattern_part,
+    const Vertex& small_pattern_part,
+    bool small_pattern_is_after,
+    const Vertex& text,
+    MatchingTable* matching_table);
+
+} //namespace internal
 
 } //namespace slp
 } //namespace crag
