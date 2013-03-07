@@ -23,20 +23,20 @@ typedef typename std::unordered_map<slp::Vertex, slp::Vertex> VerticesMap;
 
 class SkipMappedVerticesAcceptor: public inspector::TaskAcceptor {
   public:
-  SkipMappedVerticesAcceptor(const VerticesMap const* vertices_map)
-      : vertices_map_(vertices_map) {}
+  SkipMappedVerticesAcceptor(const VerticesMap const* p_vertices_map)
+      : vertices_map_(p_vertices_map) {}
 
     //overriding accept
     bool accept(const inspector::InspectorTask& task) {
       return inspector::TaskAcceptor::accept(task)
-        && vertices_map_->find(task.vertex) == vertices_map_->end();//do not accept if mapped vertex already
+        && p_vertices_map_->find(task.vertex) == p_vertices_map_->end();//do not accept if mapped vertex already
     }
 
     ::std::unique_ptr<inspector::TaskAcceptor> clone() const {
       return ::std::unique_ptr<inspector::TaskAcceptor>(new TaskAcceptor(*this));
     }
   private:
-    const VerticesMap const* vertices_map_;
+    const VerticesMap const* p_vertices_map_;
 };
 
 
@@ -47,17 +47,18 @@ class SkipMappedVerticesAcceptor: public inspector::TaskAcceptor {
  * It inspects vertices and if a vertex is already a key in #vertices_map then it is skipped
  * along with its descendants, otherwise after its descendants processed  the mapping {@code vertex => f(vertex)}
  * is added to #vertices_map.
- * @tparam VertexMapping function or functor mapping a vertex to a vertex
+ * @tparam VertexMapping function or functor mapping a vertex to a vertex,
+ *                        its parameters are (slp::Vertex to_map, const std::unordered_map<slp::Vertex, slp::Vertex>& vertices_map)
  */
 template<typename VertexMapping>
-void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, slp::Vertex>* vertices_map, VertexMapping f) {
+void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, slp::Vertex>* p_vertices_map, VertexMapping f) {
   if (vertices_map->find(root) != vertices_map->end())
     return;//root is already mapped
 
   slp::PostorderInspector inspector(root,
-      std::unique_ptr<mapper::SkipMappedVerticesAcceptor>(new mapper::SkipMappedVerticesAcceptor(vertices_map)));
+      std::unique_ptr<mapper::SkipMappedVerticesAcceptor>(new mapper::SkipMappedVerticesAcceptor(p_vertices_map)));
   while (!inspector.stopped()) {
-    auto new_entry = std::make_pair(inspector.vertex(), f(inspector.vertex()));
+    auto new_entry = std::make_pair(inspector.vertex(), f(inspector.vertex(), *p_vertices_map));
     vertices_map->insert(new_entry);
     inspector.next();
   }
