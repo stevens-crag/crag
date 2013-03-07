@@ -5,18 +5,17 @@
  *      Author: dpantele
  */
 
-
-#include "gtest/gtest.h"
-#include "slp_inspector.h"
-#include "slp_pattern_matching.h"
-#include "slp_vertex_word.h"
-
 #include <memory>
 #include <functional>
 #include <utility>
 #include <vector>
 #include <tuple>
 #include <algorithm>
+
+#include "gtest/gtest.h"
+#include "slp_inspector.h"
+#include "slp_pattern_matching.h"
+#include "slp_vertex_word.h"
 
 namespace crag {
 namespace slp {
@@ -50,6 +49,7 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
 
   TerminalVertex t('t');
   NonterminalVertex t2(t, t);
+  NonterminalVertex t4(t2, t2);
 
   Vertex pattern = Vertex::Null, text = Vertex::Null;
   switch(pattern_code) {
@@ -68,6 +68,9 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
   case 2:
     text = t2;
     break;
+  case 4:
+    text = t4;
+    break;
   }
 
   //Must update this code if you change constructors in PatternMatchesGenerator
@@ -77,7 +80,7 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
   LongInteger first_lookup_end_position_(lookup_from + pattern.length());
   LongInteger last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? (text.length() - pattern.length()) : (lookup_from - pattern.length()));
   InorderInspector text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
-    first_lookup_end_position_, last_lookup_begin_position_
+    first_lookup_end_position_, last_lookup_begin_position_, pattern.length()
   )));
 
   InorderInspector& text_inspector = text_inspector_;
@@ -86,8 +89,12 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
     ASSERT_FALSE(text_inspector.stopped());
     if (correct_vertex == 1) {
       EXPECT_EQ(t, text_inspector.vertex());
-    } else {
+    } else if (correct_vertex == 2) {
       EXPECT_EQ(t2, text_inspector.vertex());
+    } else if (correct_vertex == 4) {
+      EXPECT_EQ(t4, text_inspector.vertex());
+    } else {
+      FAIL() << "Wrong vertex id in vertices order vector";
     }
 
     text_inspector.next();
@@ -107,7 +114,8 @@ INSTANTIATE_TEST_CASE_P(
       ::std::make_tuple(1, 2, 0, 10, ::std::vector<int>({1, 2, 1})),
       ::std::make_tuple(2, 2, 0, 10, ::std::vector<int>({2})),
       ::std::make_tuple(1, 2, 0, 1, ::std::vector<int>({1, 2})),
-      ::std::make_tuple(1, 2, 1, 1, ::std::vector<int>({2, 1}))
+      ::std::make_tuple(1, 2, 1, 1, ::std::vector<int>({2, 1})),
+      ::std::make_tuple(2, 4, 0, 4, ::std::vector<int>({2, 4, 2}))
     ));
 
 class FilledMatchingTable : public MatchingTable {
@@ -341,9 +349,9 @@ Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
   return word_presentation.front();
 }
 
-std::string print_tree_inorder(const Vertex& vertex) {
+std::string print_tree_preorder(const Vertex& vertex) {
   std::ostringstream out;
-  InorderInspector inspector(vertex);
+  PreorderInspector inspector(vertex);
   while (!inspector.stopped()) {
     PrintTo(inspector.vertex(), &out);
     out << " -- ";
@@ -356,7 +364,7 @@ std::string print_tree_inorder(const Vertex& vertex) {
 
 TEST(LocalSearch, RandomWord) {
   const unsigned int WORD_SIZE = 16;
-  int REPEAT = 10000;
+  int REPEAT = 10;//000;
 
   srand(time(NULL));
 
@@ -384,8 +392,8 @@ TEST(LocalSearch, RandomWord) {
     FilledMatchingTable matching_table(pattern, text);
     PatternMatchesGenerator generator(pattern, text, left_boundary, text_length, &matching_table);
 
-    auto pattern_tree_string = print_tree_inorder(pattern);
-    auto text_tree_string = print_tree_inorder(text);
+    auto pattern_tree_string = print_tree_preorder(pattern);
+    auto text_tree_string = print_tree_preorder(text);
 
     ::std::string pattern_string(VertexWord<char>(pattern).begin(), VertexWord<char>(pattern).end());
     ::std::string text_string(VertexWord<char>(text).begin(), VertexWord<char>(text).end());
@@ -535,6 +543,35 @@ TEST(SLPMatchingTable, Example6) {
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 2), table.matches(a5, a6));
 }
 
+TEST(SLPMatchingTable, Example7) {
+  TerminalVertex a('a');
+  TerminalVertex b('b');
+
+  NonterminalVertex v1(a, b);
+  NonterminalVertex v2(b, b);
+  NonterminalVertex v3(b, b);
+  NonterminalVertex v4(b, v2);
+  NonterminalVertex v5(v1, b);
+  NonterminalVertex v6(v3, v4);
+  NonterminalVertex v7(v5, v6);
+
+  MatchingTable table;
+  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v2, v1));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), table.matches(v2, v5));
+  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v4, v5));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v2, v7));
+  EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), table.matches(v2, v3));
+  EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v2, v6));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v4, v7));
+  EXPECT_EQ(FiniteArithmeticSequence(0, 1, 2), table.matches(v2, v4));
+  EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v4, v6));
+  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v3, v1));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), table.matches(v3, v5));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v3, v7));
+  EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v3, v6));
+  EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v6, v7));
+}
+
 TEST(SLPMatchingTable, InversedTest) {
   TerminalVertex a('a');
   TerminalVertex b('b');
@@ -550,6 +587,38 @@ TEST(SLPMatchingTable, InversedTest) {
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), matching_table.matches(b.negate(), a_1b.negate()));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), matching_table.matches(ab, b_1a_1b.negate()));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), matching_table.matches(ab.negate(), b_1a_1b));
+}
+
+TEST(SLPMatchingTable, StressTest) {
+  const unsigned int WORD_SIZE = 10;
+  int repeat = 5000;
+
+  srand(time(NULL));
+
+  while (--repeat >= 0) {
+    Vertex slp = get_random_slp_on_2_letters(WORD_SIZE);
+
+    MatchingTable real_matching_table;
+    FilledMatchingTable computed_matching_table(slp, slp);
+
+    PostorderInspector text(slp);
+    unsigned int text_vertex_number = 0;
+
+    while (!text.stopped()) {
+      ++text_vertex_number;
+
+      PostorderInspector pattern(slp);
+      unsigned int pattern_vertex_number = 0;
+      while (!pattern.stopped()) {
+        ++pattern_vertex_number;
+        ASSERT_EQ(computed_matching_table.matches(pattern.vertex(), text.vertex()), real_matching_table.matches(pattern.vertex(), text.vertex()))
+          << "pattern " << VertexWord<char>(pattern.vertex()) << ::std::endl << print_tree_preorder(pattern.vertex()) << ::std::endl << ::std::endl
+          << "text " << VertexWord<char>(text.vertex()) << ::std::endl << print_tree_preorder(text.vertex()) << ::std::endl << ::std::endl;
+        pattern.next();
+      }
+      text.next();
+    }
+  }
 }
 
 }

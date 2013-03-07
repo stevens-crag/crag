@@ -6,13 +6,14 @@
  */
 
 
-#include "gtest/gtest.h"
-#include "slp.h"
-
 #include <memory>
 #include <functional>
 #include <utility>
 #include <vector>
+
+#include "gtest/gtest.h"
+
+#include "slp.h"
 
 namespace crag {
 namespace slp {

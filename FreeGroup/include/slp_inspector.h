@@ -9,8 +9,9 @@
 #ifndef CRAG_FREEGROUP_SLP_INSPECTOR_H_
 #define CRAG_FREEGROUP_SLP_INSPECTOR_H_
 
-#include "slp_vertex.h"
 #include <vector>
+
+#include "slp_vertex.h"
 
 namespace crag {
 namespace slp {

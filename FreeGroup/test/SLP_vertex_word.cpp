@@ -5,14 +5,14 @@
  *      Author: dpantele
  */
 
-#include "gtest/gtest.h"
-#include "slp.h"
-
 #include <memory>
 #include <functional>
 #include <utility>
 #include <algorithm>
 #include <string>
+
+#include "gtest/gtest.h"
+#include "slp.h"
 
 namespace crag {
 namespace slp {
@@ -99,6 +99,8 @@ namespace {
 
   TEST(VertexWord, StressTest) {
     const unsigned int word_size = 6;
+    TerminalVertex a('a');
+    TerminalVertex b('b');
 
     unsigned int current_word = 0;
     while (current_word < (1 << word_size)) {
@@ -116,7 +118,7 @@ namespace {
       do {
         std::vector<Vertex> word_presentation;
         for (char letter : current_word_string) {
-          word_presentation.push_back(TerminalVertex(letter));
+          word_presentation.push_back(letter == 'a' ? a : b);
         }
 
         for (unsigned int split : current_word_split) {

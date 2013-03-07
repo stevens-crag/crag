@@ -9,11 +9,11 @@
 #ifndef CRAG_FREEGROUP_SLP_VERTEX_H_
 #define CRAG_FREEGROUP_SLP_VERTEX_H_
 
-#include <gmpxx.h>
-typedef mpz_class LongInteger;
-
 #include <memory>
 #include <iostream>
+
+#include <gmpxx.h>
+typedef mpz_class LongInteger;
 
 namespace crag {
 namespace slp {
@@ -54,6 +54,9 @@ class BasicVertex {
     bool is_same_vertex(const BasicVertex& other) const {
       return true;
     }
+
+    virtual void debug_print(::std::ostream* out) const {
+    }
 };
 }
 
@@ -85,7 +88,7 @@ class Vertex {
       return vertex_ ? vertex_->right_child() : Null;
     }
 
-    const LongInteger& split_point() const {
+    LongInteger split_point() const {
       return vertex_ ? vertex_->left_child().length() : LongZero;
     }
 
@@ -105,8 +108,12 @@ class Vertex {
       return static_cast<bool>(vertex_);
     }
 
-    virtual void debug_print(::std::ostream* out) const {
-      (*out) << "Vertex::Null";
+    void debug_print(::std::ostream* out) const {
+      if (!vertex_) {
+        (*out) << "Vertex::Null";
+      } else {
+        vertex_->debug_print(out);
+      }
     }
 
     //All copy/move constructors must be defined by default
@@ -163,6 +170,11 @@ class BasicTerminalVertex : public BasicVertex {
       , terminal_symbol_(terminal_symbol)
     { }
 
+    virtual void debug_print(::std::ostream* out) const {
+      (*out) << "TerminalVertex(" << terminal_symbol_ << ')';
+    }
+
+
   private:
     const static ::std::hash<TerminalSymbol> terminal_symbol_hash;
 };
@@ -195,10 +207,6 @@ class TerminalVertexTemplate : public Vertex {
 
     operator TerminalSymbol() const {
       return terminal_symbol();
-    }
-
-    virtual void debug_print(::std::ostream* out) const {
-      (*out) << "TerminalVertex(" << terminal_symbol() << ')';
     }
 
   private:
@@ -259,6 +267,10 @@ class BasicNonterminalVertex : public internal::BasicVertex {
       return node_data_ptr_ == other.node_data_ptr_ && negate_node_ == other.negate_node_ && node_data_ptr_->vertex_id == other.node_data_ptr_->vertex_id;
     }
 
+    virtual void debug_print(::std::ostream* out) const {
+      (*out) << "NonterminalVertex(l=" << length_ << ", h=" << height_ << ", id=" << (negate_node_ ? "-" : "") << node_data_ptr_->vertex_id << ')';
+    }
+
     BasicNonterminalVertex(::std::shared_ptr<NonterminalVertexNodeData>&& node_data_ptr, bool negate_node)
       : BasicVertex(
           node_data_ptr->left_child.length() + node_data_ptr->right_child.length(),
@@ -285,11 +297,6 @@ class NonterminalVertex : public Vertex {
           false
         ))
     { }
-
-    virtual void debug_print(::std::ostream* out) const {
-      auto basic_vertex = dynamic_cast<internal::BasicNonterminalVertex*>(vertex_.get());
-      (*out) << "NonterminalVertex - " << length() << ',' << height() << " id:" << (basic_vertex->negate_node_ ? "-" : "") << basic_vertex->node_data_ptr_->vertex_id;
-    }
 
   private:
     friend class internal::BasicNonterminalVertex;

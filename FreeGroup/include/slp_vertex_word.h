@@ -177,6 +177,15 @@ class VertexWord {
 };
 
 template <typename TerminalSymbol>
+::std::ostream& operator<<(::std::ostream& out, const VertexWord<TerminalSymbol>& word) {
+  for(auto symbol : word) {
+    out << symbol;
+  }
+
+  return out;
+}
+
+template <typename TerminalSymbol>
 typename VertexWord<TerminalSymbol>::const_reference VertexWord<TerminalSymbol>::operator[](LongInteger index) const {
   Vertex current_vertex = root_;
 

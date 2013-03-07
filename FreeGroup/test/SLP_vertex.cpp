@@ -5,12 +5,12 @@
  *      Author: dpantele
  */
 
-#include "gtest/gtest.h"
-#include "slp.h"
-
 #include <memory>
 #include <functional>
 #include <utility>
+
+#include "gtest/gtest.h"
+#include "slp.h"
 
 namespace crag {
 namespace slp {
@@ -37,6 +37,7 @@ TEST_F(VertexTest, NullVertex) {
 
   EXPECT_EQ(0, Vertex::Null.length());
   EXPECT_EQ(0, Vertex::Null.height());
+  EXPECT_EQ(0, Vertex::Null.split_point());
   EXPECT_EQ(Vertex::Null, Vertex::Null.left_child());
   EXPECT_EQ(Vertex::Null, Vertex::Null.right_child());
 
@@ -46,7 +47,13 @@ TEST_F(VertexTest, NullVertex) {
 
 TEST_F(VertexTest, TerminalVertex) {
   EXPECT_EQ(1, a.length());
+  EXPECT_EQ(1, a.negate().length());
   EXPECT_EQ(1, a.height());
+  EXPECT_EQ(1, a.negate().height());
+  EXPECT_EQ(0, a.split_point());
+  EXPECT_EQ(0, a.negate().split_point());
+
+  EXPECT_EQ(0, Vertex::Null.split_point());
   EXPECT_EQ(Vertex::Null, a.left_child());
   EXPECT_EQ(Vertex::Null, a.right_child());
 
@@ -72,6 +79,10 @@ TEST_F(VertexTest, NonterminalVertex) {
   auto ab_1 = NonterminalVertex(a, b.negate());
   EXPECT_EQ(2, ab_1.length());
   EXPECT_EQ(2, ab_1.height());
+  EXPECT_EQ(1, ab_1.split_point());
+  EXPECT_EQ(2, ab_1.negate().length());
+  EXPECT_EQ(2, ab_1.negate().height());
+  EXPECT_EQ(1, ab_1.negate().split_point());
   EXPECT_EQ(a, ab_1.left_child());
   EXPECT_NE(b, ab_1.right_child());
   EXPECT_EQ(b.negate(), ab_1.right_child());
