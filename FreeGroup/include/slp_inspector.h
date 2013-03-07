@@ -10,14 +10,37 @@
 #define CRAG_FREEGROUP_SLP_INSPECTOR_H_
 
 #include <vector>
-
 #include "slp_vertex.h"
+
+
+/**
+ * Module defining inspector over SLP representation.
+ *
+ * An inspector follows given order policy, there are several predefined ones and the corresponding inspectors {@link PostorderInspector}, ...
+ *
+ * An inspector action (to visit a vertex, to go to the left from a vertex, etc) is described by InspectorTask.
+ * When inspector is about to perform an action the corresponding InspectorTask object is passed to the method #accept
+ * of the associated with this inspector TaskAcceptor, and if the call returns true the inspector performs the action, and skips it otherwise moving
+ * to the next action defined by the order policy.
+ * To change the default acceptor, extend class TaskAcceptor and override its method #accept, and then pass it to the corresponding inspector constructor.
+ *
+ * Example:
+ * {@code
+ *  PostorderInspector inspector(slp_vertex, ::std::unique_ptr<MyTaskAcceptor>(new MyTaskAcceptor(...));
+ *  while (!inspector.stopped()) {
+ *    //some code here using inspector.vertex()
+ *    ...
+ *    inspector.next();
+ *  }
+ * }
+ */
 
 namespace crag {
 namespace slp {
 
 namespace inspector{
 
+//!
 struct InspectorTask {
     Vertex vertex;
 
@@ -126,6 +149,7 @@ class Postorder : public OrderPolicy {
     }
 };
 
+
 //We can't use virtual functions from constructors, and we have to call next() in constructor.
 //So we require to pass some functor which accepts tasks while we construct inspector
 class TaskAcceptor {
@@ -142,6 +166,7 @@ class TaskAcceptor {
 
 
 }//namespace inspector
+
 
 template <typename OrderPolicy>
 class Inspector : public OrderPolicy {
@@ -176,6 +201,7 @@ class Inspector : public OrderPolicy {
       : Inspector(root, ::std::unique_ptr<inspector::TaskAcceptor>(new inspector::TaskAcceptor()))
     { }
 
+
     Inspector& operator++() {
       return next();
     }
@@ -184,6 +210,10 @@ class Inspector : public OrderPolicy {
       Inspector copy(*this);
       ++*this;
       return copy;
+    }
+
+    const Vertex& operator*() const {
+      return vertex();
     }
 
     bool operator==(const Inspector& other) const {
@@ -196,6 +226,7 @@ class Inspector : public OrderPolicy {
       return !(*this==other);
     }
 
+    //! Moves to the next vertex.
     virtual Inspector& next() {
       if (stopped()) {
         return *this;
@@ -208,18 +239,17 @@ class Inspector : public OrderPolicy {
       return *this;
     }
 
-    const Vertex& operator*() const {
-      return vertex();
-    }
-
+    //! Returns the current vertex.
     const Vertex& vertex() const {
       return current_task_.vertex;
     }
 
+    //! Returns the number of times an inspector going from left to right not skipping any vertices would visit a terminal vertex.
     const LongInteger& vertex_left_siblings_length() const {
       return current_task_.left_siblings_length;
     }
 
+    //! Returns true if the inspection is ended.
     bool stopped() const {
       return !current_task_;
     }
