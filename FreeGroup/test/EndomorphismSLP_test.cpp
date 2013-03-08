@@ -296,9 +296,9 @@ TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
 }
 
 TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
-  for (int rank = 1; rank < 20; ++rank) {
+  for (auto rank : {1, 5, 10, 20, 30}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (int size = 1; size < 30; ++ size) {
+    for (auto size : {0, 5, 10, 30, 60}) {
       std::vector<EMorphism> morphisms;
       for (int i = 0; i < size; ++i)
         morphisms.push_back(rnd());
@@ -315,9 +315,9 @@ TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
 
 
 TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
-  for (unsigned  rank = 1; rank < 20; ++rank) {
-    UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (unsigned int size = 1; size < 30; ++ size) {
+  for (auto rank : {1, 5, 10, 20, 30}) {
+      UniformAutomorphismSLPGenerator<int> rnd(rank);
+      for (auto size : {0, 5, 10, 30, 60}) {
       std::vector<EMorphism> morphisms;
       for (int i = 0; i < size; ++i)
         morphisms.push_back(rnd());
