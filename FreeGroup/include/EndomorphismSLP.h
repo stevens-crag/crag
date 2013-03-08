@@ -128,7 +128,7 @@ public:
 		else
 			return result->second;
 	}
-
+	
 	//! Returns the maximal terminal symbol with non-identity image.
 	TerminalSymbol max_non_trivial_image_symbol() const {
 	  if (images_.empty())
@@ -148,6 +148,12 @@ private:
     static const TerminalSymbol null_symbol = TerminalSymbol();
     return symbol > null_symbol;
   }
+
+  //! Helper method that copies #vertex such that the children of the new vertex are images of the children of #vertex
+  /**
+   * It assumes that if #vertex is non-terminal, then #images contains its children images
+   */
+  static slp::Vertex map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images);
 
 	//! The default constructor.
 	EndomorphismSLP() {}
@@ -260,83 +266,56 @@ private:
   std::uniform_int_distribution<index_type> random_distr_;
 };
 
-namespace internal {
-  class EndomorphismSLPToCopyTaskAcceptor: public slp::inspector::TaskAcceptor {
-  public:
-    const std::unordered_map<slp::Vertex, slp::Vertex>& copied_vertices_;
-
-    EndomorphismSLPToCopyTaskAcceptor(const std::unordered_map<slp::Vertex, slp::Vertex>& new_vertices)
-      : copied_vertices_(new_vertices) {
-    }
-
-    bool accept(const slp::inspector::InspectorTask& task) {
-          return slp::inspector::TaskAcceptor::accept(task) &&
-          copied_vertices_.find(task.vertex) == copied_vertices_.end();//we have not copied the vertex yet
-    }
-  };
-} //namespace internal
-
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
 	std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
-	using std::cout;
-	using std::endl;
 
-//	cout << "a.size = " << a.images_.size() << " our size = " << images_.size() << endl;
-	for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
-		const slp::Vertex image_root = root_entry.second;
-//		cout << "image_root height = " << image_root.height() << ", length = " << image_root.length() << endl;
-		//for each root we go over the tree using inspector,
-		//attach terminal vertices to the roots of our endomorphism, and copy the tree above
-		slp::Inspector<slp::inspector::Postorder> inspector(image_root,
-		    ::std::unique_ptr<slp::inspector::TaskAcceptor>(new internal::EndomorphismSLPToCopyTaskAcceptor(new_vertices)));
-		while (!inspector.stopped()) {
-			const slp::Vertex& current_vertex = *inspector;
-//			cout << "current_vertex height = " << current_vertex.height() << ", length = " << current_vertex.length() << endl;
-      TerminalVertex t_vertex(current_vertex);
-      if (t_vertex != slp::Vertex::Null) {//the vertex is terminal so map it to our corresponding root
-        const TerminalSymbol& symbol = t_vertex.terminal_symbol();
-//        cout << "ts=" << symbol;
-        bool is_positive = is_positive_terminal_symbol(symbol);
-        auto terminal_replacement = is_positive ? slp(symbol) : slp(-symbol).negate();
-//        cout << ",replacement=" << static_cast<TerminalVertex>(terminal_replacement).terminal_symbol() << endl;
-        new_vertices.insert(std::make_pair(current_vertex, terminal_replacement));
-      } else {//for a nonterminal we already processed its children because postorder inspector
-        auto left_val = new_vertices.find(current_vertex.left_child());
-        auto right_val = new_vertices.find(current_vertex.right_child());
-        assert(left_val != new_vertices.end() && right_val != new_vertices.end());
-        auto left = left_val->second;
-        auto right = right_val->second;
-        new_vertices.insert(std::make_pair(current_vertex, slp::NonterminalVertex(left, right)));
-      }
-//      cout << "++inspector" << endl;
-			++inspector;
-		}
-	}
-//	cout << "updating images" << endl;
+  for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
+    slp::map_vertices(root_entry.second, &new_vertices, map_vertex);
+  }
+
+  //replacing roots
 	std::map<TerminalSymbol, slp::Vertex> new_images;
 	for (auto root_entry: a.images_) {
-//	  cout << "new_image size = " << new_images.size() << endl;
 	  auto new_root = new_vertices.find(root_entry.second)->second;
 		new_images.insert(std::make_pair(root_entry.first, new_root));
 	}
-//	cout << "adding a is done. size = " << new_images.size() << endl;
-//	cout << "adding old images" << endl;
 	//adding images that were not inserted
 	for (auto root_entry: images_) {
-//	  cout << "new_image size = " << new_images.size() << endl;
 	  if (new_images.find(root_entry.first) == new_images.end())//it was not mapped by a
 	    new_images.insert(root_entry);
   }
-//	cout << "swapping" << endl;
+
 	using std::swap;
 	swap(images_, new_images);
-//	cout << "swapping is done" << endl;
 	return *this;
 }
 
-
+template<typename TerminalSymbol>
+slp::Vertex EndomorphismSLP<TerminalSymbol>::map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) {
+  if (!vertex)
+    return vertex;//Mapping null vertex
+  
+  if (vertex.height() == 1) {//the vertex is terminal so map it to our corresponding root
+    const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
+    bool is_positive = is_positive_terminal_symbol(symbol); 
+    auto positive_symbol = is_positive ? symbol : -symbol;
+    auto v = slp(positive_symbol);
+    if (TerminalVertex(positive_symbol) == v)//if id map
+      return vertex;
+    return is_positive ? v : v.negate();
+  } else {//for a nonterminal we already processed its children because postorder inspector
+    auto left_val = images.find(vertex.left_child());
+    auto right_val = images.find(vertex.right_child());
+    assert(left_val != images.end() && right_val != images.end());
+    auto left = left_val->second;
+    auto right = right_val->second;
+    if (left == vertex.left_child() && right == vertex.right_child()) //if children were not copied, then we should not copy vertex
+      return vertex;
+    return slp::NonterminalVertex(left, right);
+  }
+}
 
 } /* namespace crag */
 #endif /* CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_ */
