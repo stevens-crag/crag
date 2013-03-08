@@ -1,10 +1,7 @@
-/*
- * slp_vertex.h
- *
- *  Created on: Feb 10, 2013
- *      Author: dpantele
+/**
+ * \file slp_vertex.h
+ * \brief This file defines the basic structure for SLPs. See \ref slp_description for examples.
  */
-
 #pragma once
 #ifndef CRAG_FREEGROUP_SLP_VERTEX_H_
 #define CRAG_FREEGROUP_SLP_VERTEX_H_
@@ -21,6 +18,7 @@ typedef mpz_class LongInteger;
 namespace crag {
 namespace slp {
 
+//!\internal
 namespace internal {
 class BasicVertex;
 struct BasicVertexAllocatorTag{};
@@ -36,6 +34,15 @@ class Vertex {
       , vertex_(nullptr)
     {}
 
+    //!Check whether two vertices are equal
+    /**
+     * Two vertices are considered to be equal if
+     *   1. They have the same type
+     *   2. They are equal as vertices of that type. See \ref slp_description for details
+     *
+     * @param[in] other Vertex compared to *this
+     * @return true if equal
+     */
     bool operator==(const Vertex& other) const {
       return
           vertex_signed_id_ == other.vertex_signed_id_ &&

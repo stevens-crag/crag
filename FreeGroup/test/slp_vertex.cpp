@@ -1,10 +1,7 @@
-/*
- * SLPSet_common.cpp
- *
- *  Created on: Jan 21, 2013
- *      Author: dpantele
+/**
+ * @file slp_vertex.cpp
+ * @brief Tests for crag::slp::Vertex
  */
-
 #include <memory>
 #include <functional>
 #include <utility>
