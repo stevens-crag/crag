@@ -10,6 +10,7 @@
 #define CRAG_FREEGROUP_SLP_MAPPER_H_
 
 #include <unordered_map>
+#include <functional>
 #include "slp_vertex.h"
 
 namespace crag {
