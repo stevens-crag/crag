@@ -126,7 +126,7 @@ $(OBJ_DIR)/unittest_%.o : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS)
 
 $(OBJ_DIR)/unittest_%.d : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS)
 	if [ ! -d $(OBJ_DIR) ]; then mkdir -p $(OBJ_DIR); fi
-	$(SHELL) -ec '$(CXX) $(CPPFLAGS) -MM $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) $< | sed "s:$*.o:$(OBJ_DIR)/& $@:g"' > $@
+	$(SHELL) -ec '$(CXX) $(CPPFLAGS) -MM $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) $< | sed "s:$*.o:$(OBJ_DIR)/unittest_& $@:g"' > $@
 
 	
 tests: $(BIN_DIR)/all_unittests
