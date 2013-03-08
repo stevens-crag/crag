@@ -89,13 +89,6 @@ public:
 	//! Compose with the given endomorphism.
 	EndomorphismSLP& operator*=(const EndomorphismSLP& a);
 
-	//! Compose with the given endomorphism.
-	EndomorphismSLP operator*(const EndomorphismSLP& a) const {
-		EndomorphismSLP result(*this);
-		result *= a;
-		return result;
-	}
-
 	//! Compose with endomorphisms specified by the range.
 	template<typename Iterator>
   EndomorphismSLP& compose_with(Iterator begin, Iterator end) {
@@ -173,6 +166,15 @@ private:
 	std::map<TerminalSymbol, slp::Vertex> images_;
 };
 
+//! Compose given endomorphisms.
+/**
+ * Returns const to behave consistently with built-in types.
+ */
+template<typename TerminalSymbol>
+const EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
+  return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
+}
+
 
 
 //! Automorphisms generator
@@ -216,7 +218,6 @@ public:
 	//! Generates a random automorphism
 	EndomorphismSLP<TerminalSymbol> operator()() {
 	  index_type r_val = random_distr_(*random_engine_);
-//	  std::cout << "rval=" << r_val << std::endl;
 	  if (r_val < MULTIPLIERS_COUNT) {
 	    const bool right_multiplier = (r_val % 2) == 0;
 	    r_val >>= 1;
@@ -225,12 +226,12 @@ public:
       const int multiplier_index = 1 + ( r_val / RANK );
       const TerminalSymbol multiplier(multiplier_index < mapped_symbol_index ? multiplier_index : multiplier_index + 1);
 
-//      std::cout << "rm=" << right_multiplier << ",mult=" << multiplier << ",map_s=" << mapped_symbol << std::endl;
       if (right_multiplier)
         return EndomorphismSLP<TerminalSymbol>::right_multiplier(mapped_symbol, multiplier);
       else
         return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, mapped_symbol);
-    } else {
+
+    } else { // r_val >= MULTIPLIERS_COUNT
       return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(1 + r_val - MULTIPLIERS_COUNT));
     }
 	}
