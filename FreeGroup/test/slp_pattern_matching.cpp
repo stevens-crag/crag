@@ -27,17 +27,6 @@ typedef ::std::tuple<int, int, int, int, ::std::vector<int>> BoundedTaskAcceptor
 class BoundedTaskAcceptorTest : public ::testing::TestWithParam<BoundedTaskAcceptorTestParam>
 {  };
 
-class PatternMatchesGeneratorAccess : public PatternMatchesGenerator {
-  public:
-    PatternMatchesGeneratorAccess(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length)
-      : PatternMatchesGenerator(pattern, text, ::std::move(lookup_from), ::std::move(lookup_length))
-    { }
-
-    InorderInspector& get_inspector() {
-      return text_inspector_;
-    }
-};
-
 TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
   int pattern_code;
   int text_code;
@@ -51,7 +40,7 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
   NonterminalVertex t2(t, t);
   NonterminalVertex t4(t2, t2);
 
-  Vertex pattern = Vertex::Null, text = Vertex::Null;
+  Vertex pattern = Vertex(), text = Vertex();
   switch(pattern_code) {
   case 1:
     pattern = t;
@@ -79,11 +68,11 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
   LongInteger first_lookup_begin_position_ = lookup_from;
   LongInteger first_lookup_end_position_(lookup_from + pattern.length());
   LongInteger last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? (text.length() - pattern.length()) : (lookup_from - pattern.length()));
-  InorderInspector text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
+  Inspector<inspector::Inorder, inspector::BoundedTaskAcceptor> text_inspector_(text, inspector::BoundedTaskAcceptor(
     first_lookup_end_position_, last_lookup_begin_position_, pattern.length()
-  )));
+  ));
 
-  InorderInspector& text_inspector = text_inspector_;
+  Inspector<inspector::Inorder, inspector::BoundedTaskAcceptor>& text_inspector = text_inspector_;
 
   for (auto correct_vertex : correct_path) {
     ASSERT_FALSE(text_inspector.stopped());
@@ -131,10 +120,10 @@ class FilledMatchingTable : public MatchingTable {
 
         PostorderInspector pattern_inspector(pattern);
         while (!pattern_inspector.stopped()) {
-          FiniteArithmeticSequence result = FiniteArithmeticSequence::Null;
+          FiniteArithmeticSequence result;
 
           if (pattern_inspector.vertex().length() <= text_inspector.vertex().length() &&
-              match_table_.find(::std::make_pair(pattern_inspector.vertex(), text_inspector.vertex())) == match_table_.end()) {
+              match_table_->find(::std::make_pair(pattern_inspector.vertex(), text_inspector.vertex())) == match_table_->end()) {
             VertexWord<char> current_pattern_word(pattern_inspector.vertex());
             std::string current_pattern(current_pattern_word.begin(), current_pattern_word.end());
             size_t current_match = text_inspector.vertex().split_point().get_ui() -
@@ -168,7 +157,7 @@ class FilledMatchingTable : public MatchingTable {
               result = FiniteArithmeticSequence(first_match, step, count);
             }
           }
-          this->match_table_.insert(::std::make_pair(::std::make_pair(pattern_inspector.vertex(), text_inspector.vertex()), result));
+          this->match_table_->insert(::std::make_pair(::std::make_pair(pattern_inspector.vertex(), text_inspector.vertex()), result));
           pattern_inspector.next();
         }
         text_inspector.next();
@@ -188,17 +177,17 @@ TEST(FilledMatchingTable, Example1) {
   FilledMatchingTable matching_table(pattern, text);
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), matching_table.matches(a,a));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(a2,a));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(a3,a));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(pattern,a));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(a2,a));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(a3,a));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(pattern,a));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 2), matching_table.matches(a,a2));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), matching_table.matches(a2,a2));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(a3,a2));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(pattern,a2));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(a3,a2));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(pattern,a2));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 2), matching_table.matches(a,a4));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), matching_table.matches(a2,a4));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 2), matching_table.matches(a3,a4));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(pattern,a4));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(pattern,a4));
   EXPECT_EQ(FiniteArithmeticSequence(3, 1, 2), matching_table.matches(a,text));
   EXPECT_EQ(FiniteArithmeticSequence(2, 1, 3), matching_table.matches(a2,text));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 4), matching_table.matches(a3,text));
@@ -236,7 +225,7 @@ TEST(LocalSearch, Trivial) {
   PatternMatchesGenerator inspector(a, a, 0, 1, &matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, LeftCut) {
@@ -247,7 +236,7 @@ TEST(LocalSearch, LeftCut) {
   PatternMatchesGenerator inspector(a, a2, 0, 1, &matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, RightCut) {
@@ -258,7 +247,7 @@ TEST(LocalSearch, RightCut) {
   PatternMatchesGenerator inspector(a, a2, 1, 1, &matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, SimpleNontrivial) {
@@ -271,7 +260,7 @@ TEST(LocalSearch, SimpleNontrivial) {
   PatternMatchesGenerator inspector(ab, abab, 0, 4, &matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 2, 2), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, SimpleNontrivialLeftCut) {
@@ -284,7 +273,7 @@ TEST(LocalSearch, SimpleNontrivialLeftCut) {
   PatternMatchesGenerator inspector(ab, abab, 1, 4, &matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(2, 1, 1), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, SimpleNontrivialRightCut) {
@@ -296,7 +285,7 @@ TEST(LocalSearch, SimpleNontrivialRightCut) {
   FilledMatchingTable matching_table(ab, abab);
   PatternMatchesGenerator inspector(ab, abab, 0, 3, &matching_table);
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), inspector.next_match());
 }
 
 TEST(LocalSearch, SimpleNontrivialSplitted) {
@@ -312,14 +301,14 @@ TEST(LocalSearch, SimpleNontrivialSplitted) {
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), ab_inspector.next_match());
   EXPECT_EQ(FiniteArithmeticSequence(3, 1, 1), ab_inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, ab_inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), ab_inspector.next_match());
 
   FilledMatchingTable a_matching_table(a, abaab);
   PatternMatchesGenerator a_inspector(a, abaab, 0, 5, &a_matching_table);
 
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), a_inspector.next_match());
   EXPECT_EQ(FiniteArithmeticSequence(2, 1, 2), a_inspector.next_match());
-  EXPECT_EQ(FiniteArithmeticSequence::Null, a_inspector.next_match());
+  EXPECT_EQ(FiniteArithmeticSequence(), a_inspector.next_match());
 }
 
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
@@ -402,7 +391,7 @@ TEST(LocalSearch, RandomWord) {
 
     auto match = generator.next_match();
     int last_approved_match = -1;
-    while (match != FiniteArithmeticSequence::Null) {
+    while (match != FiniteArithmeticSequence()) {
       int checked_matches = 0;
       unsigned int next_match_to_check = match.first().get_ui();
       while (next_match_to_check <= match.last()) {
@@ -480,7 +469,7 @@ TEST(SLPMatchingTable, Example2) {
 
   MatchingTable matching_table;
 
-  EXPECT_EQ(FiniteArithmeticSequence::Null, matching_table.matches(ba, bb));
+  EXPECT_EQ(FiniteArithmeticSequence(), matching_table.matches(ba, bb));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), matching_table.matches(ba, bba));
 }
 
@@ -556,16 +545,16 @@ TEST(SLPMatchingTable, Example7) {
   NonterminalVertex v7(v5, v6);
 
   MatchingTable table;
-  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v2, v1));
+  EXPECT_EQ(FiniteArithmeticSequence(), table.matches(v2, v1));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), table.matches(v2, v5));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v4, v5));
+  EXPECT_EQ(FiniteArithmeticSequence(), table.matches(v4, v5));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v2, v7));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 1), table.matches(v2, v3));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v2, v6));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v4, v7));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 2), table.matches(v2, v4));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v4, v6));
-  EXPECT_EQ(FiniteArithmeticSequence::Null, table.matches(v3, v1));
+  EXPECT_EQ(FiniteArithmeticSequence(), table.matches(v3, v1));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 1), table.matches(v3, v5));
   EXPECT_EQ(FiniteArithmeticSequence(1, 1, 3), table.matches(v3, v7));
   EXPECT_EQ(FiniteArithmeticSequence(0, 1, 3), table.matches(v3, v6));

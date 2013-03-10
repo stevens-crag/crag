@@ -32,17 +32,17 @@ class VertexTest : public ::testing::Test {
 };
 
 TEST_F(VertexTest, NullVertex) {
-  EXPECT_EQ(Vertex::Null, Vertex::Null.negate());
-  EXPECT_EQ(Vertex::Null, Vertex(Vertex::Null));
+  EXPECT_EQ(Vertex(), Vertex().negate());
+  EXPECT_EQ(Vertex(), Vertex(Vertex()));
 
-  EXPECT_EQ(0, Vertex::Null.length());
-  EXPECT_EQ(0, Vertex::Null.height());
-  EXPECT_EQ(0, Vertex::Null.split_point());
-  EXPECT_EQ(Vertex::Null, Vertex::Null.left_child());
-  EXPECT_EQ(Vertex::Null, Vertex::Null.right_child());
+  EXPECT_EQ(0, Vertex().length());
+  EXPECT_EQ(0, Vertex().height());
+  EXPECT_EQ(0, Vertex().split_point());
+  EXPECT_EQ(Vertex(), Vertex().left_child());
+  EXPECT_EQ(Vertex(), Vertex().right_child());
 
-  EXPECT_EQ(0, hash(Vertex::Null));
-  EXPECT_EQ(0, hash(Vertex::Null.negate()));
+  EXPECT_EQ(0, hash(Vertex()));
+  EXPECT_EQ(0, hash(Vertex().negate()));
 }
 
 TEST_F(VertexTest, TerminalVertex) {
@@ -53,12 +53,12 @@ TEST_F(VertexTest, TerminalVertex) {
   EXPECT_EQ(0, a.split_point());
   EXPECT_EQ(0, a.negate().split_point());
 
-  EXPECT_EQ(0, Vertex::Null.split_point());
-  EXPECT_EQ(Vertex::Null, a.left_child());
-  EXPECT_EQ(Vertex::Null, a.right_child());
+  EXPECT_EQ(0, Vertex().split_point());
+  EXPECT_EQ(Vertex(), a.left_child());
+  EXPECT_EQ(Vertex(), a.right_child());
 
   EXPECT_NE(a, b);
-  EXPECT_NE(a, Vertex::Null);
+  EXPECT_NE(a, Vertex());
   EXPECT_NE(a, a.negate());
   EXPECT_EQ(a, a);
   EXPECT_EQ(a, a.negate().negate());
@@ -72,7 +72,7 @@ TEST_F(VertexTest, TerminalVertex) {
   EXPECT_EQ(hash(a), hash(a.negate().negate()));
   EXPECT_NE(hash(a), hash(a.negate()));
   EXPECT_NE(hash(a), hash(b));
-  EXPECT_NE(hash(a), hash(Vertex::Null));
+  EXPECT_NE(hash(a), hash(Vertex()));
 }
 
 TEST_F(VertexTest, NonterminalVertex) {
@@ -102,7 +102,7 @@ TEST_F(VertexTest, NonterminalVertex) {
   EXPECT_NE(hash(ab_1), hash(ab_1.negate()));
   EXPECT_NE(hash(ab_1), hash(ba_1c_1));
   EXPECT_NE(hash(ab_1), hash(a));
-  EXPECT_NE(hash(ab_1), hash(Vertex::Null));
+  EXPECT_NE(hash(ab_1), hash(Vertex()));
 }
 
 //Tests for hash<std::pair>

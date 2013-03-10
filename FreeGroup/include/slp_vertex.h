@@ -63,7 +63,7 @@ class BasicVertex {
 //! Basic interface for vertex. Also represents empty vertex, use Vertex::Null as empty vertex
 class Vertex {
   public:
-    const static Vertex Null; //!< Use this vertex to represent invalid (or empty) vertex
+    constexpr Vertex() {} //!< Default constructor generating empty vertex.
 
     bool operator==(const Vertex& other) const {
       return (!vertex_) ?
@@ -77,23 +77,26 @@ class Vertex {
 
     //! Return vertex produces the reversed word
     Vertex negate() const {
-      return vertex_ ? vertex_->negate() : Null;
+      return vertex_ ? vertex_->negate() : Vertex();
     }
 
     Vertex left_child() const {
-      return vertex_ ? vertex_->left_child() : Null;
+      return vertex_ ? vertex_->left_child() : Vertex();
     }
 
     Vertex right_child() const {
-      return vertex_ ? vertex_->right_child() : Null;
+      return vertex_ ? vertex_->right_child() : Vertex();
     }
 
     LongInteger split_point() const {
-      return vertex_ ? vertex_->left_child().length() : LongZero;
+      return vertex_ ? vertex_->left_child().length() : LongZero();
     }
 
     const LongInteger& length() const {
-      return vertex_ ? vertex_->length_ : LongZero;
+      if (vertex_) {
+        return vertex_->length_;
+      }
+      return LongZero();
     }
 
     unsigned int height() const {
@@ -110,7 +113,7 @@ class Vertex {
 
     void debug_print(::std::ostream* out) const {
       if (!vertex_) {
-        (*out) << "Vertex::Null";
+        (*out) << "Vertex()";
       } else {
         vertex_->debug_print(out);
       }
@@ -120,24 +123,23 @@ class Vertex {
 
   protected:
     ::std::shared_ptr<internal::BasicVertex> vertex_;
-    Vertex() {} //!< Default constructor generating empty vertex. Use #Null instead of it
     Vertex(::std::shared_ptr<internal::BasicVertex>&& vertex)
       : vertex_(vertex)
     { }
-    const static LongInteger LongZero; //We use it to return length of Null vertex
 
+    static const LongInteger& LongZero();
 };
 
 inline Vertex internal::BasicVertex::negate() const {
-  return Vertex::Null;
+  return Vertex();
 }
 
 inline Vertex internal::BasicVertex::left_child() const {
-  return Vertex::Null;
+  return Vertex();
 }
 
 inline Vertex internal::BasicVertex::right_child() const {
-  return Vertex::Null;
+  return Vertex();
 }
 
 inline void PrintTo(const Vertex& vertex, ::std::ostream* os) {
@@ -176,7 +178,7 @@ class BasicTerminalVertex : public BasicVertex {
 
 
   private:
-    const static ::std::hash<TerminalSymbol> terminal_symbol_hash;
+    constexpr static ::std::hash<TerminalSymbol> terminal_symbol_hash = ::std::hash<TerminalSymbol>();
 };
 }
 
@@ -226,7 +228,7 @@ Vertex internal::BasicTerminalVertex<TerminalSymbol>::negate() const {
 }
 
 template <typename TerminalSymbol>
-const ::std::hash<TerminalSymbol> internal::BasicTerminalVertex<TerminalSymbol>::terminal_symbol_hash = ::std::hash<TerminalSymbol>();
+constexpr ::std::hash<TerminalSymbol> internal::BasicTerminalVertex<TerminalSymbol>::terminal_symbol_hash;
 
 template <typename TerminalSymbol>
 const TerminalSymbol TerminalVertexTemplate<TerminalSymbol>::NullTerminalSymbol = TerminalSymbol();
@@ -242,7 +244,7 @@ class BasicNonterminalVertex : public internal::BasicVertex {
   public:
     ::std::shared_ptr<NonterminalVertexNodeData> node_data_ptr_;
     bool negate_node_;
-    static const ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash;
+    static constexpr ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash = ::std::hash<std::shared_ptr<NonterminalVertexNodeData>>();
     static size_t last_vertex_id_; //All vertices are enumerated
 
     virtual size_t vertex_hash() const {
@@ -309,32 +311,34 @@ class NonterminalVertex : public Vertex {
 }//namespace crag
 
 namespace std {
-  //! Definition of the hash for std::pair
-  template<typename TFirst, typename TSecond>
-  struct hash<pair<TFirst, TSecond>> {
-  private:
-    const hash<TFirst> first_hash_;
-    const hash<TSecond> second_hash_;
-  public:
-    hash()
-      : first_hash_()
-      , second_hash_()
-    { }
-    size_t operator()(const pair<TFirst, TSecond>& obj) const {
-      size_t first_hash_value = first_hash_(obj.first);
-      //Taken from boost/functional/hash
-      return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
-    }
-  };
+//! Definition of the hash for std::pair
+template<typename TFirst, typename TSecond>
+struct hash<pair<TFirst, TSecond>> {
+private:
+  constexpr static hash<TFirst> first_hash_ = hash<TFirst>();
+  constexpr static hash<TSecond> second_hash_ = hash<TSecond>();
+public:
+  size_t operator()(const pair<TFirst, TSecond>& obj) const {
+    size_t first_hash_value = first_hash_(obj.first);
+    //Taken from boost/functional/hash
+    return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
+  }
+};
 
-  //! Definition of the hash for SignedVertex
-  template<>
-  struct hash<crag::slp::Vertex> {
-    public:
-      size_t operator()(const crag::slp::Vertex& vertex) const {
-        return vertex.vertex_hash();
-      }
-  };
+template<typename TFirst, typename TSecond>
+constexpr hash<TFirst> hash<pair<TFirst, TSecond>>::first_hash_;
+template<typename TFirst, typename TSecond>
+constexpr hash<TSecond> hash<pair<TFirst, TSecond>>::second_hash_;
+
+
+//! Definition of the hash for SignedVertex
+template<>
+struct hash<crag::slp::Vertex> {
+  public:
+    size_t operator()(const crag::slp::Vertex& vertex) const {
+      return vertex.vertex_hash();
+    }
+};
 } //namespace std
 
 

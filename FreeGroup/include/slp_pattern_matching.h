@@ -56,30 +56,39 @@ class MatchingTable {
     const FiniteArithmeticSequence& matches(const Vertex& pattern,
                                            const Vertex& text);
 
+    MatchingTable()
+      : match_table_(::std::make_shared<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>>())
+    { }
+
+    MatchingTable clone() const {
+      return MatchingTable(::std::make_shared<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>>(*match_table_));
+    }
+
   protected:
-    ::std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence> match_table_; //! The actual storage for the calculated values.
+    MatchingTable(::std::shared_ptr<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>> match_table)
+      : match_table_(::std::move(match_table))
+    { }
+    ::std::shared_ptr<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>> match_table_; //! The actual storage for the calculated values.
 };
 
 namespace inspector {
 
-class BoundedTaskAcceptor : public TaskAcceptor {
+class BoundedTaskAcceptor {
   public:
     const LongInteger& first_lookup_end_position_;
     const LongInteger& last_lookup_begin_position_;
     const LongInteger& pattern_length_;
 
     BoundedTaskAcceptor(const LongInteger& first_lookup_end_position, const LongInteger& last_lookup_begin_position, const LongInteger& pattern_length)
-      : TaskAcceptor()
-      , first_lookup_end_position_(first_lookup_end_position)
+      : first_lookup_end_position_(first_lookup_end_position)
       , last_lookup_begin_position_(last_lookup_begin_position)
       , pattern_length_(pattern_length)
     { }
 
-    bool accept(const InspectorTask& task) {
-       return TaskAcceptor::accept(task) &&
-           task.vertex.length() >= pattern_length_ &&
-           task.left_siblings_length + task.vertex.length() >= first_lookup_end_position_ && //current vertex should fit pattern
-           task.left_siblings_length <= last_lookup_begin_position_; //
+    bool operator()(const InspectorTask& task) const {
+       return task.vertex.length() >= pattern_length_ &&
+           task.left_siblings_length + task.vertex.length() >= first_lookup_end_position_ &&
+           task.left_siblings_length <= last_lookup_begin_position_;
     }
 };
 
@@ -88,26 +97,17 @@ class BoundedTaskAcceptor : public TaskAcceptor {
 class PatternMatchesGenerator {
   public:
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, MatchingTable* matching_table)
-      : PatternMatchesGenerator(
-          pattern,
-          text,
-          ::std::move(lookup_from),
-          ::std::move(lookup_length),
-          nullptr,
-          matching_table
-        )
+      : first_lookup_begin_position_(lookup_from)
+      , first_lookup_end_position_(lookup_from + pattern.length())
+      , last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? text.length() - pattern.length() : lookup_from - pattern.length())
+      , text_inspector_(text, inspector::BoundedTaskAcceptor(
+          first_lookup_end_position_, last_lookup_begin_position_, pattern.length()
+        ))
+      , pattern_(pattern)
+      , text_(text)
+      , matching_table_(matching_table ? *matching_table : MatchingTable())
     { }
 
-    PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, ::std::shared_ptr<MatchingTable> matching_table)
-      : PatternMatchesGenerator(
-          pattern,
-          text,
-          ::std::move(lookup_from),
-          ::std::move(lookup_length),
-          matching_table,
-          nullptr
-        )
-    { }
 
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length)
       : PatternMatchesGenerator(
@@ -115,7 +115,6 @@ class PatternMatchesGenerator {
           text,
           ::std::move(lookup_from),
           ::std::move(lookup_length),
-          ::std::make_shared<MatchingTable>(),
           nullptr
         )
     { }
@@ -129,32 +128,10 @@ class PatternMatchesGenerator {
     LongInteger first_lookup_begin_position_;
     LongInteger first_lookup_end_position_;
     LongInteger last_lookup_begin_position_;
-    InorderInspector text_inspector_;
+    Inspector<inspector::Inorder, inspector::BoundedTaskAcceptor> text_inspector_;
     const Vertex& pattern_;
     const Vertex& text_;
-    ::std::shared_ptr<MatchingTable> inline_matching_table_; //If matching table is not passed from outside, we create it here
-    MatchingTable* matching_table_;                          //Use this pointer to get access to matching table
-
-    PatternMatchesGenerator(
-        const Vertex& pattern,
-        const Vertex& text,
-        LongInteger&& lookup_from,
-        LongInteger&& lookup_length,
-        ::std::shared_ptr<MatchingTable> inline_matching_table,
-        MatchingTable* matching_table
-    )
-      : first_lookup_begin_position_(lookup_from)
-      , first_lookup_end_position_(lookup_from + pattern.length())
-      , last_lookup_begin_position_(((lookup_from += lookup_length) > text.length()) ? text.length() - pattern.length() : lookup_from - pattern.length())
-      , text_inspector_(text, ::std::unique_ptr<inspector::BoundedTaskAcceptor>(new inspector::BoundedTaskAcceptor(
-          first_lookup_end_position_, last_lookup_begin_position_, pattern.length()
-        )))
-      , pattern_(pattern)
-      , text_(text)
-      , inline_matching_table_(inline_matching_table)
-      , matching_table_(inline_matching_table ? inline_matching_table.get() : matching_table)
-    { }
-
+    MatchingTable matching_table_;
 };
 
 namespace internal {

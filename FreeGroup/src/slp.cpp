@@ -12,8 +12,10 @@
 namespace crag {
 namespace slp {
 
-const Vertex Vertex::Null;
-const LongInteger Vertex::LongZero;
+const LongInteger& Vertex::LongZero() { //We use it to return length of Null vertex
+  static LongInteger zero;
+  return zero;
+}
 
 Vertex internal::BasicNonterminalVertex::negate() const {
   return NonterminalVertex(::std::make_shared<BasicNonterminalVertex>(
@@ -22,11 +24,9 @@ Vertex internal::BasicNonterminalVertex::negate() const {
   ));
 }
 
-const ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
+constexpr ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
+
 size_t internal::BasicNonterminalVertex::last_vertex_id_;
-
-const inspector::InspectorTask inspector::InspectorTask::DO_NOTHING = inspector::InspectorTask();
-
 }
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {
@@ -39,7 +39,7 @@ FiniteArithmeticSequence& FiniteArithmeticSequence::fit_into(const LongInteger& 
   }
 
   if (left_bound > last_ || right_bound < first_) {
-    return *this = FiniteArithmeticSequence::Null;
+    return *this = FiniteArithmeticSequence();
   }
 
   //TODO: add static to speedup
@@ -58,7 +58,7 @@ FiniteArithmeticSequence& FiniteArithmeticSequence::fit_into(const LongInteger& 
   }
 
   if (first_ > last_) {
-    *this = FiniteArithmeticSequence::Null;
+    *this = FiniteArithmeticSequence();
   } else if (first_ == last_) {
     step_ = 1;
   }
@@ -182,18 +182,21 @@ FiniteArithmeticSequence& FiniteArithmeticSequence::intersect_with(const FiniteA
   return *this;
 }
 
-const FiniteArithmeticSequence FiniteArithmeticSequence::Null = FiniteArithmeticSequence();
+const FiniteArithmeticSequence& FiniteArithmeticSequence::NullSequence() {
+  static FiniteArithmeticSequence null;
+  return null;
+}
 
 namespace slp {
 
 FiniteArithmeticSequence PatternMatchesGenerator::next_match() {
-  FiniteArithmeticSequence result = FiniteArithmeticSequence::Null;
+  FiniteArithmeticSequence result;
 
   while (!text_inspector_.stopped()) {
     //::std::cout << "Generator on ";
     //PrintTo(text_inspector_.vertex(), &::std::cout);
     //::std::cout << ::std::endl;
-    FiniteArithmeticSequence new_match = matching_table_->matches(pattern_, text_inspector_.vertex());
+    FiniteArithmeticSequence new_match = matching_table_.matches(pattern_, text_inspector_.vertex());
     //::std::cout << "Match is " << new_match << ::std::endl;
     //Adjust match start
     new_match.shift_right(text_inspector_.vertex_left_siblings_length());
@@ -220,16 +223,16 @@ FiniteArithmeticSequence PatternMatchesGenerator::next_match() {
 const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
                                                       const Vertex& text) {
   if (pattern.length() == 0) {
-    return FiniteArithmeticSequence::Null;
+    return FiniteArithmeticSequence::NullSequence();
   }
 
   if (pattern.length() > text.length()) {
-    return FiniteArithmeticSequence::Null;
+    return FiniteArithmeticSequence::NullSequence();
   }
 
-  auto match_result_iterator = match_table_.find(std::make_pair(pattern, text));
+  auto match_result_iterator = match_table_->find(std::make_pair(pattern, text));
 
-  if (match_result_iterator != match_table_.end()) { //if already calculated
+  if (match_result_iterator != match_table_->end()) { //if already calculated
     return match_result_iterator->second;
   }
 
@@ -240,7 +243,7 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
   } else if (pattern.length() == 1) {//Trivial case
     Vertex pattern_vertex = pattern;
     while (pattern_vertex.height() > 1) {
-      if (pattern_vertex.left_child() != Vertex::Null) {
+      if (pattern_vertex.left_child()) {
         pattern_vertex = pattern_vertex.left_child();
       } else {
         pattern_vertex = pattern_vertex.right_child();
@@ -295,7 +298,7 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
 
   }
 
-  auto inserted_element = match_table_.insert(std::make_pair(std::make_pair(pattern, text), match_result));
+  auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), match_result));
 
   return inserted_element.first->second;
 }

@@ -98,7 +98,8 @@ class FiniteArithmeticSequence {
     FiniteArithmeticSequence& join_with(const FiniteArithmeticSequence& other);
     FiniteArithmeticSequence& intersect_with(const FiniteArithmeticSequence& other);
 
-    const static FiniteArithmeticSequence Null;
+    //Use this method to get const reference to null sequence
+    static const FiniteArithmeticSequence& NullSequence();
   private:
     LongInteger first_;
     LongInteger step_;

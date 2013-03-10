@@ -144,7 +144,7 @@ class VertexWord {
     //we do not define size_type, because size() should return LongInteger, which is not integral
 
     VertexWord() //!< Just empty word
-      : root_(Vertex::Null)
+      : root_(Vertex())
     { }
 
     template<typename VertexReference>
