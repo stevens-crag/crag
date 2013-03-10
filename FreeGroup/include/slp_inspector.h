@@ -268,13 +268,14 @@ class Inspector : public OrderPolicy, public inspector::AcceptPolicy<AcceptFunct
 
 
     void fallback_to_scheduled() {
-      if (scheduled_tasks_.empty()) {
-        current_task_ = InspectorTask();
-        return;
-      }
-
-      current_task_ = std::move(scheduled_tasks_.back());
-      scheduled_tasks_.pop_back();
+      do {
+        if (scheduled_tasks_.empty()) {
+          current_task_ = InspectorTask();
+          return;
+        }
+        current_task_ = std::move(scheduled_tasks_.back());
+        scheduled_tasks_.pop_back();
+      } while(!is_task_accepted(current_task_));
     }
 
     void process_current_task() {
@@ -286,9 +287,7 @@ class Inspector : public OrderPolicy, public inspector::AcceptPolicy<AcceptFunct
     }
 
     void schedule(InspectorTask&& task) final {//marking this as final to safely use in constructor
-      if (is_task_accepted(task)) {
-        scheduled_tasks_.push_back(std::move(task));
-      }
+      scheduled_tasks_.push_back(std::move(task));
     }
 };
 
