@@ -14,5 +14,6 @@
 #include "slp_vertex_word.h"
 #include "arithmetic_sequence.h"
 #include "slp_pattern_matching.h"
+#include "slp_common_prefix.h"
 
 #endif /* CRAG_FREEGROUP_SLP_H_ */

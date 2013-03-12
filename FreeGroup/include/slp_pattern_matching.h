@@ -56,6 +56,10 @@ class MatchingTable {
     const FiniteArithmeticSequence& matches(const Vertex& pattern,
                                            const Vertex& text);
 
+    bool is_calculated(const Vertex& pattern, const Vertex& text) const {
+      return pattern.length() <= 1 || text.length() <= 1 || match_table_->count(::std::make_pair(pattern, text));
+    }
+
     MatchingTable()
       : match_table_(::std::make_shared<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>>())
     { }

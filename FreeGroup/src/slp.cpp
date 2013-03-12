@@ -66,6 +66,15 @@ FiniteArithmeticSequence& FiniteArithmeticSequence::fit_into(const LongInteger& 
   return *this;
 }
 
+bool FiniteArithmeticSequence::contains(const LongInteger& position) const {
+  if (position < first_ || position > last_) {
+    return false;
+  }
+  static mpz_t distance_to_start;
+  mpz_sub(distance_to_start, position.get_mpz_t(), first_.get_mpz_t());
+  return mpz_divisible_p(distance_to_start, step_.get_mpz_t());
+}
+
 
 FiniteArithmeticSequence& FiniteArithmeticSequence::join_with(const FiniteArithmeticSequence& other) {
   if (!*this) {
@@ -398,6 +407,22 @@ FiniteArithmeticSequence nontrivial_match(
 }
 
 } //namespace internal
+
+LongInteger longest_common_prefix(const Vertex& first, const Vertex& second, MatchingTable* matching_table) {
+  if (first.length() > second.length()) {
+    return longest_common_prefix(second, first, matching_table);
+  }
+
+  Inspector<inspector::LongestPrefixInspectorPath> inspector(first, inspector::LongestPrefixInspectorPath<std::nullptr_t>(second, *matching_table));
+  LongInteger maximum_common_prefix;
+  while (!inspector.stopped()) {
+    maximum_common_prefix = inspector.vertex_left_siblings_length() + inspector.vertex().length();
+    ++inspector;
+  }
+
+  return maximum_common_prefix;
+}
+
 } //namespace slp
 } //namespace crag
 
