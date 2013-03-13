@@ -10,6 +10,7 @@
 #define CRAG_FREEGROUP_SLP_MAPPER_H_
 
 #include <unordered_map>
+#include <functional>
 #include "slp_vertex.h"
 
 namespace crag {
@@ -41,6 +42,7 @@ class SkipMappedVerticesAcceptor {
 };
 }//namespace mapper
 
+
 //! Maps #root and its descendants using #f.
 /*
  * It inspects vertices and if a vertex is already a key in #vertices_map then it is skipped
@@ -54,14 +56,18 @@ void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, Image
   if (p_images->find(root) != p_images->end())
     return;//root is already mapped
 
-  mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, ImageType>> acceptor(*p_images);
-  slp::PostorderInspector inspector(root, acceptor);
+  typedef typename mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, ImageType>> Acceptor;
+  Acceptor acceptor(*p_images);
+  slp::Inspector<inspector::Postorder, Acceptor> inspector(root, acceptor);
   while (!inspector.stopped()) {
-    auto new_entry = std::make_pair(inspector.vertex(), f(inspector.vertex(), *p_images));
+    auto img = f(inspector.vertex(), p_images);
+    auto new_entry = std::make_pair(inspector.vertex(), img);
     p_images->insert(new_entry);
     inspector.next();
   }
 }
-}
-}
+
+}//namespace slp
+}//namespace crag
+
 #endif /* CRAG_FREEGROUP_SLP_MAPPER_H_ */
