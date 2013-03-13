@@ -65,6 +65,8 @@ class FiniteArithmeticSequence {
       return (index *= step_) + first_;
     }
 
+    bool contains(const LongInteger& position) const;
+
     friend void swap(FiniteArithmeticSequence& first, FiniteArithmeticSequence& second) {
       using std::swap;
 

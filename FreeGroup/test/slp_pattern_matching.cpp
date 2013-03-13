@@ -353,7 +353,7 @@ std::string print_tree_preorder(const Vertex& vertex) {
 
 TEST(LocalSearch, RandomWord) {
   const unsigned int WORD_SIZE = 16;
-  int REPEAT = 10;//000;
+  int REPEAT = 10000;
 
   srand(time(NULL));
 
