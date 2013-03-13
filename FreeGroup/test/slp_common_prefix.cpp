@@ -100,6 +100,7 @@ TEST(GetPrefix, StressTest) {
 TEST(CommonPrefix, StressTest) {
   const size_t size = 10;
   int repeat = 1000;
+  srand(time(0));
   while (--repeat >= 0) {
     Vertex slp = get_random_slp_on_2_letters(size);
     for (size_t prefix_length = 1; prefix_length < size; ++prefix_length) {
@@ -112,6 +113,7 @@ TEST(CommonPrefix, StressTest) {
 TEST(CommonPrefix, StressTestWithCommonTable) {
   const size_t size = 10;
   int repeat = 1000;
+  srand(time(0));
   MatchingTable common_table;
   while (--repeat >= 0) {
     Vertex slp = get_random_slp_on_2_letters(size);
