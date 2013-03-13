@@ -15,31 +15,30 @@
 namespace crag {
 namespace slp {
 
-
-
 namespace mapper {
 
-typedef typename std::unordered_map<slp::Vertex, slp::Vertex> VerticesMap;
-
-class SkipMappedVerticesAcceptor: public inspector::TaskAcceptor {
+//! Functor that accepts only vertices that were not mapped already.
+/**
+ * @tparam MappedVertices collection of vertices such that we can test the membership
+ *                        by checking whether obj.find(key) == obj.end(key) as for std::map
+ */
+template<typename MappedVertices>
+class SkipMappedVerticesAcceptor {
   public:
-  SkipMappedVerticesAcceptor(const VerticesMap const* p_vertices_map)
-      : vertices_map_(p_vertices_map) {}
+    //default copy constructor/assignment
+    SkipMappedVerticesAcceptor()
+      : mapped_vertices_(nullptr)
+    { }
 
-    //overriding accept
-    bool accept(const inspector::InspectorTask& task) {
-      return inspector::TaskAcceptor::accept(task)
-        && p_vertices_map_->find(task.vertex) == p_vertices_map_->end();//do not accept if mapped vertex already
-    }
+    SkipMappedVerticesAcceptor(const MappedVertices& mapped_vertices)
+      : mapped_vertices_(&mapped_vertices) {}
 
-    ::std::unique_ptr<inspector::TaskAcceptor> clone() const {
-      return ::std::unique_ptr<inspector::TaskAcceptor>(new TaskAcceptor(*this));
+    bool operator()(const inspector::InspectorTask& task) {
+      return mapped_vertices_->find(task.vertex) == mapped_vertices_->end();//do not accept if vertex is mapped already
     }
   private:
-    const VerticesMap const* p_vertices_map_;
+    const MappedVertices* mapped_vertices_;
 };
-
-
 }//namespace mapper
 
 //! Maps #root and its descendants using #f.
@@ -47,22 +46,22 @@ class SkipMappedVerticesAcceptor: public inspector::TaskAcceptor {
  * It inspects vertices and if a vertex is already a key in #vertices_map then it is skipped
  * along with its descendants, otherwise after its descendants processed  the mapping {@code vertex => f(vertex)}
  * is added to #vertices_map.
- * @tparam VertexMapping function or functor mapping a vertex to a vertex,
- *                        its parameters are (slp::Vertex to_map, const std::unordered_map<slp::Vertex, slp::Vertex>& vertices_map)
+ * @tparam Func function or functor accepting signature ImageType (const slp::Vertex&, const std::unordered_map<slp::Vertex, ImageType>&), i.e. mapping slp::Vertex to ImageType
+ * @tparam ImageType type of object which is an image of slp::Vertex under Func
  */
-template<typename VertexMapping>
-void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, slp::Vertex>* p_vertices_map, VertexMapping f) {
-  if (vertices_map->find(root) != vertices_map->end())
+template<typename ImageType, typename Func>
+void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, ImageType>* p_images, Func f) {
+  if (p_images->find(root) != p_images->end())
     return;//root is already mapped
 
-  slp::PostorderInspector inspector(root,
-      std::unique_ptr<mapper::SkipMappedVerticesAcceptor>(new mapper::SkipMappedVerticesAcceptor(p_vertices_map)));
+  mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, ImageType>> acceptor(*p_images);
+  slp::PostorderInspector inspector(root, acceptor);
   while (!inspector.stopped()) {
-    auto new_entry = std::make_pair(inspector.vertex(), f(inspector.vertex(), *p_vertices_map));
-    vertices_map->insert(new_entry);
+    auto new_entry = std::make_pair(inspector.vertex(), f(inspector.vertex(), *p_images));
+    p_images->insert(new_entry);
     inspector.next();
   }
 }
-
-
+}
+}
 #endif /* CRAG_FREEGROUP_SLP_MAPPER_H_ */

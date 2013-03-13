@@ -66,6 +66,15 @@ FiniteArithmeticSequence& FiniteArithmeticSequence::fit_into(const LongInteger& 
   return *this;
 }
 
+bool FiniteArithmeticSequence::contains(const LongInteger& position) const {
+  if (position < first_ || position > last_) {
+    return false;
+  }
+  static mpz_t distance_to_start;
+  mpz_sub(distance_to_start, position.get_mpz_t(), first_.get_mpz_t());
+  return mpz_divisible_p(distance_to_start, step_.get_mpz_t());
+}
+
 
 FiniteArithmeticSequence& FiniteArithmeticSequence::join_with(const FiniteArithmeticSequence& other) {
   if (!*this) {
@@ -398,7 +407,50 @@ FiniteArithmeticSequence nontrivial_match(
 }
 
 } //namespace internal
+
+LongInteger longest_common_prefix(const Vertex& first, const Vertex& second, MatchingTable* matching_table) {
+  if (first.length() > second.length()) {
+    return longest_common_prefix(second, first, matching_table);
+  }
+
+  Inspector<inspector::LongestPrefixInspectorPath> inspector(first, inspector::LongestPrefixInspectorPath<std::nullptr_t>(second, *matching_table));
+  LongInteger maximum_common_prefix;
+  while (!inspector.stopped()) {
+    maximum_common_prefix = inspector.vertex_left_siblings_length() + inspector.vertex().length();
+    ++inspector;
+  }
+
+  return maximum_common_prefix;
+}
+
+const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end, std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex>* cache) {
+  if (begin >= root.length() || end < 0 || end <= begin) {
+    static Vertex Null;
+    return Null;
+  }
+  if (root.height() == 1) {
+    return root;
+  } else if (begin <= 0 && end >= root.length()) {
+    return root;
+  } else {
+    auto cache_item = cache->find(std::make_tuple(root, begin, end));
+    if (cache_item != cache->end()) {
+      return cache_item->second;
+    }
+    if (root.split_point() >= end) {
+      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.left_child(), begin, end, cache)))).first->second;
+    } else if (root.split_point() <= begin) {
+      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)))).first->second;
+    } else {
+      const Vertex& left_child = get_sub_slp(root.left_child(), begin, end, cache);
+      const Vertex& right_child = get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache);
+      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), NonterminalVertex(left_child, right_child))).first->second;
+    }
+  }
+}
+
 } //namespace slp
 } //namespace crag
 
+constexpr std::hash<mp_limb_t*> std::hash<LongInteger>::limb_hasher_;
 

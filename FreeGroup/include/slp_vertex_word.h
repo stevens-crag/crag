@@ -14,48 +14,89 @@
 
 namespace crag {
 namespace slp {
+namespace inspector {
 
-namespace internal {
-
-template <typename OrderPolicy>
-class TerminalVertexInspector : public Inspector<OrderPolicy> {
-    typedef Inspector<OrderPolicy> Super;
+template <typename AcceptFunctor>
+class TerminalVertexPath : public InspectorPath<AcceptFunctor> {
   public:
-    template<typename ... ConstructorArgumentTypes>
-    TerminalVertexInspector(ConstructorArgumentTypes&&... arguments)
-      : Super(std::forward<ConstructorArgumentTypes>(arguments)...)
-    {
-      if (this->current_task_.vertex.height() > 1) {
-        next();
-      }
-    }
+    TerminalVertexPath() {}
+    TerminalVertexPath(AcceptFunctor&& accept_functor)
+      : InspectorPath<AcceptFunctor>(std::move(accept_functor))
+    { }
+    using InspectorPath<AcceptFunctor>::schedule;
+    using InspectorPath<AcceptFunctor>::pop_scheduled;
+    using InspectorPath<AcceptFunctor>::is_task_accepted;
 
-    TerminalVertexInspector& next() {
-      do {
-        Super::next();
-      } while (this->current_task_.vertex.height() > 1); //Null vertex has height 0, so if current_task_ == DO_NOTHING, this loop breaks
-      return *this;
-    }
-
-    void go_to_position(const LongInteger& position) {
-      if (position < this->current_task_.left_siblings_length) {
-        return; //We have to go backwards
+    InspectorTask process(const InspectorTask& current_task) {
+      if (!current_task || current_task.command == InspectorTask::Command::VISIT) {
+        return InspectorTask();
       }
 
-      while (this->current_task_.vertex.height() > 1 ||
-             this->current_task_.command != Super::InspectorTask::Command::VISIT ||
-             position != this->current_task_.left_siblings_length) {
-        if (this->current_task_.left_siblings_length + this->current_task_.vertex.length() < position) {
-          this->fallback_to_scheduled(); //We have to skip current subtree
+      if (current_task.vertex.height() == 1) {
+        return InspectorTask::for_current(current_task, InspectorTask::Command::VISIT);
+      }
+
+      schedule(InspectorTask::for_right_child(current_task, InspectorTask::Command::GO_LEFT));
+      return InspectorTask::for_left_child(current_task, InspectorTask::Command::GO_LEFT);
+    }
+
+    InspectorTask initial_task(Vertex&& root) {
+      Vertex current = std::move(root);
+
+      while (current.height() > 1) {
+        if (current.left_child()) {
+          schedule(InspectorTask(current.right_child(), InspectorTask::Command::GO_LEFT, current.left_child().length()));
+          current = current.left_child();
         } else {
-          this->process_current_task();
+          current = current.right_child();
         }
       }
-      //While we are not visiting terminal or null
+
+      return InspectorTask(std::move(current), InspectorTask::Command::VISIT, LongInteger());
+    }
+
+    InspectorTask go_to_position(InspectorTask&& current_task, const LongInteger& new_position) {
+      current_task = pop_scheduled();
+
+      while (current_task.vertex.height() > 1 ||
+             new_position != current_task.left_siblings_length) {
+        if (current_task.left_siblings_length + current_task.vertex.length() < new_position) {
+          current_task = pop_scheduled();
+        } else {
+          current_task = process(current_task);
+
+          if (!is_task_accepted(current_task)) {
+            current_task = pop_scheduled();
+          }
+        }
+      }
+
+      return InspectorTask::for_current(current_task, InspectorTask::Command::VISIT);
     }
 };
 
-} //namespace internal
+template <typename AcceptFunctor = std::nullptr_t>
+class TerminalVertexInspector : public Inspector<TerminalVertexPath, AcceptFunctor> {
+  public:
+    TerminalVertexInspector(Vertex root)
+      : Inspector<TerminalVertexPath, AcceptFunctor>(std::move(root))
+    { }
+
+    TerminalVertexInspector() {}
+    TerminalVertexInspector(Vertex root, AcceptFunctor accept_functor)
+      : Inspector<TerminalVertexPath, AcceptFunctor>(std::move(root), std::move(accept_functor))
+    { }
+
+    void go_to_position(const LongInteger& offset) {
+      if (offset <= 0) {
+        return;
+      }
+
+      this->current_task_ = this->inspector_path_.go_to_position(::std::move(this->current_task_), this->current_task_.left_siblings_length + offset);
+    }
+};
+
+} //namespace inspector
 
 //! Iterator of #slp::VertexWord.
 /**
@@ -108,7 +149,7 @@ class VertexWordIterator : public std::iterator <
     }
 
     VertexWordIterator& operator+=(const LongInteger& shift) {
-      inspector_.go_to_position(inspector_.vertex_left_siblings_length() + shift);
+      inspector_.go_to_position(shift);
       return *this;
     }
 
@@ -130,8 +171,8 @@ class VertexWordIterator : public std::iterator <
     }
 
   private:
-    internal::TerminalVertexInspector<inspector::Preorder> inspector_; //!< Subtree inspector
-    const Vertex* root_;                                               //!< Root. Used only for comparison
+    inspector::TerminalVertexInspector<> inspector_; //!< Subtree inspector
+    const Vertex* root_;                           //!< Root. Used only for comparison
 };
 
 //! Word produced by some #slp::Vertex
