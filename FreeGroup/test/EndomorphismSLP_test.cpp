@@ -169,7 +169,7 @@ TEST_F(EndomorphismSLPTest, Inverter) {
 TEST_F(EndomorphismSLPTest, LeftMultiplier) {
   for (int i = 1; i < 10; ++i)
     for (int j = 1; j < 10; ++j) {
-      if (i == j) 
+      if (i == j)
         continue;
       auto inverter = EMorphism::left_multiplier(i, j);
       EXPECT_EQ(1, inverter.non_trivial_images_num());
@@ -293,6 +293,18 @@ TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
   EXPECT_EQ("-3122", img[0]);
   EXPECT_EQ("-2-2-2-13", img[1]);
   EXPECT_EQ("-3", img[2]);
+}
+
+TEST_F(EndomorphismSLPTest, RandomGeneratorConstructorsTest) {
+  UniformAutomorphismSLPGenerator<int> rnd(5);//default
+  UniformAutomorphismSLPGenerator<int> rnd1(10, 546457);//with seed
+  std::default_random_engine r_engine;
+  UniformAutomorphismSLPGenerator<int> rnd2(4, &r_engine);//with generator
+  for (int i = 0; i < 100; ++i) {
+      EXPECT_EQ(1, rnd().non_trivial_images_num());
+      EXPECT_EQ(1, rnd1().non_trivial_images_num());
+      EXPECT_EQ(1, rnd2().non_trivial_images_num());
+    }
 }
 
 TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
