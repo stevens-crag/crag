@@ -139,9 +139,15 @@ $(BIN_DIR)/all_unittests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o)
 	@echo
 	@echo " ./$@ : compiled sucessfully."
 	@echo
-	
+
 check: tests
+ifdef FILTER
+	$(BIN_DIR)/all_unittests --gtest_filter="$(FILTER)"
+else
 	$(BIN_DIR)/all_unittests
+endif
+	
+	
 
 # Clean target to remove backup, object, and core files
 clean:

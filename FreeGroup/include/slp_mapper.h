@@ -60,7 +60,7 @@ void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, Image
   Acceptor acceptor(*p_images);
   slp::Inspector<inspector::Postorder, Acceptor> inspector(root, acceptor);
   while (!inspector.stopped()) {
-    auto img = f(inspector.vertex(), p_images);
+    auto img = f(inspector.vertex(), *p_images);
     auto new_entry = std::make_pair(inspector.vertex(), img);
     p_images->insert(new_entry);
     inspector.next();

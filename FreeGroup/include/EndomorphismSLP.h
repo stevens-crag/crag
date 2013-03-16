@@ -177,8 +177,8 @@ private:
       : endomorphism_(endomorphism){
     }
 
-    slp::Vertex operator()(const slp::Vertex& vertex, std::unordered_map<slp::Vertex, slp::Vertex>* images) const {
-      return endomorphism_.map_vertex(vertex, *images);
+    slp::Vertex operator()(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const {
+      return endomorphism_.map_vertex(vertex, images);
     }
 
   private:

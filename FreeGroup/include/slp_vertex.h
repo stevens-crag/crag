@@ -11,6 +11,7 @@
 
 #include <memory>
 #include <iostream>
+#include <cassert>
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
@@ -192,7 +193,9 @@ class TerminalVertexTemplate : public Vertex {
     explicit TerminalVertexTemplate(const TerminalSymbol& terminal_symbol)
       : Vertex(::std::make_shared<internal::BasicTerminalVertex<TerminalSymbol>>(terminal_symbol))
       , terminal_vertex_ptr_(static_cast<internal::BasicTerminalVertex<TerminalSymbol>*>(vertex_.get()))
-    { }
+    {
+      assert(height() == 1 && length() == 1);
+    }
 
     explicit TerminalVertexTemplate(const Vertex& vertex)
       : Vertex(vertex)
@@ -201,6 +204,8 @@ class TerminalVertexTemplate : public Vertex {
       if (!terminal_vertex_ptr_) {
         vertex_ = 0;
       }
+
+      assert((height() == 0 && length() == 0) || (height() == 1 && length() == 1));
     }
 
     const TerminalSymbol& terminal_symbol() const {
@@ -276,11 +281,12 @@ class BasicNonterminalVertex : public internal::BasicVertex {
     BasicNonterminalVertex(::std::shared_ptr<NonterminalVertexNodeData>&& node_data_ptr, bool negate_node)
       : BasicVertex(
           node_data_ptr->left_child.length() + node_data_ptr->right_child.length(),
-          ::std::max(node_data_ptr->left_child.height(), node_data_ptr->left_child.height()) + 1
+          ::std::max(node_data_ptr->left_child.height(), node_data_ptr->right_child.height()) + 1
         )
       , node_data_ptr_(std::move(node_data_ptr))
       , negate_node_(negate_node)
-    { }
+    {
+    }
 };
 }
 
@@ -298,14 +304,24 @@ class NonterminalVertex : public Vertex {
           })),
           false
         ))
-    { }
+    {
+      assert(left_child());
+      assert(right_child());
+      assert(left_child().length() > 0);
+      assert(right_child().length() > 0);
+      assert(height() > 1);
+      assert(length() > 1);
+    }
 
   private:
     friend class internal::BasicNonterminalVertex;
 
     NonterminalVertex(::std::shared_ptr<internal::BasicNonterminalVertex>&& vertex)
       : Vertex(::std::move(vertex))
-    { }
+    {
+      assert(height() > 1);
+      assert(length() > 1);
+    }
 };
 }//namespace slp
 }//namespace crag
