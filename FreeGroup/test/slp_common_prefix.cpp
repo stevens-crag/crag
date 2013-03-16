@@ -43,6 +43,19 @@ TEST(CommonPrefix, Example1) {
   EXPECT_EQ(3, longest_common_prefix(a3left, a3right));
 }
 
+TEST(CommonPrefix, Example2) {
+  TerminalVertex a('a');
+  TerminalVertex b('b');
+  NonterminalVertex aa(a, a);
+  NonterminalVertex ab(a, b);
+  MatchingTable matching_table;
+  matching_table.matches(aa, ab);
+
+  EXPECT_EQ(1, longest_common_prefix(aa, ab));
+  EXPECT_EQ(1, longest_common_prefix(aa, ab, &matching_table));
+}
+
+
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
   TerminalVertex a('a');
   TerminalVertex b('b');

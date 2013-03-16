@@ -92,14 +92,17 @@ class LongestPrefixInspectorPath : public InspectorPath<AcceptFunctor> {
     InspectorTask process(const InspectorTask& current_task) {
       if (current_task.command == InspectorTask::Command::VISIT) {
         InspectorTask next_task = pop_scheduled();
-        if (next_task && (next_task.command == InspectorTask::Command::VISIT && !is_prefix(next_task))) {
-          clear_scheduled();
-          return InspectorTask();
+        if (next_task && next_task.command == InspectorTask::Command::VISIT) {
+          syncronize(next_task);
+          if (!is_prefix(next_task)) {
+            clear_scheduled();
+            return InspectorTask();
+          }
         }
         return next_task;
       }
 
-
+      syncronize(current_task);
       if (matching_table_.is_calculated(current_task.vertex, other_slp_inspector_.vertex())) {
         if (is_prefix(current_task)) {
           return InspectorTask::for_current(current_task, InspectorTask::Command::VISIT);
@@ -114,9 +117,12 @@ class LongestPrefixInspectorPath : public InspectorPath<AcceptFunctor> {
 
         if (!is_task_accepted(next_task)) {
           next_task = InspectorTask::for_current(current_task, InspectorTask::Command::VISIT);
-          if (next_task && (next_task.command == InspectorTask::Command::VISIT && !is_prefix(next_task))) {
-            clear_scheduled();
-            return InspectorTask();
+          if (next_task && (next_task.command == InspectorTask::Command::VISIT)) {
+            syncronize(next_task);
+            if (!is_prefix(next_task)) {
+              clear_scheduled();
+              return InspectorTask();
+            }
           }
           return next_task;
         }
@@ -127,25 +133,34 @@ class LongestPrefixInspectorPath : public InspectorPath<AcceptFunctor> {
     }
 
     InspectorTask initial_task(const Vertex& root) {
-      InspectorTask current_task = InspectorTask(Vertex(root), InspectorTask::Command::VISIT, LongInteger());
-      other_slp_inspector_.synchronize(current_task.left_siblings_length, current_task.vertex.length());
+      return InspectorTask(Vertex(root), InspectorTask::Command::GO_LEFT, LongInteger());
 
-      while (!matching_table_.is_calculated(current_task.vertex, other_slp_inspector_.vertex())) {
-        schedule(InspectorTask::for_right_child(current_task, InspectorTask::Command::GO_LEFT));
-        current_task = InspectorTask::for_left_child(current_task, InspectorTask::Command::VISIT);
-        other_slp_inspector_.synchronize(current_task.left_siblings_length, current_task.vertex.length());
-      }
-
-      if (!is_prefix(current_task)) {
-        current_task = InspectorTask();
-        clear_scheduled();
-      }
-
-      return current_task;
+//      while (current_task) {
+//        syncronize(current_task);
+//        if (matching_table_.is_calculated(current_task.vertex, other_slp_inspector_.vertex())) {
+//          if (is_prefix(current_task)) {
+//            return current_task;
+//          }
+//          current_task = InspectorTask::for_left_child(current_task, InspectorTask::Command::VISIT);
+//        }
+//      }
+//      other_slp_inspector_.synchronize(current_task.left_siblings_length, current_task.vertex.length());
+//
+//      while (!matching_table_.is_calculated(current_task.vertex, other_slp_inspector_.vertex())) {
+//        schedule(InspectorTask::for_right_child(current_task, InspectorTask::Command::GO_LEFT));
+//        current_task = InspectorTask::for_left_child(current_task, InspectorTask::Command::VISIT);
+//        syncronize(current_task);
+//      }
+//
+//      if (!is_prefix(current_task)) {
+//        current_task = InspectorTask();
+//        clear_scheduled();
+//      }
+//
+//      return current_task;
     }
 
     bool is_prefix(const InspectorTask& current_task) {
-      other_slp_inspector_.synchronize(current_task.left_siblings_length, current_task.vertex.length());
       auto matches = matching_table_.matches(current_task.vertex, other_vertex());
       return matches.shift_right(other_vertex_left_siblings()).contains(current_task.left_siblings_length);
     }
@@ -159,6 +174,10 @@ class LongestPrefixInspectorPath : public InspectorPath<AcceptFunctor> {
     }
 
   private:
+    void syncronize(const InspectorTask& current_task) {
+      other_slp_inspector_.synchronize(current_task.left_siblings_length, current_task.vertex.length());
+    }
+
     MatchingTable matching_table_;
     Vertex other_root_;
     SegmentTracker other_slp_inspector_;

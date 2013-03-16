@@ -423,14 +423,17 @@ LongInteger longest_common_prefix(const Vertex& first, const Vertex& second, Mat
   return maximum_common_prefix;
 }
 
+//Be aware passing temporary objects as root - maybe, this temporary object will be returned.
 const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end, std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex>* cache) {
   if (begin >= root.length() || end < 0 || end <= begin) {
     static Vertex Null;
     return Null;
   }
   if (root.height() == 1) {
+    assert(root.length() == 1);
     return root;
   } else if (begin <= 0 && end >= root.length()) {
+    assert(root.height() != 1 || root.length() == 1);
     return root;
   } else {
     auto cache_item = cache->find(std::make_tuple(root, begin, end));
@@ -438,13 +441,23 @@ const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
       return cache_item->second;
     }
     if (root.split_point() >= end) {
-      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.left_child(), begin, end, cache)))).first->second;
+      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.left_child(), begin, end, cache)))).first->second;
+      assert(result.height() != 1 || result.length() == 1);
+      return result;
     } else if (root.split_point() <= begin) {
-      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)))).first->second;
+      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)))).first->second;
+      assert(result.height() != 1 || result.length() == 1);
+      return result;
     } else {
-      const Vertex& left_child = get_sub_slp(root.left_child(), begin, end, cache);
-      const Vertex& right_child = get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache);
-      return cache->insert(std::make_pair(std::make_tuple(root, begin, end), NonterminalVertex(left_child, right_child))).first->second;
+      const Vertex& result = cache->insert(
+          std::make_pair(
+              std::make_tuple(root, begin, end),
+              NonterminalVertex(
+                  get_sub_slp(root.left_child(), begin, end, cache),
+                  get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)
+          ))).first->second;
+      assert(result.height() != 1 || result.length() == 1);
+      return result;
     }
   }
 }

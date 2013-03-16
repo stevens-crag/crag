@@ -117,24 +117,38 @@ inline Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
   return get_sub_slp(root, begin, end, &cache);
 }
 
-inline LongInteger get_cancellation_length(const Vertex& vertex) {
-  return longest_common_prefix(vertex.left_child(), vertex.right_child().negate());
+inline LongInteger get_cancellation_length(const Vertex& vertex, MatchingTable* matching_table) {
+  return longest_common_prefix(vertex.left_child().negate(), vertex.right_child(), matching_table);
 }
 
+inline LongInteger get_cancellation_length(const Vertex& vertex) {
+  MatchingTable temp;
+  return get_cancellation_length(vertex, &temp);
+}
 inline Vertex reduce(const Vertex& vertex) {
   std::unordered_map<Vertex, Vertex> reduced_vertices;
-  map_vertices(vertex, &reduced_vertices, [](const slp::Vertex& vertex, std::unordered_map<Vertex, Vertex>* reduced_vertices) -> Vertex {
-    const Vertex& left = (*reduced_vertices)[vertex.left_child()];
-    const Vertex& right = (*reduced_vertices)[vertex.right_child()];
+  MatchingTable matching_table;
+  map_vertices(vertex, &reduced_vertices, [&matching_table](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
+    if (vertex.height() <= 1) {
+      return vertex;
+    }
+    const Vertex& left = reduced_vertices.find(vertex.left_child())->second;
+    const Vertex& right = reduced_vertices.find(vertex.right_child())->second;
     if (!left && !right) {
       return Vertex();
     } else {
       NonterminalVertex result(left, right);
-      LongInteger cancellation_length = get_cancellation_length(result);
+      LongInteger cancellation_length = get_cancellation_length(result, &matching_table);
       if (cancellation_length == 0) {
         if (left == vertex.left_child() && right == vertex.right_child()) {
+          assert((vertex.height() > 1 && vertex.length() > 1) || (vertex.length() == 1 && vertex.height() == 1) || (vertex.length() == 0 && vertex.height() == 0));
           return vertex;
+        } else if (!left) {
+          return right;
+        } else if (!right) {
+          return left;
         } else {
+          assert((result.height() > 1 && result.length() > 1) || (result.length() == 1 && result.height() == 1) || (result.length() == 0 && result.height() == 0));
           return result;
         }
       } else {
@@ -143,11 +157,18 @@ inline Vertex reduce(const Vertex& vertex) {
         if (!reduced_left && !reduced_right) {
           return Vertex();
         } else if (!reduced_left) {
+          assert(reduced_right.height() >= 1);
+          assert(reduced_right.height() != 1 || reduced_right.length() == 1);
           return reduced_right;
         } else if (!reduced_right) {
+          assert(reduced_left.height() >= 1);
+          assert(reduced_left.height() != 1 || reduced_left.length() == 1);
           return reduced_left;
         } else {
-          return NonterminalVertex(reduced_left, reduced_right);
+          auto result = NonterminalVertex(reduced_left, reduced_right);
+          assert(result.length() > 1);
+          assert(result.height() > 1);
+          return result;
         }
       }
     }
