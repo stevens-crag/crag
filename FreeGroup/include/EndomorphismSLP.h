@@ -196,20 +196,6 @@ private:
    * to iterate over the keys in the specific order defined by operator < for TerminalSymbol.
    */
   std::map<TerminalSymbol, slp::Vertex> images_;
-
-  class MapperBinder {
-  public:
-    MapperBinder(const EndomorphismSLP& endomorphism)
-      : endomorphism_(endomorphism){
-    }
-
-    slp::Vertex operator()(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const {
-      return endomorphism_.map_vertex(vertex, images);
-    }
-
-  private:
-    const EndomorphismSLP& endomorphism_;
-  };
 };
 
 //! Compose given endomorphisms.
@@ -337,9 +323,12 @@ template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
   std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-  MapperBinder binder(*this);
+  auto map_vertex_callback = [this] (const slp::Vertex& vertex, std::unordered_map<slp::Vertex, slp::Vertex>* images) {
+    return this->map_vertex(vertex, *images);
+  };
+
   for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
-    slp::map_vertices(root_entry.second, &new_vertices, binder);
+    slp::map_vertices(root_entry.second, &new_vertices, map_vertex_callback);
   }
 
   //replacing roots
