@@ -10,6 +10,7 @@
 
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <random>
 #include <algorithm>
 #include <assert.h>
@@ -223,14 +224,22 @@ unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
-  unsigned int h = 0;
-  auto pick_max_height = [&h] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
-    const unsigned int v_h = v.second.height();
-    if (v_h > h)
-      h = v_h;
+  std::unordered_set<slp::Vertex> visited_vertices;
+
+  auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
+    return visited_vertices.find(task.vertex) == visited_vertices.end();
   };
-  e.for_each_non_trivial_image(pick_max_height);
-  return h;
+
+  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
+    while (!inspector.stopped()) {
+      visited_vertices.insert(inspector.vertex());
+      inspector.next();
+    }
+  };
+
+  e.for_each_non_trivial_image(inspect_root);
+  return visited_vertices.size();
 }
 
 

@@ -401,7 +401,28 @@ TEST_F(EndomorphismSLPTest, HeightCalculationTest) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
+  EXPECT_EQ(0, slp_vertices_num(EMorphism::identity()));
+  EXPECT_EQ(1, slp_vertices_num(EMorphism::inverter(1)));
+  EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(1, 2)));
+  EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(1, 2)));
 
+  for (auto rank : {3, 10, 20}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      auto e = EMorphism::composition(size, rnd);
+      std::unordered_set<slp::Vertex> visited_vertices;
+      e.for_each_non_trivial_image( [&visited_vertices] (const typename EMorphism::symbol_image_pair_type& v) {
+        slp::Inspector<slp::inspector::Postorder> inspector(v.second);
+        while (!inspector.stopped()) {
+          visited_vertices.insert(inspector.vertex());
+          inspector.next();
+        }
+      } );
+      EXPECT_EQ(visited_vertices.size(), slp_vertices_num(e));
+    }
+  }
+}
 
 
 
