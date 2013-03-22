@@ -403,9 +403,16 @@ TEST_F(EndomorphismSLPTest, HeightCalculationTest) {
 
 TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
   EXPECT_EQ(0, slp_vertices_num(EMorphism::identity()));
-  EXPECT_EQ(1, slp_vertices_num(EMorphism::inverter(1)));
-  EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(1, 2)));
-  EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(1, 2)));
+  for (int i = 1; i < 10; ++i)
+    EXPECT_EQ(1, slp_vertices_num(EMorphism::inverter(i)));
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(i, j)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(i, -j)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(j, i)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(-j, i)));
+      }
 
   for (auto rank : {3, 10, 20}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
@@ -424,6 +431,40 @@ TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
   }
 }
 
+
+TEST_F(EndomorphismSLPTest, InvertionTest) {
+  EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::identity(), EMorphism::identity().inverse()));
+  for (int i = 1; i < 10; ++i) {
+    EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::inverter(i), EMorphism::identity().inverter(i)));
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, -j),
+                                                   EMorphism::right_multiplier(i, j)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, j),
+                                                   EMorphism::right_multiplier(i, -j)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(-j, i),
+                                                   EMorphism::left_multiplier(j, i)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(j, i),
+                                                   EMorphism::left_multiplier(-j, i)));
+      }
+
+//  for (auto rank : {1, 5, 10, 20, 30}) {
+//    UniformAutomorphismSLPGenerator<int> rnd(rank);
+//    for (auto size : {0, 5, 10, 30, 60}) {
+//      std::vector<EMorphism> morphisms;
+//      for (int i = 0; i < size; ++i)
+//        morphisms.push_back(rnd());
+
+//      auto morphism1 = EMorphism::composition(morphisms.begin(), morphisms.end());
+//      CachedProducer cp(morphisms);
+//      auto morphism2 = EMorphism::composition(size, cp);
+//      for (int i = 0; i < rank; ++i)
+//        EXPECT_EQ(to_string(morphism1.image(i + 1)), to_string(morphism2.image(i + 1)));
+//    }
+//  }
+}
 
 
 } /* namespace crag */

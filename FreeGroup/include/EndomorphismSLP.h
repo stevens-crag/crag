@@ -114,6 +114,14 @@ public:
     return *this;
   }
 
+  //! Returns the automorphisms inverse
+  /**
+   * Currently supporsts only inverter and left and right multipliers.
+   * @return automorphisms inverse
+   * @throws std::invalid_argument if can not invert the automorphism
+   */
+  EndomorphismSLP inverse();
+
 
   //! Returns the image of the terminal.
   slp::VertexWord<TerminalSymbol> image(const TerminalSymbol& t) const {
@@ -327,6 +335,39 @@ private:
   std::uniform_int_distribution<index_type> random_distr_;
 };
 
+
+template <typename TerminalSymbol>
+EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::inverse() {
+  if (images_.size() == 0) //identity
+    return *this;
+  if (images_.size() > 1)
+    throw std::invalid_argument("Unsupported endomorphism with more than one non-trivial terminal image!");
+
+  auto img = images_.begin();
+  auto symbol = img->first;
+  slp::Vertex image = img->second;
+  if (image.height() > 2)
+    throw std::invalid_argument("Unsupported endomorphism with unsupported slp height > 2!");
+
+  if (image.height() == 1) {//inverter
+    return *this;
+  }
+
+  TerminalVertex left(image.left_child());
+  TerminalVertex right(image.right_child());
+
+  auto left_symbol = left.terminal_symbol();
+  auto right_symbol = right.terminal_symbol();
+
+  if (! (left_symbol == symbol || right_symbol == symbol))
+    throw std::invalid_argument("Unsupported endomorphism not mapping the symbol to the product of another one and itself!");
+
+  if (left_symbol == symbol) {
+    return right_multiplier(symbol, -right_symbol);
+  } else {
+    return left_multiplier(-left_symbol, symbol);
+  }
+}
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
