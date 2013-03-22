@@ -120,20 +120,20 @@ public:
    * @return automorphisms inverse
    * @throws std::invalid_argument if can not invert the automorphism
    */
-  EndomorphismSLP inverse();
+  EndomorphismSLP inverse() const;
 
 
   //! Returns the image of the terminal.
-  slp::VertexWord<TerminalSymbol> image(const TerminalSymbol& t) const {
+  slp::VertexWord<TerminalSymbol> image_word(const TerminalSymbol& t) const {
     bool is_positive = is_positive_terminal_symbol(t);
-    return slp::VertexWord<TerminalSymbol>(is_positive ? slp(t) : slp(-t).negate());
+    return slp::VertexWord<TerminalSymbol>(is_positive ? image(t) : image(-t).negate());
   }
 
   //! Returns the root of the straight-line program representing the positive terminal symbol.
   /**
    * @param t positive terminal symbol
    */
-  slp::Vertex slp(const TerminalSymbol& t) const {
+  slp::Vertex image(const TerminalSymbol& t) const {
     assert(is_positive_terminal_symbol(t));
     auto result = images_.find(t);
     if (result == images_.end()) //if it is not in images_, then it is the identity map.
@@ -337,7 +337,7 @@ private:
 
 
 template <typename TerminalSymbol>
-EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::inverse() {
+EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::inverse() const {
   if (images_.size() == 0) //identity
     return *this;
   if (images_.size() > 1)
@@ -406,7 +406,7 @@ slp::Vertex EndomorphismSLP<TerminalSymbol>::map_vertex(const slp::Vertex& verte
     const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
     bool is_positive = is_positive_terminal_symbol(symbol);
     auto positive_symbol = is_positive ? symbol : -symbol;
-    slp::Vertex v = slp(positive_symbol);
+    slp::Vertex v = image(positive_symbol);
     if (TerminalVertex(positive_symbol) == v)//if id map
       return vertex;
     return is_positive ? v : v.negate();
