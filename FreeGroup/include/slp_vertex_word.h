@@ -11,6 +11,7 @@
 
 #include "slp_vertex.h"
 #include "slp_inspector.h"
+#include "slp_pattern_matching.h"
 
 namespace crag {
 namespace slp {
@@ -193,7 +194,20 @@ class VertexWord {
       : root_(std::forward<VertexReference>(root))
     { }
 
-   //TODO: define swap, operator ==
+   //TODO: define swap
+
+    bool operator==(const VertexWord& other) {
+      MatchingTable table;
+      return is_equal_to(other, &table);
+    }
+
+    bool is_equal_to(const VertexWord& other, MatchingTable* matching_table) {
+      if (this->root_.length() != other.root_.length()) {
+        return false;
+      }
+
+      return matching_table->matches(root_, other.root_);
+    }
 
     const_reference operator[](LongInteger index) const; //!< Get one letter from the word
 
