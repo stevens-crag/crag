@@ -68,7 +68,7 @@ Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
 //}
 
 TEST(SubSLP, StressTest) {
-  const size_t size = 500;
+  const size_t size = 10;
   int repeat = 1000;
   srand(time(0));
   while (--repeat >= 0) {
@@ -242,7 +242,7 @@ TEST(Reduce, StressTest) {
 }
 
 TEST(Reduce, PerformanceTest) {
-  int REPEAT = 10;
+  int REPEAT = 100;
   const size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 100;
   size_t seed = time(0);

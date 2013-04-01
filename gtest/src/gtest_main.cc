@@ -28,12 +28,93 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include <iostream>
+#include <cstring>
+#include <gmp.h>
 
+#include <boost/pool/singleton_pool.hpp>
+//
 #include "gtest/gtest.h"
 
+//namespace {
+
+struct GmpPoolTag {};
+const size_t POOL_ALLOCATE_BOUNDARY = 4*sizeof(mp_limb_t);
+size_t allocate_pool = 0;
+size_t allocate_malloc = 0;
+size_t reallocate_pool = 0;
+size_t reallocate_pool_malloc = 0;
+size_t reallocate_malloc = 0;
+size_t free_pool = 0;
+size_t free_malloc = 0;
+
+void* (*gmp_default_malloc) (size_t);
+void* (*gmp_default_realloc) (void *, size_t, size_t);
+void (*gmp_default_free) (void *, size_t);
+
+typedef boost::singleton_pool<GmpPoolTag, POOL_ALLOCATE_BOUNDARY, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex> GmpPool;
+
+inline void* gmp_pool_allocate(size_t alloc_size) {
+  if (alloc_size == 0) {
+    return gmp_default_malloc(alloc_size);
+  } else if (alloc_size <= POOL_ALLOCATE_BOUNDARY) {
+    //++allocate_pool;
+    return GmpPool::malloc();
+  } else {
+    //++allocate_malloc;
+    return gmp_default_malloc(alloc_size);
+  }
+}
+
+inline void* gmp_pool_reallocate(void *ptr, size_t old_size, size_t new_size) {
+  if (new_size == 0) {
+    return nullptr;
+  } else if (new_size <= POOL_ALLOCATE_BOUNDARY) {
+    if (old_size) {
+      return ptr;
+    } else {
+      //++reallocate_pool;
+      return GmpPool::malloc();
+    }
+  } else if (old_size == 0) {
+    //++reallocate_malloc;
+    return gmp_default_realloc(ptr, old_size, new_size);
+  } else if (old_size <= POOL_ALLOCATE_BOUNDARY) {
+    //++reallocate_pool_malloc;
+    void * new_block = malloc(new_size);
+    memmove(new_block, ptr, old_size);
+    GmpPool::free(ptr);
+    return new_block;
+  } else {
+    //++reallocate_malloc;
+    return gmp_default_realloc(ptr, old_size, new_size);
+  }
+}
+
+inline void gmp_pool_free(void *ptr, size_t size) {
+  if (size <= POOL_ALLOCATE_BOUNDARY) {
+    //++free_pool;
+    GmpPool::free(ptr);
+  } else {
+    //++free_malloc;
+    gmp_default_free(ptr, size);
+  }
+}
+
+//} //anonymous namespace
 GTEST_API_ int main(int argc, char **argv) {
+  mp_get_memory_functions (&gmp_default_malloc, &gmp_default_realloc, &gmp_default_free);
+  mp_set_memory_functions(gmp_pool_allocate, gmp_pool_reallocate, gmp_pool_free);
+  //mp_set_memory_functions(gmp_default_malloc, gmp_default_realloc, gmp_default_free);
   std::cout << "Running main() from gtest_main.cc\n";
 
   testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+  bool ret = RUN_ALL_TESTS();
+  std::cout << allocate_pool << std::endl;
+  std::cout << allocate_malloc << std::endl;
+  std::cout << reallocate_pool << std::endl;
+  std::cout << reallocate_pool_malloc << std::endl;
+  std::cout << reallocate_malloc << std::endl;
+  std::cout << free_pool << std::endl;
+  std::cout << free_malloc << std::endl;
+  return ret;
 }
