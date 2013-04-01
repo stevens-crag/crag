@@ -17,16 +17,17 @@ const LongInteger& Vertex::LongZero() { //We use it to return length of Null ver
   return zero;
 }
 
-Vertex internal::BasicNonterminalVertex::negate() const {
-  return NonterminalVertex(::std::make_shared<BasicNonterminalVertex>(
-      ::std::shared_ptr<NonterminalVertexNodeData>(node_data_ptr_),
-      !negate_node_
-  ));
+const LongInteger& Vertex::LongOne() { //We use it to return length of Null vertex
+  static LongInteger one = 1;
+  return one;
 }
 
-constexpr ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
+const Vertex::VertexAllocator& NonterminalVertex::get_allocator() {
+  static Vertex::VertexAllocator allocator;
+  return allocator;
+}
 
-size_t internal::BasicNonterminalVertex::last_vertex_id_;
+Vertex::VertexSignedId NonterminalVertex::last_vertex_id_;
 }
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {

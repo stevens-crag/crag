@@ -16,60 +16,30 @@
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
 
+#include "boost/pool/pool_alloc.hpp"
+
 namespace crag {
 namespace slp {
 
-class Vertex;
-
 namespace internal {
-class BasicVertex {
-  public:
-    LongInteger length_;
-    unsigned int height_;
-
-    BasicVertex()
-      : length_(0)
-      , height_(0)
-    { }
-
-    BasicVertex(LongInteger&& length, unsigned int height)
-      : length_(::std::move(length))
-      , height_(height)
-    { }
-
-    virtual ~BasicVertex() {}
-    //Because of this destructor we have no move constructor
-
-    virtual Vertex left_child() const;
-    virtual Vertex right_child() const;
-    virtual Vertex negate() const;
-
-    virtual size_t vertex_hash() const {
-      return 0;
-    }
-
-    virtual bool call_is_same_vertex(const BasicVertex& other) const {
-      return true;
-    }
-
-    bool is_same_vertex(const BasicVertex& other) const {
-      return true;
-    }
-
-    virtual void debug_print(::std::ostream* out) const {
-    }
-};
+class BasicVertex;
+struct BasicVertexAllocatorTag{};
+typedef boost::fast_pool_allocator<BasicVertex, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex, 1, 0> BasicVertexPoolAllocator;
 }
 
-//! Basic interface for vertex. Also represents empty vertex, use Vertex::Null as empty vertex
+//! Basic interface for vertex. Also represents empty vertex, use Vertex() as empty vertex
 class Vertex {
   public:
-    constexpr Vertex() {} //!< Default constructor generating empty vertex.
+    //! Default constructor generating empty vertex.
+    constexpr Vertex()
+      : vertex_signed_id_(0)
+      , vertex_(nullptr)
+    {}
 
     bool operator==(const Vertex& other) const {
-      return (!vertex_) ?
-          !other.vertex_ :
-          (other.vertex_ && typeid(*vertex_) == typeid(*other.vertex_) && vertex_->call_is_same_vertex(*other.vertex_));
+      return
+          vertex_signed_id_ == other.vertex_signed_id_ &&
+          vertex_ == other.vertex_;
     }
 
     bool operator!=(const Vertex& other) const {
@@ -78,109 +48,142 @@ class Vertex {
 
     //! Return vertex produces the reversed word
     Vertex negate() const {
-      return vertex_ ? vertex_->negate() : Vertex();
+      return Vertex(-vertex_signed_id_, std::shared_ptr<internal::BasicVertex>(vertex_));
     }
 
-    Vertex left_child() const {
-      return vertex_ ? vertex_->left_child() : Vertex();
-    }
+    inline Vertex left_child() const;
 
-    Vertex right_child() const {
-      return vertex_ ? vertex_->right_child() : Vertex();
-    }
+    inline Vertex right_child() const;
 
-    LongInteger split_point() const {
-      return vertex_ ? vertex_->left_child().length() : LongZero();
-    }
+    const LongInteger& split_point() const;
 
-    const LongInteger& length() const {
-      if (vertex_) {
-        return vertex_->length_;
-      }
-      return LongZero();
-    }
+    const LongInteger& length() const;
 
-    unsigned int height() const {
-      return vertex_ ? vertex_->height_ : 0;
-    }
+    unsigned int height() const;
 
     size_t vertex_hash() const {
-      return vertex_ ? vertex_->vertex_hash() : 0;
+      return vertex_id_hash_(vertex_signed_id_);
     }
 
     explicit operator bool() const {
-      return static_cast<bool>(vertex_);
+      return vertex_signed_id_;
     }
 
-    void debug_print(::std::ostream* out) const {
-      if (!vertex_) {
-        (*out) << "Vertex()";
-      } else {
-        vertex_->debug_print(out);
-      }
-    }
+    inline void debug_print(::std::ostream* out) const;
 
-    //All copy/move constructors must be defined by default
+    typedef int64_t VertexSignedId;
 
   protected:
-    ::std::shared_ptr<internal::BasicVertex> vertex_;
-    Vertex(::std::shared_ptr<internal::BasicVertex>&& vertex)
-      : vertex_(vertex)
-    { }
+    typedef std::allocator<internal::BasicVertex> VertexAllocator;
+    //typedef internal::BasicVertexPoolAllocator VertexAllocator;
+    VertexSignedId vertex_signed_id_;
+    std::shared_ptr<internal::BasicVertex> vertex_;
+    static constexpr std::hash<VertexSignedId> vertex_id_hash_ = std::hash<VertexSignedId>();
+
+    Vertex(VertexSignedId vertex_signed_id, std::shared_ptr<internal::BasicVertex>&& vertex)
+      : vertex_signed_id_(vertex_signed_id)
+      , vertex_(std::move(vertex))
+    {
+    }
 
     static const LongInteger& LongZero();
+    static const LongInteger& LongOne();
 };
-
-inline Vertex internal::BasicVertex::negate() const {
-  return Vertex();
-}
-
-inline Vertex internal::BasicVertex::left_child() const {
-  return Vertex();
-}
-
-inline Vertex internal::BasicVertex::right_child() const {
-  return Vertex();
-}
 
 inline void PrintTo(const Vertex& vertex, ::std::ostream* os) {
   vertex.debug_print(os);
 }
 
+
 namespace internal {
-
-template <typename TerminalSymbol>
-class BasicTerminalVertex : public BasicVertex {
+class BasicVertex {
   public:
-    TerminalSymbol terminal_symbol_;
+    LongInteger length_;
+    unsigned int height_;
+    Vertex left_child_;
+    Vertex right_child_;
 
-    virtual Vertex negate() const;
-
-    virtual size_t vertex_hash() const {
-      return terminal_symbol_hash(terminal_symbol_);
-    }
-
-    virtual bool call_is_same_vertex(const BasicVertex& other) const {
-      return is_same_vertex(dynamic_cast<const BasicTerminalVertex&>(other));
-    }
-
-    bool is_same_vertex(const BasicTerminalVertex& other) const {
-      return terminal_symbol_ == other.terminal_symbol_;
-    }
-
-    BasicTerminalVertex(const TerminalSymbol& terminal_symbol)
-      : BasicVertex(LongInteger(1), 1)
-      , terminal_symbol_(terminal_symbol)
+    BasicVertex()
+      : length_(0)
+      , height_(0)
     { }
 
-    virtual void debug_print(::std::ostream* out) const {
-      (*out) << "TerminalVertex(" << terminal_symbol_ << ')';
-    }
-
-
-  private:
-    constexpr static ::std::hash<TerminalSymbol> terminal_symbol_hash = ::std::hash<TerminalSymbol>();
+    BasicVertex(Vertex&& left_child, Vertex&& right_child)
+      : length_(left_child.length() + right_child.length())
+      , height_(std::max(left_child.height(), right_child.height()) + 1)
+      , left_child_(std::move(left_child))
+      , right_child_(std::move(right_child))
+    { }
 };
+
+}
+
+inline Vertex Vertex::left_child() const {
+  if (vertex_) {
+    if (vertex_signed_id_ < 0) {
+      return vertex_->right_child_.negate();
+    } else {
+      return vertex_->left_child_;
+    }
+  } else {
+    return Vertex();
+  }
+}
+
+inline Vertex Vertex::right_child() const {
+  if (vertex_) {
+    if (vertex_signed_id_ < 0) {
+      return vertex_->left_child_.negate();
+    } else {
+      return vertex_->right_child_;
+    }
+  } else {
+    return Vertex();
+  }
+}
+
+inline const LongInteger& Vertex::split_point() const {
+  if (vertex_) {
+    if (vertex_signed_id_ < 0) {
+      return vertex_->right_child_.length();
+    } else {
+      return vertex_->left_child_.length();
+    }
+  } else {
+    return LongZero();
+  }
+}
+
+inline const LongInteger& Vertex::length() const {
+  if (vertex_) {
+    return vertex_->length_;
+  } else if (vertex_signed_id_) {
+    return LongOne();
+  } else {
+    return LongZero();
+  }
+}
+
+inline unsigned int Vertex::height() const {
+  if (vertex_) {
+    return vertex_->height_;
+  } else if (vertex_signed_id_) {
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
+inline void Vertex::debug_print(::std::ostream* out) const {
+  if (!vertex_signed_id_) {
+    (*out) << "Vertex()";
+  } else if (!vertex_) {
+    (*out) << "TerminalVertex(" << vertex_signed_id_ << ')';
+  } else {
+    (*out) << "NonterminalVertex(l=" << vertex_->length_
+           << ", h=" << vertex_->height_
+           << ", id=" << vertex_signed_id_ << ')';
+  }
 }
 
 
@@ -190,104 +193,41 @@ class TerminalVertexTemplate : public Vertex {
   public:
     TerminalVertexTemplate() = delete;
 
-    explicit TerminalVertexTemplate(const TerminalSymbol& terminal_symbol)
-      : Vertex(::std::make_shared<internal::BasicTerminalVertex<TerminalSymbol>>(terminal_symbol))
-      , terminal_vertex_ptr_(static_cast<internal::BasicTerminalVertex<TerminalSymbol>*>(vertex_.get()))
+    explicit TerminalVertexTemplate(TerminalSymbol terminal_symbol)
+      : Vertex(static_cast<typename Vertex::VertexSignedId>(terminal_symbol), nullptr)
+      , terminal_symbol_(terminal_symbol)
     {
       assert(height() == 1 && length() == 1);
     }
 
     explicit TerminalVertexTemplate(const Vertex& vertex)
       : Vertex(vertex)
-      , terminal_vertex_ptr_(dynamic_cast<internal::BasicTerminalVertex<TerminalSymbol>*>(vertex_.get()))
+      , terminal_symbol_()
     {
-      if (!terminal_vertex_ptr_) {
-        vertex_ = 0;
+      if (vertex_) {
+        vertex_ = nullptr;
+        vertex_signed_id_ = 0;
+      } else {
+        terminal_symbol_ = static_cast<TerminalSymbol>(vertex_signed_id_);
       }
 
       assert((height() == 0 && length() == 0) || (height() == 1 && length() == 1));
     }
 
     const TerminalSymbol& terminal_symbol() const {
-      return terminal_vertex_ptr_ ? terminal_vertex_ptr_->terminal_symbol_ : NullTerminalSymbol;
+      return terminal_symbol_;
     }
 
     operator TerminalSymbol() const {
       return terminal_symbol();
     }
-
   private:
-    const internal::BasicTerminalVertex<TerminalSymbol>* terminal_vertex_ptr_;
-    const static TerminalSymbol NullTerminalSymbol;
-
+    TerminalSymbol terminal_symbol_;
 };
 
 template <typename TerminalSymbol>
 ::std::ostream& operator << (::std::ostream& stream, const TerminalVertexTemplate<TerminalSymbol>& vertex) {
   return stream << vertex.terminal_symbol();
-}
-
-template <typename TerminalSymbol>
-Vertex internal::BasicTerminalVertex<TerminalSymbol>::negate() const {
-  return TerminalVertexTemplate<TerminalSymbol>(-terminal_symbol_);
-}
-
-template <typename TerminalSymbol>
-constexpr ::std::hash<TerminalSymbol> internal::BasicTerminalVertex<TerminalSymbol>::terminal_symbol_hash;
-
-template <typename TerminalSymbol>
-const TerminalSymbol TerminalVertexTemplate<TerminalSymbol>::NullTerminalSymbol = TerminalSymbol();
-
-namespace internal {
-struct NonterminalVertexNodeData {
-  Vertex left_child;
-  Vertex right_child;
-  size_t vertex_id;
-};
-
-class BasicNonterminalVertex : public internal::BasicVertex {
-  public:
-    ::std::shared_ptr<NonterminalVertexNodeData> node_data_ptr_;
-    bool negate_node_;
-    static constexpr ::std::hash<std::shared_ptr<NonterminalVertexNodeData>> ptr_hash = ::std::hash<std::shared_ptr<NonterminalVertexNodeData>>();
-    static size_t last_vertex_id_; //All vertices are enumerated
-
-    virtual size_t vertex_hash() const {
-      return negate_node_ ? ~ptr_hash(node_data_ptr_) : ptr_hash(node_data_ptr_);
-    }
-
-    virtual Vertex negate() const;
-
-    virtual Vertex left_child() const {
-      return negate_node_ ? node_data_ptr_->right_child.negate() : node_data_ptr_->left_child;
-    }
-
-    virtual Vertex right_child() const {
-      return negate_node_ ? node_data_ptr_->left_child.negate() : node_data_ptr_->right_child;
-    }
-
-    virtual bool call_is_same_vertex(const BasicVertex& other) const {
-      return is_same_vertex(dynamic_cast<const BasicNonterminalVertex&>(other));
-    }
-
-    bool is_same_vertex(const BasicNonterminalVertex& other) const {
-      return node_data_ptr_ == other.node_data_ptr_ && negate_node_ == other.negate_node_ && node_data_ptr_->vertex_id == other.node_data_ptr_->vertex_id;
-    }
-
-    virtual void debug_print(::std::ostream* out) const {
-      (*out) << "NonterminalVertex(l=" << length_ << ", h=" << height_ << ", id=" << (negate_node_ ? "-" : "") << node_data_ptr_->vertex_id << ')';
-    }
-
-    BasicNonterminalVertex(::std::shared_ptr<NonterminalVertexNodeData>&& node_data_ptr, bool negate_node)
-      : BasicVertex(
-          node_data_ptr->left_child.length() + node_data_ptr->right_child.length(),
-          ::std::max(node_data_ptr->left_child.height(), node_data_ptr->right_child.height()) + 1
-        )
-      , node_data_ptr_(std::move(node_data_ptr))
-      , negate_node_(negate_node)
-    {
-    }
-};
 }
 
 //! Non-terminal vertex in a SLP, represent rule A->BC
@@ -296,14 +236,13 @@ class NonterminalVertex : public Vertex {
     NonterminalVertex() = delete;
 
     NonterminalVertex(Vertex left, Vertex right)
-      : Vertex(::std::make_shared<internal::BasicNonterminalVertex>(
-          ::std::shared_ptr<internal::NonterminalVertexNodeData>(new internal::NonterminalVertexNodeData({
+      : Vertex(
+          ++last_vertex_id_ > 0 ? last_vertex_id_ : (last_vertex_id_ = 0),
+          std::make_shared<internal::BasicVertex>(
+            //get_allocator(),
             ::std::move(left),
-            ::std::move(right),
-            ++internal::BasicNonterminalVertex::last_vertex_id_
-          })),
-          false
-        ))
+            ::std::move(right)
+          ))
     {
       assert(left_child());
       assert(right_child());
@@ -314,14 +253,8 @@ class NonterminalVertex : public Vertex {
     }
 
   private:
-    friend class internal::BasicNonterminalVertex;
-
-    NonterminalVertex(::std::shared_ptr<internal::BasicNonterminalVertex>&& vertex)
-      : Vertex(::std::move(vertex))
-    {
-      assert(height() > 1);
-      assert(length() > 1);
-    }
+    static Vertex::VertexSignedId last_vertex_id_; //All vertices are enumerated
+    static const Vertex::VertexAllocator& get_allocator();
 };
 }//namespace slp
 }//namespace crag
