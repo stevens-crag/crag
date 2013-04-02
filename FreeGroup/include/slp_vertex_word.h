@@ -205,8 +205,8 @@ class VertexWord {
       if (this->root_.length() != other.root_.length()) {
         return false;
       }
-
-      return matching_table->matches(root_, other.root_);
+      auto match_sequence = matching_table->matches(root_, other.root_);
+      return match_sequence.count() == 1 && match_sequence.first() == 0;
     }
 
     const_reference operator[](LongInteger index) const; //!< Get one letter from the word

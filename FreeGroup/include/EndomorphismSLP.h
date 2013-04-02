@@ -144,8 +144,9 @@ public:
   //! Returns the automorphisms with freely reduced images.
   EndomorphismSLP free_reduction() const {
     EndomorphismSLP result;
-    for_each_non_trivial_image([&result] (const symbol_image_pair_type& pair) {
-      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second)));
+    slp::MatchingTable mt;
+    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second, &mt)));
     });
     return result;
   }
@@ -191,6 +192,22 @@ public:
     return std::make_pair(images_.begin(), images_.end());
   }
 
+  iterator begin() {
+    return images_.begin();
+  }
+
+  iterator end() {
+    return images_.end();
+  }
+
+  const_iterator begin() const {
+    return images_.begin();
+  }
+
+  const_iterator end() const {
+    return images_.end();
+  }
+
   //! Applies the given function to each pair of non-trivial images (symbol, image)
   template<class Function>
   Function for_each_non_trivial_image(Function fn) {
@@ -203,10 +220,20 @@ public:
     return std::move(std::for_each(images_.begin(), images_.end(), fn));
   }
 
+  //! Returns true, if the automorphism is identity, and returns false otherwise.
   bool is_identity() const {
-    for_each_non_trivial_image([](const symbol_image_pair_type& pair) {
-            ASSERT_EQ(TerminalVertex(pair.first), slp::reduce(pair.second));
+    bool is_id = true;
+    for_each_non_trivial_image([&is_id](const symbol_image_pair_type& pair) {
+            if (is_id)
+              is_id = TerminalVertex(pair.first) == slp::reduce(pair.second);
           });
+    return is_id;
+  }
+
+  bool operator==(const EndomorphismSLP& a) const;
+
+  bool operator!=(const EndomorphismSLP& a) const {
+    return !(this->operator ==(a));
   }
 
 private:
@@ -401,6 +428,41 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::inverse() const
   } else {
     return left_multiplier(-left_symbol, symbol);
   }
+}
+
+template <typename TerminalSymbol>
+bool EndomorphismSLP<TerminalSymbol>::operator==(const EndomorphismSLP<TerminalSymbol>& a) const {
+  if (this == &a)
+    return true;
+  if (non_trivial_images_num() != a.non_trivial_images_num())
+    return false;
+  auto images = non_trivial_images_range();
+  auto a_images = a.non_trivial_images_range();
+
+  //checking that the same letters have non-trivial images
+  auto img_iterator = images_.begin();
+  auto a_img_iterator = a.images_.begin();
+  while (img_iterator != images_.end()) {
+    if (img_iterator->first != a_img_iterator->first)
+      return false;
+    ++img_iterator;
+    ++a_img_iterator;
+  }
+
+  //checking that the images are the same
+  slp::MatchingTable mt;
+  img_iterator = images_.begin();
+  a_img_iterator = a.images_.begin();
+  while (img_iterator != images_.end()) {
+    slp::VertexWord<TerminalSymbol> word(img_iterator->second);
+    slp::VertexWord<TerminalSymbol> a_word(a_img_iterator->second);
+    if (!word.is_equal_to(a_word, &mt))
+      return false;
+    ++img_iterator;
+    ++a_img_iterator;
+  }
+
+  return true;
 }
 
 template <typename TerminalSymbol>

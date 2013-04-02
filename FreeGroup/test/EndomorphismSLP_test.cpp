@@ -473,6 +473,54 @@ TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
   }
 }
 
+
+TEST_F(EndomorphismSLPTest, IsIdentityTest) {
+  ASSERT_TRUE(EMorphism::identity().is_identity());
+  for (int i = 1; i < 10; ++i) {
+    auto e = EMorphism::inverter(i);
+    EXPECT_FALSE(e.is_identity());
+    e *= e.inverse();
+    EXPECT_TRUE(e.is_identity());
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = -10; j < 10; ++j)
+      if (j != i && j != -i && j != 0) {
+        auto e = EMorphism::right_multiplier(i, j);
+        EXPECT_FALSE(e.is_identity());
+        e *= e.inverse();
+        EXPECT_TRUE(e.is_identity());
+      }
+}
+
+TEST_F(EndomorphismSLPTest, EqualityTest) {
+  EXPECT_EQ(EMorphism::identity(), EMorphism::identity());
+  EXPECT_EQ(EMorphism::inverter(1), EMorphism::inverter(1));
+  EXPECT_EQ(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(1, 2));
+  EXPECT_EQ(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(1, 2));
+  EXPECT_NE(EMorphism::inverter(1), EMorphism::inverter(2));
+  EXPECT_NE(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(2, 1));
+  EXPECT_NE(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(3, 2));
+  EXPECT_NE(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(2, 1));
+  EXPECT_NE(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(1, 3));
+
+  auto e = EMorphism::inverter(1);
+  EXPECT_EQ(e, e);
+  e *= EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(e, e);
+
+  for (auto rank : {5, 10, 15}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 20}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto e1 = e * rnd();
+        ASSERT_EQ(e, e);
+        ASSERT_NE(e, e1);
+      }
+    }
+  }
+}
+
 TEST_F(EndomorphismSLPTest, ConjugationTest) {
   for (auto rank : {15, 10, 20, 30}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
