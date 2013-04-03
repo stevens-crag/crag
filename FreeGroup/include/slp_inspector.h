@@ -13,7 +13,7 @@
 #include <functional>
 #include <type_traits>
 #include "slp_vertex.h"
-
+#include "boost/pool/pool_alloc.hpp"
 
 /**
  * Module defining inspector over SLP representation.
@@ -163,7 +163,8 @@ class InspectorPath : public AcceptPolicy<AcceptFunctor> {
     }
 
   private:
-    std::vector<InspectorTask> scheduled_tasks_;
+//    std::vector<InspectorTask> scheduled_tasks_;
+    std::vector<InspectorTask, boost::pool_allocator<InspectorTask, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex, 128, 0>> scheduled_tasks_;
 };
 
 template <typename AcceptFunctor>
