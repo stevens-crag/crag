@@ -55,6 +55,24 @@ TEST(CommonPrefix, Example2) {
   EXPECT_EQ(1, longest_common_prefix(aa, ab, &matching_table));
 }
 
+TEST(CommonPrefix, Example3) {
+  TerminalVertex a('a');
+  TerminalVertex b('b');
+  NonterminalVertex ab(a, b);
+  NonterminalVertex b1ab(ab.negate(), b);
+  NonterminalVertex bb1ab(b, b1ab);
+
+  MatchingTable matching_table;
+
+  EXPECT_EQ(0, get_cancellation_length(a, &matching_table));
+  EXPECT_EQ(0, get_cancellation_length(b, &matching_table));
+  EXPECT_EQ(0, get_cancellation_length(ab, &matching_table));
+  EXPECT_EQ(0, get_cancellation_length(b1ab, &matching_table));
+//  std::cout << matching_table.matches(b, ab) << std::endl;
+//  std::cout << matching_table.matches(b.negate(), ab.negate()) << std::endl;
+  EXPECT_EQ(1, get_cancellation_length(bb1ab, &matching_table));
+}
+
 
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
   TerminalVertex a('a');

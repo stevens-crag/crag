@@ -28,6 +28,8 @@ const Vertex::VertexAllocator& NonterminalVertex::get_allocator() {
 }
 
 Vertex::VertexSignedId NonterminalVertex::last_vertex_id_;
+constexpr std::hash<Vertex::VertexSignedId> Vertex::vertex_id_hash_;
+
 }
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {
@@ -308,7 +310,16 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
 
   }
 
-  auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), match_result));
+  FiniteArithmeticSequence inversed_result = FiniteArithmeticSequence(match_result).shift_right(text.length() - pattern.length() - match_result.last() - match_result.first());
+
+//  PrintTo(pattern, &std::cout);
+//  std::cout << std::endl;
+//  PrintTo(text, &std::cout);
+//  std::cout << std::endl;
+  match_table_->insert(std::make_pair(std::make_pair(pattern.negate(), text.negate()), std::move(inversed_result)));
+  auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), std::move(match_result)));
+//  std::cout << match_result << std::endl;
+//  std::cout << inversed_result << std::endl;
 
   return inserted_element.first->second;
 }

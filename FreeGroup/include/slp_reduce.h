@@ -127,9 +127,18 @@ inline LongInteger get_cancellation_length(const Vertex& vertex) {
 }
 inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table, std::unordered_map<Vertex, Vertex>* reduced_vertices) {
   map_vertices(vertex, reduced_vertices, [&matching_table](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
+
+  size_t iteration_count = 0;
+  map_vertices(vertex, reduced_vertices, [&matching_table, &iteration_count](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
     if (vertex.height() <= 1) {
       return vertex;
     }
+    auto reversed = reduced_vertices.find(vertex.negate());
+    if (reversed != reduced_vertices.end()) {
+      return reversed->second.negate();
+    }
+    std::cout << "count: " << ++iteration_count << std::endl;
+    std::cout << "size: " << matching_table->size() << std::endl;
     const Vertex& left = reduced_vertices.find(vertex.left_child())->second;
     const Vertex& right = reduced_vertices.find(vertex.right_child())->second;
     if (!left && !right) {
@@ -137,6 +146,8 @@ inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table, std::u
     } else {
       NonterminalVertex result(left, right);
       LongInteger cancellation_length = get_cancellation_length(result, matching_table);
+      std::cout << "length: " << result.length() << std::endl;
+      std::cout << "cancel: " << cancellation_length << std::endl;
       if (cancellation_length == 0) {
         if (left == vertex.left_child() && right == vertex.right_child()) {
           assert((vertex.height() > 1 && vertex.length() > 1) || (vertex.length() == 1 && vertex.height() == 1) || (vertex.length() == 0 && vertex.height() == 0));
