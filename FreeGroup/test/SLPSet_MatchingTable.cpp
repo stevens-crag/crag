@@ -852,8 +852,8 @@ TEST(SLPMatchingTable, InversedTest) {
   EXPECT_EQ(Seq({0, 1, 1}), matching_table.matches(ab.negate(), b_1a_1b));
 }
 
-TEST(DISABLED_SLPMatchingTable, StressTest) {
-  const unsigned int WORD_SIZE = 10;
+TEST(SLPMatchingTable, StressTest) {
+  const unsigned int WORD_SIZE = 16;
   int repeat = 5000;
 
   srand(time(NULL));
