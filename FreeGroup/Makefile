@@ -38,7 +38,7 @@ SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_o
 # 
 # MAIN lists all source files with main function:
 
-MAIN = test_cs
+MAIN = test_cs profile_matching_new profile_matching_old profile_reduce
 
 
 ## All the compiler and linker stuff here:                           
