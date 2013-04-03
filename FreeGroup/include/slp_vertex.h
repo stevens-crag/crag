@@ -39,6 +39,7 @@ class Vertex {
     bool operator==(const Vertex& other) const {
       return
           vertex_signed_id_ == other.vertex_signed_id_ &&
+          //((vertex_ && other.vertex_) || (!vertex_ && !other.vertex_));
           vertex_ == other.vertex_;
     }
 
@@ -237,7 +238,7 @@ class NonterminalVertex : public Vertex {
 
     NonterminalVertex(Vertex left, Vertex right)
       : Vertex(
-          ++last_vertex_id_ > 0 ? last_vertex_id_ : (last_vertex_id_ = 0),
+          ++last_vertex_id_ > 0 ? last_vertex_id_ : (last_vertex_id_ = 1),
           std::make_shared<internal::BasicVertex>(
             //get_allocator(),
             ::std::move(left),
