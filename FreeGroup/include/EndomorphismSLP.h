@@ -351,25 +351,32 @@ public:
     : UniformAutomorphismSLPGenerator(rank, nullptr, random_engine)
   {}
 
-  //! Generates a random automorphism
-  EndomorphismSLP<TerminalSymbol> operator()() {
-    index_type r_val = random_distr_(*random_engine_);
-    if (r_val < MULTIPLIERS_COUNT) {
-      const bool right_multiplier = (r_val % 2) == 0;
-      r_val >>= 1;
-      const int mapped_symbol_index = 1 + ( r_val % RANK );
-    const TerminalSymbol mapped_symbol(mapped_symbol_index);
-    const int multiplier_index = 1 + ( r_val / RANK );
-    const TerminalSymbol multiplier(multiplier_index < mapped_symbol_index ? multiplier_index : multiplier_index + 1);
-
-    if (right_multiplier)
-      return EndomorphismSLP<TerminalSymbol>::right_multiplier(mapped_symbol, multiplier);
-    else
-      return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, mapped_symbol);
-
-  } else { // r_val >= MULTIPLIERS_COUNT
-    return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(1 + r_val - MULTIPLIERS_COUNT));
+  //! Set the probability to generate an inverter of terminal symbol. By default it corresponds to uniform distribution.
+  void set_inverters_probability(double inverters_probability) {
+    assert(inverters_probability >= 0 && inverters_probability <= 1);
+    inverters_probability_ = inverters_probability;
   }
+
+  //! Generates a random automorphism.
+  EndomorphismSLP<TerminalSymbol> operator()() {
+    double p = real_distr_(*random_engine_);
+    if (p <= inverters_probability_) {//generate an inverter
+      index_type val = inverter_distr_(*random_engine_);
+      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(1 + val));
+    } else {//generate a multiplier
+      index_type val = multiplier_distr_(*random_engine_);
+      const bool right_multiplier = (val % 2) == 0;
+      val >>= 1;
+      const int mapped_symbol_index = 1 + ( val % RANK );
+      const TerminalSymbol mapped_symbol(mapped_symbol_index);
+      const int multiplier_index = 1 + ( val / RANK );
+      const TerminalSymbol multiplier(multiplier_index < mapped_symbol_index ? multiplier_index : multiplier_index + 1);
+
+      if (right_multiplier)
+        return EndomorphismSLP<TerminalSymbol>::right_multiplier(mapped_symbol, multiplier);
+      else
+        return EndomorphismSLP<TerminalSymbol>::left_multiplier(multiplier, mapped_symbol);
+    }
   }
 
 
@@ -381,19 +388,27 @@ private:
   const index_type INVERTERS_COUNT;
   const index_type COUNT = MULTIPLIERS_COUNT + INVERTERS_COUNT;
 
+  const double DEFAULT_INVERTER_PROBABILITY = static_cast<double>(INVERTERS_COUNT) / COUNT;
+
   UniformAutomorphismSLPGenerator(index_type rank, const ::std::shared_ptr<RandomEngine>& random_engine_ptr, RandomEngine* random_engine)
       : RANK(rank),
         RIGHT_MULTIPLIERS_COUNT(rank * (rank - 1)),
         INVERTERS_COUNT(rank),
         random_engine_ptr_(random_engine_ptr),
         random_engine_(random_engine_ptr ? random_engine_ptr.get() : random_engine),
-        random_distr_(0, COUNT - 1) {
+        inverter_distr_(0, INVERTERS_COUNT - 1),
+        multiplier_distr_(0, MULTIPLIERS_COUNT - 1),
+        real_distr_(),//interval [0, 1)
+        inverters_probability_(DEFAULT_INVERTER_PROBABILITY) {
       assert(rank > 0);
     }
 
   ::std::shared_ptr<RandomEngine> random_engine_ptr_;
   RandomEngine* random_engine_;
-  std::uniform_int_distribution<index_type> random_distr_;
+  std::uniform_int_distribution<index_type> inverter_distr_;
+  std::uniform_int_distribution<index_type> multiplier_distr_;
+  std::uniform_real_distribution<double> real_distr_;
+  double inverters_probability_;
 };
 
 

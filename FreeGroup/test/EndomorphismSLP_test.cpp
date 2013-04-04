@@ -529,7 +529,58 @@ TEST_F(EndomorphismSLPTest, ConjugationTest) {
       ASSERT_TRUE(conj.is_identity());
     }
   }
+}
 
+
+TEST_F(EndomorphismSLPTest, GeneratorDistributionTest) {
+  UniformAutomorphismSLPGenerator<int> rnd(5);
+  unsigned int inverter_num = 0;
+  unsigned int multipliers_num = 0;
+  const int num = 100000;
+  for (int i = 0; i < num; ++i) {
+    auto e = rnd();
+    slp::Vertex v = e.non_trivial_images_range().first->second;
+    auto height = v.height();
+    if (height == 1) {
+      ++inverter_num;
+    } else {
+      ASSERT_EQ(2, height);
+      ++multipliers_num;
+    }
+  }
+  double expected_inverters_num = 5.0 / 45 * num;
+  double expected_multipliers_num = 40.0 / 45 * num;
+  auto dif1 = inverter_num - expected_inverters_num;
+  dif1 = dif1 > 0 ? dif1 : - dif1;
+  auto dif2 = multipliers_num - expected_multipliers_num;
+  dif2 = dif2 > 0 ? dif2 : - dif2;
+  ASSERT_TRUE(dif1 / num < 0.01);
+  ASSERT_TRUE(dif2 / num < 0.01);
+
+  for (double p: {0.1, 0.5, 0.9}) {
+    rnd.set_inverters_probability(p);
+    inverter_num = 0;
+    multipliers_num = 0;
+    for (int i = 0; i < num; ++i) {
+      auto e = rnd();
+      slp::Vertex v = e.non_trivial_images_range().first->second;
+      auto height = v.height();
+      if (height == 1) {
+        ++inverter_num;
+      } else {
+        ASSERT_EQ(2, height);
+        ++multipliers_num;
+      }
+    }
+    double expected_inverters_num = p * num;
+    double expected_multipliers_num = (1.0 - p) * num;
+    auto dif1 = inverter_num - expected_inverters_num;
+    dif1 = dif1 > 0 ? dif1 : - dif1;
+    auto dif2 = multipliers_num - expected_multipliers_num;
+    dif2 = dif2 > 0 ? dif2 : - dif2;
+    ASSERT_TRUE(dif1 / num < 0.01);
+    ASSERT_TRUE(dif2 / num < 0.01);
+  }
 }
 
 
