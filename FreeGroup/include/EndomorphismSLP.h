@@ -114,6 +114,25 @@ public:
     return *this;
   }
 
+  //! Conjugate with the given endomorphism.
+  /**
+   * @param num the number of endomorphisms to compose with
+   * @param generator endomorphisms generator (using operator())
+   * @return a this a^{-1}
+   */
+  template<typename Generator>
+  const EndomorphismSLP conjugate_with(unsigned int num, Generator& generator) const {
+    std::vector<EndomorphismSLP> inverses;
+    inverses.reserve(num);
+    EndomorphismSLP e(*this);
+    for (unsigned int i = 0; i < num; ++i) {
+      auto endomorphism = generator();
+      e *= endomorphism;
+      inverses.push_back(endomorphism.inverse());
+    }
+    return EndomorphismSLP::composition(inverses.rbegin(), inverses.rend()) * e;
+  }
+
   //! Returns the automorphisms inverse
   /**
    * Currently supporsts only inverter and left and right multipliers.
@@ -121,6 +140,17 @@ public:
    * @throws std::invalid_argument if can not invert the automorphism
    */
   EndomorphismSLP inverse() const;
+
+  //! Returns the automorphisms with freely reduced images.
+  EndomorphismSLP free_reduction() const {
+    EndomorphismSLP result;
+    for_each_non_trivial_image([&result] (const symbol_image_pair_type& pair) {
+      auto v = slp::reduce(pair.second);
+      if (v != slp::Vertex())
+        result.images_.insert(std::make_pair(pair.first, v));
+    });
+    return result;
+  }
 
 
   //! Returns the image of the terminal.

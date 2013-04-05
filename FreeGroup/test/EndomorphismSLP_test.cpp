@@ -465,7 +465,7 @@ TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
 
       auto id = e * e_inverse;
 
-      id.for_each_non_trivial_image([] (const std::pair<int, slp::Vertex>& pair) {
+      id.for_each_non_trivial_image([] (const EMorphism::symbol_image_pair_type& pair) {
         ASSERT_EQ(slp::Vertex(), slp::reduce(pair.second));
       });
 
