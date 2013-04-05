@@ -187,33 +187,42 @@ void enumerate_elementary_automorphisms(int rank, Func f) {
       }
 }
 
-void conjugation_length_based_attack(unsigned int rank, const EndomorphismSLP<int>& e_conjugated,
-                                     const EndomorphismSLP<int>& e_inverse) {
+SimpleStat<LongInteger> image_length_distance(unsigned int rank, const EndomorphismSLP<int>& e1,
+                                              const EndomorphismSLP<int>& e2) {
+  SimpleStat<LongInteger> length_stat;
+  for (int i = 1; i <= rank; ++i) {
+    auto img1 = e1.image(i);
+    auto img2 = e2.image(i);
+    LongInteger d = slp::reduce(img1).length() - slp::reduce(img2).length();
+    length_stat.add_value(d > 0 ? d : -d);
+  }
+  return length_stat;
+}
+
+void conjugation_length_based_attack(unsigned int rank, const EndomorphismSLP<int>& e,
+                                     const EndomorphismSLP<int>& e_conjugated) {
   SimpleStat<LongInteger> length_stat;
   auto length_calculator = [&] (const EndomorphismSLP<int>::symbol_image_pair_type& pair) {
     slp::Vertex v = pair.second;
     length_stat.add_value(slp::reduce(v).length());
   };
 
-  e_inverse.for_each_non_trivial_image(length_calculator);
-  std::cout << "inverse: h=" << height(e_inverse) << ", size=" << slp_vertices_num(e_inverse)
-            << ", l=(" << length_stat << ");" << std::endl;
-
   length_stat.reset();
   e_conjugated.for_each_non_trivial_image(length_calculator);
-  std::cout << "conjugated: h=" << height(e_conjugated) << ", size=" << slp_vertices_num(e_conjugated)
+  std::cout << "original conjugation: h=" << height(e_conjugated) << ", size=" << slp_vertices_num(e_conjugated)
             << ", l=(" << length_stat << ");" << std::endl;
 
+  auto reduced = e_conjugated.free_reduction();
   length_stat.reset();
-  auto prod = e_conjugated * e_inverse;
-  prod.for_each_non_trivial_image(length_calculator);
-  std::cout << "prod: h=" << height(prod) << ", size=" << slp_vertices_num(prod)
+  reduced.for_each_non_trivial_image(length_calculator);
+  std::cout << "reduced conjugation: h=" << height(reduced) << ", size=" << slp_vertices_num(reduced)
             << ", l=(" << length_stat << ");" << std::endl;
 
   std::cout << "Looking for the best deconjugators to minimize target function..." << std::endl;
 
-  auto start_morphism = prod;
-  auto start_value = length_stat.max();
+  auto start_morphism = e_conjugated.free_reduction();
+  auto start_value = image_length_distance(rank, e, start_morphism).max();
+  std::cout << "initial value = " << start_value << std::endl;
   while(true) {
     auto min_value = start_value;
     EndomorphismSLP<int> min_trial = EndomorphismSLP<int>::identity();
@@ -221,10 +230,10 @@ void conjugation_length_based_attack(unsigned int rank, const EndomorphismSLP<in
 
     enumerate_elementary_automorphisms(rank,
                                        [&] (const EndomorphismSLP<int>& e) {
-      auto trial = e * prod * e.inverse();
+      auto trial = e * start_morphism * e.inverse();
       length_stat.reset();
       trial.for_each_non_trivial_image(length_calculator);
-      auto value = length_stat.max();
+      auto value = image_length_distance(rank, e, trial).max();
       if (value < min_value) {
         min_value = value;
         min_trial = trial;
@@ -233,13 +242,40 @@ void conjugation_length_based_attack(unsigned int rank, const EndomorphismSLP<in
     });
 
     if (start_value <= min_value) {
-      std::cout << "Could not decrease target length. Terminating." << std::endl;
+      std::cout << "Could not decrease target length." << std::endl;
       break;
     }
-    std::cout << "Success: h=" << height(min_trial) << ", size=" << slp_vertices_num(min_trial)
+    std::cout << "Success: value=" << min_value << ", h=" << height(min_trial) << ", size=" << slp_vertices_num(min_trial)
               << ", l=(" << min_stat << ");" << std::endl;
-    start_morphism = min_trial;
+    start_morphism = min_trial.free_reduction();
     start_value = min_value;
+  }
+  std::cout << "Comparing the minmized automorphism and e." << std::endl;
+
+  length_stat.reset();
+  e.for_each_non_trivial_image(length_calculator);
+  std::cout << "e stats: h=" << height(e) << ", size=" << slp_vertices_num(e)
+            << ", l=(" << length_stat << ");" << std::endl;
+
+  length_stat.reset();
+  start_morphism.for_each_non_trivial_image(length_calculator);
+  std::cout << "result stats: h=" << height(start_morphism) << ", size=" << slp_vertices_num(start_morphism)
+            << ", l=(" << length_stat << ");" << std::endl;
+
+  auto free_reduced_result = start_morphism.free_reduction();
+  length_stat.reset();
+  free_reduced_result.for_each_non_trivial_image(length_calculator);
+  std::cout << "free reduced result stats: h=" << height(free_reduced_result) << ", size=" << slp_vertices_num(free_reduced_result)
+            << ", l=(" << length_stat << ");" << std::endl;
+
+//  slp::MatchingTable mt;
+  for (int i = 1; i <= rank; ++i) {
+    std::cout << "image of " << i << std::endl;
+    auto img_e = e.image_word(i);
+    auto img_result = free_reduced_result.image_word(i);
+    std::cout << "e   :" << img_e << std::endl;
+    std::cout << "res :" << img_result << std::endl;
+
   }
 }
 
@@ -247,29 +283,29 @@ void conjugation_length_based_attack(unsigned int rank, const EndomorphismSLP<in
 void conjugation_length_based_attack_statistics() {
   typedef unsigned int uint;
   std::cout << "Legend: (num iterations, num of composed elements, rank, num_of_conjugators)" << std::endl;
-  std::vector<EndomorphismSLP<int>> inverses;
+//  std::vector<EndomorphismSLP<int>> inverses;
   for (auto rank : {3}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {10}) {
-      inverses.reserve(size);
-      for (auto conj_num: {10}) {
+    for (auto size : {5}) {
+//      inverses.reserve(size);
+      for (auto conj_num: {1}) {
         const uint iterations_num = 1;
 
         auto start_time = our_clock::now();
         for (int i = 0; i < iterations_num; ++i) {
           std::cout << "Iteration " << i << std::endl;
-          EndomorphismSLP<int> e = EndomorphismSLP<int>::identity();
-          inverses.clear();
-          for (int k = 0; k < size; ++k) {
-            auto next = rnd();
-            e *= next;
-            inverses.push_back(next.inverse());
-          }
-          EndomorphismSLP<int> e_inverse = EndomorphismSLP<int>::composition(inverses.rbegin(), inverses.rend());
+          EndomorphismSLP<int> e = EndomorphismSLP<int>::composition(size, rnd);
+//          inverses.clear();
+//          for (int k = 0; k < size; ++k) {
+//            auto next = rnd();
+//            e *= next;
+//            inverses.push_back(next.inverse());
+//          }
+//          EndomorphismSLP<int> e_inverse = EndomorphismSLP<int>::composition(inverses.rbegin(), inverses.rend());
 
           auto e_conjugation = e.conjugate_with(conj_num, rnd);
 
-          conjugation_length_based_attack(rank, e_conjugation, e_inverse);
+          conjugation_length_based_attack(rank, e, e_conjugation);
 
         }
         auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
