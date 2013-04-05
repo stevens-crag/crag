@@ -11,6 +11,7 @@
 #include <map>
 #include <unordered_map>
 #include <random>
+#include <algorithm>
 #include <assert.h>
 #include "slp.h"
 
@@ -25,6 +26,9 @@ class EndomorphismSLP {
 public:
 
   typedef typename std::map<TerminalSymbol, slp::Vertex>::size_type size_type;
+  typedef typename std::map<TerminalSymbol, slp::Vertex>::iterator iterator;
+  typedef typename std::map<TerminalSymbol, slp::Vertex>::const_iterator const_iterator;
+  typedef typename std::map<TerminalSymbol, slp::Vertex>::value_type symbol_image_pair_type;
 
   //use default copy/move constructors/assignments
 
@@ -140,6 +144,28 @@ public:
     return images_.size();
   }
 
+  //! Returns range (begin, end) of non-trivial images containg pairs (symbol, image)
+  std::pair<iterator, iterator> non_trivial_images_range() {
+    return std::make_pair(images_.begin(), images_.end());
+  }
+
+  //! Returns range (begin, end) of non-trivial images containg pairs (symbol, image)
+  std::pair<const_iterator, const_iterator> non_trivial_images_range() const {
+    return std::make_pair(images_.begin(), images_.end());
+  }
+
+  //! Applies the given function to each pair of non-trivial images (symbol, image)
+  template<class Function>
+  Function for_each_non_trivial_image(Function fn) {
+    return std::move(std::for_each(images_.begin(), images_.end(), fn));
+  }
+
+  //! Applies the given function to each pair of non-trivial images (symbol, image)
+  template<class Function>
+  Function for_each_non_trivial_image(Function fn) const {
+    return std::move(std::for_each(images_.begin(), images_.end(), fn));
+  }
+
 private:
   typedef typename slp::TerminalVertexTemplate<TerminalSymbol> TerminalVertex;
 
@@ -193,6 +219,32 @@ private:
 template<typename TerminalSymbol>
 const EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
   return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
+}
+
+//! Find the maximal height of SLPs, representing the endomorphism
+template<typename TerminalSymbol>
+unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
+  unsigned int h = 0;
+  auto pick_max_height = [&h] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    const unsigned int v_h = v.second.height();
+    if (v_h > h)
+      h = v_h;
+  };
+  e.for_each_non_trivial_image(pick_max_height);
+  return h;
+}
+
+//! Find the total number of vertices in SLPs, representing the endomorphism
+template<typename TerminalSymbol>
+unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
+  unsigned int h = 0;
+  auto pick_max_height = [&h] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    const unsigned int v_h = v.second.height();
+    if (v_h > h)
+      h = v_h;
+  };
+  e.for_each_non_trivial_image(pick_max_height);
+  return h;
 }
 
 

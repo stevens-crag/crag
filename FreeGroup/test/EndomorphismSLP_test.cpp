@@ -290,16 +290,54 @@ TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
   EXPECT_EQ("-3", img[2]);
 }
 
+TEST_F(EndomorphismSLPTest, ForEachTest) {
+  auto e = EMorphism::identity();
+  for (int i = 1; i < 20; i += 2) {
+    e *= EMorphism::inverter(i);
+  }
+  int i = 1;
+  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+    auto symbol = v.first;
+    EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
+    i += 2;
+  };
+  e.for_each_non_trivial_image(check);
+  //checking for constant endomorphism
+  i = 1;
+  const auto const_e = e;
+  e.for_each_non_trivial_image(check);
+}
+
+TEST_F(EndomorphismSLPTest, RangeTest) {
+  auto e = EMorphism::identity();
+  for (int i = 1; i < 20; i += 2) {
+    e *= EMorphism::inverter(i);
+  }
+  auto range = e.non_trivial_images_range();
+  int i = 1;
+  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+    auto symbol = v.first;
+    EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
+    i += 2;
+  };
+  std::for_each(range.first, range.second, check);
+  //checking for constant endomorphism
+  i = 1;
+  const auto const_e = e;
+  const auto const_range = e.non_trivial_images_range();
+  std::for_each(const_range.first, const_range.second, check);
+}
+
 TEST_F(EndomorphismSLPTest, RandomGeneratorConstructorsTest) {
   UniformAutomorphismSLPGenerator<int> rnd(5);//default
   UniformAutomorphismSLPGenerator<int> rnd1(10, 546457);//with seed
   std::default_random_engine r_engine;
   UniformAutomorphismSLPGenerator<int> rnd2(4, &r_engine);//with generator
   for (int i = 0; i < 100; ++i) {
-      EXPECT_EQ(1, rnd().non_trivial_images_num());
-      EXPECT_EQ(1, rnd1().non_trivial_images_num());
-      EXPECT_EQ(1, rnd2().non_trivial_images_num());
-    }
+    EXPECT_EQ(1, rnd().non_trivial_images_num());
+    EXPECT_EQ(1, rnd1().non_trivial_images_num());
+    EXPECT_EQ(1, rnd2().non_trivial_images_num());
+  }
 }
 
 TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
@@ -323,8 +361,8 @@ TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
 
 TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
   for (auto rank : {1, 5, 10, 20, 30}) {
-      UniformAutomorphismSLPGenerator<int> rnd(rank);
-      for (auto size : {0, 5, 10, 30, 60}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 30, 60}) {
       std::vector<EMorphism> morphisms;
       for (int i = 0; i < size; ++i)
         morphisms.push_back(rnd());
@@ -337,6 +375,32 @@ TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
     }
   }
 }
+
+
+TEST_F(EndomorphismSLPTest, HeightCalculationTest) {
+  EXPECT_EQ(0, height(EMorphism::identity()));
+  auto e = EMorphism::inverter(1);
+  EXPECT_EQ(e.slp(1).height(), height(e));
+  e = EMorphism::right_multiplier(1, 2);
+  EXPECT_EQ(e.slp(1).height(), height(e));
+  e = EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(e.slp(2).height(), height(EMorphism::left_multiplier(1, 2)));
+
+  for (auto rank : {1, 5, 10, 20, 30}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 30, 60}) {
+      auto e = EMorphism::composition(size, rnd);
+      int height = 0;
+      for (int i = 1; i <= e.max_non_trivial_image_symbol(); ++i) {
+        const auto h = e.slp(i).height();
+        if (h > height)
+          height = h;
+      }
+      EXPECT_EQ(height, crag::height(e));
+    }
+  }
+}
+
 
 
 
