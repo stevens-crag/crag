@@ -145,9 +145,7 @@ public:
   EndomorphismSLP free_reduction() const {
     EndomorphismSLP result;
     for_each_non_trivial_image([&result] (const symbol_image_pair_type& pair) {
-      auto v = slp::reduce(pair.second);
-      if (v != slp::Vertex())
-        result.images_.insert(std::make_pair(pair.first, v));
+      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second)));
     });
     return result;
   }
@@ -203,6 +201,12 @@ public:
   template<class Function>
   Function for_each_non_trivial_image(Function fn) const {
     return std::move(std::for_each(images_.begin(), images_.end(), fn));
+  }
+
+  bool is_identity() const {
+    for_each_non_trivial_image([](const symbol_image_pair_type& pair) {
+            ASSERT_EQ(TerminalVertex(pair.first), slp::reduce(pair.second));
+          });
   }
 
 private:
@@ -403,8 +407,8 @@ template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
   std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-  auto map_vertex_callback = [this] (const slp::Vertex& vertex, std::unordered_map<slp::Vertex, slp::Vertex>* images) {
-    return this->map_vertex(vertex, *images);
+  auto map_vertex_callback = [this] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) {
+    return this->map_vertex(vertex, images);
   };
 
   for (auto root_entry: a.images_) {//mapping vertices of #a to new ones

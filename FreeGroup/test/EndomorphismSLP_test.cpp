@@ -440,13 +440,13 @@ TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
   for (int i = 1; i < 10; ++i)
     for (int j = 1; j < 10; ++j)
       if (i != j) {
-        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, -j),
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, -j).inverse(),
                                                    EMorphism::right_multiplier(i, j)));
-        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, j),
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, j).inverse(),
                                                    EMorphism::right_multiplier(i, -j)));
-        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(-j, i),
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(-j, i).inverse(),
                                                    EMorphism::left_multiplier(j, i)));
-        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(j, i),
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(j, i).inverse(),
                                                    EMorphism::left_multiplier(-j, i)));
       }
 
@@ -466,11 +466,22 @@ TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
       auto id = e * e_inverse;
 
       id.for_each_non_trivial_image([] (const EMorphism::symbol_image_pair_type& pair) {
-        ASSERT_EQ(slp::Vertex(), slp::reduce(pair.second));
+        ASSERT_EQ(slp::TerminalVertexTemplate<int>(pair.first), slp::reduce(pair.second));
       });
 
     }
   }
+}
+
+TEST_F(EndomorphismSLPTest, ConjugationTest) {
+  for (auto rank : {15, 10, 20, 30}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 20}) {
+      auto conj = EndomorphismSLP<int>::identity().conjugate_with(size, rnd);
+      ASSERT_TRUE(conj.is_identity());
+    }
+  }
+
 }
 
 
