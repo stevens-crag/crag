@@ -36,18 +36,13 @@ typedef typename slp::TerminalVertexTemplate<int> TVertex;
     return true;
   }
 
-  //! Prints vertex
-  std::ostream& operator<<(std::ostream& out, const slp::VertexWord<int>& word) {
-    for (auto wi = word.begin(); wi != word.end(); ++wi) {
-      out << *wi;
-    }
-    return out;
-  }
 
   //! Return string representation of vertex
   std::string to_string(const slp::VertexWord<int>& word) {
     std::stringstream out;
-    out << word;
+    for (auto wi = word.begin(); wi != word.end(); ++wi) {
+      out << *wi;
+    }
     return out.str();
   }
 
@@ -342,6 +337,8 @@ TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
     }
   }
 }
+
+
 
 
 } /* namespace crag */
