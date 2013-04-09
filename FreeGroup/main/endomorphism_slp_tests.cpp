@@ -8,156 +8,61 @@
 #include <iostream>
 #include <fstream>
 #include <chrono>
+#include <boost/accumulators/accumulators.hpp>
+#include <boost/accumulators/statistics/stats.hpp>
+#include <boost/accumulators/statistics/mean.hpp>
+#include <boost/accumulators/statistics/min.hpp>
+#include <boost/accumulators/statistics/max.hpp>
+#include <boost/accumulators/statistics/moment.hpp>
 #include "EndomorphismSLP.h"
 
 typedef std::chrono::high_resolution_clock our_clock;
 using namespace crag;
+using namespace boost::accumulators;
+
+//! Our statistics accumulator for non LongInteger. If needed add extra tags for more statistics.
+template<typename T>
+struct Statistic: public accumulator_set<T, stats<tag::min, tag::max, tag::mean>> {
+};
+
+//! Specialization for LongInteger. We need this because accumulator does not work correctly with mean and LongInteger
+template<>
+struct Statistic<LongInteger>: public accumulator_set<LongInteger, stats<tag::count, tag::sum, tag::max>> {
+    void operator()(const LongInteger& val) {
+      accumulator_set<LongInteger, stats<tag::count, tag::sum, tag::max>>::operator()(val);
+      if (count(*this) == 1 || val < min_) {
+        min_ = val;
+      }
+    }
+
+    LongInteger min_;
+};
 
 template<typename T>
-class SimpleStat {
-  public:
-    static_assert(std::is_integral<T>::value, "SimpleStat parameter must be of integral type");
-
-    SimpleStat()
-      : sum_(0),
-        min_(std::numeric_limits<T>::max()),
-        max_(std::numeric_limits<T>::min()),
-        count_(0) {}
-
-    void reset() {
-      sum_ = 0;
-      min_ = std::numeric_limits<T>::max();
-      max = std::numeric_limits<T>::min();
-      count_ = 0;
-    }
-
-    SimpleStat& operator+=(const SimpleStat& s) {
-      sum_ += s.sum_;
-      if (min_ > s.min_)
-        min_ = s.min_;
-      if (max_ < s.max_)
-        max_ = s.max_;
-      count_ += s.count_;
-    }
-
-    void add_value(T val) {
-      sum_ += val;
-      if (val < min_)
-        min_ = val;
-      if (val > max_)
-        max_ = val;
-      ++count_;
-    }
-
-    long long int sum() const {
-      return sum_;
-    }
-
-    unsigned long long int count() const {
-      return count_;
-    }
-
-    long double average() const {
-      return static_cast<long double>(sum_) / count_;
-    }
-
-    T max() const {
-      return max_;
-    }
-
-    T min() const {
-      return min_;
-    }
-
-  private:
-    long long int sum_;
-    T min_;
-    T max_;
-    unsigned long long int count_;
-};
+T minimum(const Statistic<T>& stat) {
+  return min(stat);
+}
 
 template<>
-class SimpleStat<LongInteger> {
-  public:
-    typedef LongInteger Int;
+LongInteger minimum(const Statistic<LongInteger>& stat) {
+ return stat.min_;
+}
 
-    SimpleStat()
-      : sum_(0),
-        min_(0),
-        max_(0),
-        count_(0) {}
+template<typename T>
+LongInteger average(const Statistic<T>& stat) {
+  return mean(stat);
+}
 
-    void reset() {
-      sum_ = 0;
-      min_ = 0;
-      max_ = 0;
-      count_ = 0;
-    }
-
-    SimpleStat& operator+=(const SimpleStat& s) {
-      sum_ += s.sum_;
-      if (count_ == zero()) {
-        min_ = s.min_;
-        max_ = s.max_;
-      } else {
-        if (min_ > s.min_)
-          min_ = s.min_;
-        if (max_ < s.max_)
-          max_ = s.max_;
-      }
-      count_ += s.count_;
-    }
-
-    void add_value(const Int& val) {
-      sum_ += val;
-      if (count_ > zero()) {
-        if (val < min_)
-          min_ = val;
-        if (val > max_)
-          max_ = val;
-      } else {
-        min_ = max_ = val;
-      }
-      ++count_;
-    }
-
-    Int sum() const {
-      return sum_;
-    }
-
-    Int count() const {
-      return count_;
-    }
-
-    Int average() const {
-      return sum_ / count_;
-    }
-
-    Int max() const {
-      return max_;
-    }
-
-    Int min() const {
-      return min_;
-    }
-
-  private:
-    static Int zero() {
-      static Int zero_ = Int();
-      return zero_;
-    }
-
-    Int sum_;
-    Int min_;
-    Int max_;
-    Int count_;
-};
+template<>
+LongInteger average(const Statistic<LongInteger>& stat) {
+  return sum(stat) / count(stat);
+}
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, const SimpleStat<T>& stat) {
-  return out << "(avg = " << stat.average() << ", "
-                 << "min = " << stat.min() << ", "
-                 << "max = " << stat.max() << ")";
+std::ostream& operator<<(std::ostream& out, const Statistic<T>& stat) {
+  return out << "(avg = " << average(stat) << ", "
+                 << "min = " << minimum(stat) << ", "
+                 << "max = " << max(stat) << ")";
 }
 
 void composition_statistics() {
@@ -167,8 +72,8 @@ void composition_statistics() {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
     for (auto size : {100, 1000, 2000}) {
       const uint iterations_num = 100;
-      SimpleStat<unsigned int> heightStat;
-      SimpleStat<unsigned int> verticesNumStat;
+      Statistic<unsigned int> height_stat;
+      Statistic<unsigned int> vertices_num_stat;
 
       our_clock::duration time;
       for (int i = 0; i < iterations_num; ++i) {
@@ -178,25 +83,25 @@ void composition_statistics() {
         auto height = crag::height(e);
         auto vertices_num = slp_vertices_num(e);
 
-        heightStat.add_value(height);
-        verticesNumStat.add_value(vertices_num);
+        height_stat(height);
+        vertices_num_stat(vertices_num);
       }
       auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time);
       std::cout << "(iterations=" << iterations_num << ", size=" << size << ", rank=" << rank << "): "
                 << time_in_ms.count() << "ms, "
                 << time_in_ms.count() / iterations_num << "ms per iteration, "
-                << "height " << heightStat << ", "
-                << "vertices num " << verticesNumStat
+                << "height " << height_stat << ", "
+                << "vertices num " << vertices_num_stat
                 << std::endl;
     }
   }
 }
 
-SimpleStat<LongInteger> get_endomorphism_images_lengths_stat(const EndomorphismSLP<int>& e) {
-  SimpleStat<LongInteger> length_stat;
+Statistic<LongInteger> get_endomorphism_images_lengths_stat(const EndomorphismSLP<int>& e) {
+  Statistic<LongInteger> length_stat;
   auto length_calculator = [&] (const EndomorphismSLP<int>::symbol_image_pair_type& pair) {
     slp::Vertex v = pair.second;
-    length_stat.add_value(v.length());
+    length_stat(v.length());
   };
   e.for_each_non_trivial_image(length_calculator);
   return length_stat;
@@ -220,17 +125,17 @@ void enumerate_elementary_automorphisms(int rank, Func f) {
 }
 
 LongInteger total_images_length(const EndomorphismSLP<int>& em) {
-  return get_endomorphism_images_lengths_stat(em).sum();
+  return sum(get_endomorphism_images_lengths_stat(em));
 }
 
-SimpleStat<LongInteger> image_length_distance(unsigned int rank, const EndomorphismSLP<int>& e1,
+Statistic<LongInteger> image_length_distance(unsigned int rank, const EndomorphismSLP<int>& e1,
                                               const EndomorphismSLP<int>& e2) {
-  SimpleStat<LongInteger> length_stat;
+  Statistic<LongInteger> length_stat;
   for (int i = 1; i <= rank; ++i) {
     auto img1 = e1.image(i);
     auto img2 = e2.image(i);
     LongInteger d = img1.length() - img2.length();
-    length_stat.add_value(d > 0 ? d : -d);
+    length_stat(d > 0 ? d : -d);
   }
   return length_stat;
 }
@@ -365,14 +270,14 @@ void conjugation_length_based_attack_statistics() {
             << TargetValues<LongInteger>::legend()
             << std::endl;
   typedef unsigned int uint;
-  for (auto rank : {3, 4, 5}) {
+  for (auto rank : {3}) {
     std::cout << "rank=" << rank << std::endl;
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {5, 10, 15}) {
+    for (auto size : {10}) {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 25;
+        const uint iterations_num = 1;
 
         auto start_time = our_clock::now();
         for (int i = 0; i < iterations_num; ++i) {
@@ -400,6 +305,6 @@ void conjugation_length_based_attack_statistics() {
 
 
 int main() {
-//  composition_statistics();
+  //  composition_statistics();
   conjugation_length_based_attack_statistics();
 }
