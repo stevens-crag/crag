@@ -125,9 +125,8 @@ inline LongInteger get_cancellation_length(const Vertex& vertex) {
   MatchingTable temp;
   return get_cancellation_length(vertex, &temp);
 }
-inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table) {
-  std::unordered_map<Vertex, Vertex> reduced_vertices;
-  map_vertices(vertex, &reduced_vertices, [&matching_table](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
+inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table, std::unordered_map<Vertex, Vertex>* reduced_vertices) {
+  map_vertices(vertex, reduced_vertices, [&matching_table](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
     if (vertex.height() <= 1) {
       return vertex;
     }
@@ -172,12 +171,13 @@ inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table) {
       }
     }
   });
-  return reduced_vertices[vertex];
+  return (*reduced_vertices)[vertex];
 }
 
 inline Vertex reduce(const Vertex& vertex) {
   MatchingTable matching_table;
-  return reduce(vertex, &matching_table);
+  std::unordered_map<Vertex, Vertex> reduced_vertices;
+  return reduce(vertex, &matching_table, &reduced_vertices);
 }
 
 }
