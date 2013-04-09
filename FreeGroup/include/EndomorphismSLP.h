@@ -13,6 +13,7 @@
 #include <unordered_set>
 #include <random>
 #include <algorithm>
+#include <functional>
 #include <assert.h>
 #include "slp.h"
 
@@ -145,8 +146,9 @@ public:
   EndomorphismSLP free_reduction() const {
     EndomorphismSLP result;
     slp::MatchingTable mt;
+    std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
     for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
-      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second, &mt)));
+      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second, &mt, &reduced_vertices)));
     });
     return result;
   }
@@ -484,12 +486,9 @@ template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
   std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-  auto map_vertex_callback = [this] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) {
-    return this->map_vertex(vertex, images);
-  };
-
   for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
-    slp::map_vertices(root_entry.second, &new_vertices, map_vertex_callback);
+    slp::map_vertices(root_entry.second, &new_vertices,
+                      std::bind(&EndomorphismSLP<TerminalSymbol>::map_vertex, *this, std::placeholders::_1, std::placeholders::_2));
   }
 
   //replacing roots
