@@ -857,6 +857,4 @@ TEST_F(EndomorphismSLPTest, NomralFormTest) {
   }
 }
 
-
-
 } /* namespace crag */
