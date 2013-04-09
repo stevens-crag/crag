@@ -588,6 +588,7 @@ TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
   int n = 0;
   auto counter = [&] (const EMorphism& e) {
     ++n;
+    EXPECT_EQ(1, e.non_trivial_images_num());
   };
   //checking counts
   for (int rank = 1; rank < 10; ++rank) {
