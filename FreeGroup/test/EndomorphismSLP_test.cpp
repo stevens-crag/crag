@@ -598,6 +598,36 @@ TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, SaveAndLoad) {
+  auto check_save_load = [] (const EMorphism& e) {
+    std::stringstream s;
+    e.save_to(&s);
+    EXPECT_EQ(e, EMorphism::load_from(&s));
+  };
+
+  check_save_load(EMorphism::identity());
+
+  for(int rank = 1; rank < 5; ++rank) {
+    EMorphism::for_each_basic_morphism(rank, check_save_load);
+    //composition of two
+    EMorphism::for_each_basic_morphism(rank, [&] (const EMorphism& e) {
+      EMorphism::for_each_basic_morphism(rank, [&] (const EMorphism& e1) {
+        check_save_load(e * e1);
+      });
+    });
+  }
+
+
+
+//  for (auto rank : {5, 10}) {
+//    UniformAutomorphismSLPGenerator<int> rnd(rank);
+//    for (auto size : {5, 10, 20, 50}) {
+//      auto e = EMorphism::composition(size, rnd);
+//      check_save_load(e);
+//    }
+//  }
+}
+
 
 
 } /* namespace crag */
