@@ -602,8 +602,10 @@ TEST_F(EndomorphismSLPTest, SaveAndLoad) {
   auto check_save_load = [] (const EMorphism& e) {
     std::stringstream s;
     e.save_to(&s);
+//    e.save_to(&std::cout);
     EXPECT_EQ(e, EMorphism::load_from(&s));
   };
+
 
   check_save_load(EMorphism::identity());
 
@@ -616,16 +618,13 @@ TEST_F(EndomorphismSLPTest, SaveAndLoad) {
       });
     });
   }
-
-
-
-//  for (auto rank : {5, 10}) {
-//    UniformAutomorphismSLPGenerator<int> rnd(rank);
-//    for (auto size : {5, 10, 20, 50}) {
-//      auto e = EMorphism::composition(size, rnd);
-//      check_save_load(e);
-//    }
-//  }
+  for (auto rank : {5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {5, 10, 20, 50}) {
+      for (int i = 0; i < 10; ++i)
+        check_save_load(EMorphism::composition(size, rnd));
+    }
+  }
 }
 
 

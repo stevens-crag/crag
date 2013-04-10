@@ -564,55 +564,70 @@ slp::Vertex EndomorphismSLP<TerminalSymbol>::map_vertex(const slp::Vertex& verte
 
 template<typename TerminalSymbol>
 void EndomorphismSLP<TerminalSymbol>::save_to(std::ostream* out) const {
-  typedef unsigned long  num_type;
+  size_t vertex_num = 0;
 
-  num_type n = 0;
+  std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
+  std::unordered_map<size_t, TerminalSymbol> terminals;
 
-  std::unordered_map<num_type, std::pair<num_type, num_type>> non_terminals;
-  std::unordered_map<num_type, TerminalSymbol> terminals;
+  //we save the order in wich vertices occur during postorder inspection because we want to save them in this
+  //order so it would be easier to reconstruct the automorphism later
+  std::vector<size_t> non_terminals_order;
+  std::vector<size_t> terminals_order;
 
-  auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, num_type>& mapped_images) {
+  auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
-      terminals.insert(std::make_pair(n, symbol));
+      terminals.insert(std::make_pair(vertex_num, symbol));
+      terminals_order.push_back(vertex_num);
     } else {//nonterminal
-      num_type left_val = mapped_images.find(vertex.left_child())->second;
-      num_type right_val = mapped_images.find(vertex.right_child())->second;
-      non_terminals.insert(std::make_pair(n, std::make_pair(left_val, right_val)));
+      size_t left_val = mapped_images.find(vertex.left_child())->second;
+      size_t right_val = mapped_images.find(vertex.right_child())->second;
+      non_terminals.insert(std::make_pair(vertex_num, std::make_pair(left_val, right_val)));
+      non_terminals_order.push_back(vertex_num);
     }
-    return n++;
+    return vertex_num++;
   };
 
-  std::unordered_map<slp::Vertex, num_type> vertex_numbers;
+  std::unordered_map<slp::Vertex, size_t> vertex_numbers;
   for (auto root_entry: images_) {
     slp::map_vertices(root_entry.second, &vertex_numbers,
                       processor);
   }
 
+  //writing
+  //"number of nontrivial images" "number of terminals" "number of non-terminals"
   *out << images_.size() << " " << terminals.size() << " " << non_terminals.size() << std::endl;
 
-  for (auto terminal: terminals)
+  //writing terminal symbols
+  //"terminal vertex index" "terminal symbol or inverse"
+  for (size_t terminal_vertex_index: terminals_order) {
+    auto terminal = *(terminals.find(terminal_vertex_index));
     *out << terminal.first << " " << terminal.second << std::endl;
+  }
 
-  for (auto non_terminal: non_terminals)
+  //writing non-terminals
+  //"vertex index" "left child index" "right child index"
+  for (size_t non_terminal_vertex_index: non_terminals_order) {
+    auto non_terminal = *(non_terminals.find(non_terminal_vertex_index));
     *out << non_terminal.first << " " << non_terminal.second.first << " " << non_terminal.second.second << std::endl;
+  }
 
+  //writing roots
+  //"terminal symbol" "vertex index"
   for (auto root_entry: images_)
     *out << root_entry.first << " " << vertex_numbers.find(root_entry.second)->second << std::endl;
 }
 
 template<typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::load_from(std::istream* in) {
-  typedef unsigned long  num_type;
-
-  int roots_num;
-  int terminals_num;
-  int non_terminals_num;
+  size_t roots_num;
+  size_t terminals_num;
+  size_t non_terminals_num;
   *in >> roots_num >> terminals_num >> non_terminals_num;
 
-  std::unordered_map<num_type, slp::Vertex> vertices;
+  std::unordered_map<size_t, slp::Vertex> vertices;
   for (int i = 0; i < terminals_num; ++i) {
-    num_type index;
+    size_t index;
     TerminalSymbol image;
     *in >> index >> image;
     in->ignore();
@@ -620,12 +635,12 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::load_from(std::
   }
 
   for (int i = 0; i < non_terminals_num; ++i) {
-    num_type index;
-    num_type l_index;
-    num_type r_index;
+    size_t index;
+    size_t l_index;
+    size_t r_index;
     *in >> index >> l_index >> r_index;
     in->ignore();
-    auto left = vertices.find(l_index)->second;
+    auto left= vertices.find(l_index)->second;
     auto right = vertices.find(r_index)->second;
     vertices.insert(std::make_pair(index, slp::NonterminalVertex(left, right)));
   }
@@ -633,7 +648,7 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::load_from(std::
   EndomorphismSLP e;
   for (int i = 0; i < roots_num; ++i) {
     TerminalSymbol key;
-    num_type index;
+    size_t index;
     *in >> key >> index;
     in->ignore();
     auto root = vertices.find(index)->second;
