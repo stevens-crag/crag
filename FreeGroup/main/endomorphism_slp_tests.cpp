@@ -20,6 +20,10 @@ typedef std::chrono::high_resolution_clock our_clock;
 using namespace crag;
 using namespace boost::accumulators;
 
+
+//----------------------------------------------------------------------------------------
+// Statistic accumulators
+
 //! Our statistics accumulator for non LongInteger. If needed add extra tags for more statistics.
 template<typename T>
 struct Statistic: public accumulator_set<T, stats<tag::min, tag::max, tag::mean>> {
@@ -65,37 +69,7 @@ std::ostream& operator<<(std::ostream& out, const Statistic<T>& stat) {
                  << "max = " << max(stat) << ")";
 }
 
-void composition_statistics() {
-  typedef unsigned int uint;
-  std::cout << "Legend: (num iterations, num of composed elements, rank)" << std::endl;
-  for (auto rank : {3, 5, 10, 20}) {
-    UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {100, 1000, 2000}) {
-      const uint iterations_num = 100;
-      Statistic<unsigned int> height_stat;
-      Statistic<unsigned int> vertices_num_stat;
 
-      our_clock::duration time;
-      for (int i = 0; i < iterations_num; ++i) {
-        auto start_time = our_clock::now();
-        auto e = EndomorphismSLP<int>::composition(size, rnd);
-        time += our_clock::now() - start_time;
-        auto height = crag::height(e);
-        auto vertices_num = slp_vertices_num(e);
-
-        height_stat(height);
-        vertices_num_stat(vertices_num);
-      }
-      auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time);
-      std::cout << "(iterations=" << iterations_num << ", size=" << size << ", rank=" << rank << "): "
-                << time_in_ms.count() << "ms, "
-                << time_in_ms.count() / iterations_num << "ms per iteration, "
-                << "height " << height_stat << ", "
-                << "vertices num " << vertices_num_stat
-                << std::endl;
-    }
-  }
-}
 
 Statistic<LongInteger> get_endomorphism_images_lengths_stat(const EndomorphismSLP<int>& e) {
   Statistic<LongInteger> length_stat;
@@ -110,18 +84,6 @@ Statistic<LongInteger> get_endomorphism_images_lengths_stat(const EndomorphismSL
 void print_stats(std::ostream* out, const EndomorphismSLP<int>& e) {
   *out << "height=" << height(e) << ", vertices num=" << slp_vertices_num(e)
        << ", image lengths=(" << get_endomorphism_images_lengths_stat(e) << ")";
-}
-
-template<typename Func>
-void enumerate_elementary_automorphisms(int rank, Func f) {
-  for (int i = 1; i <= rank; ++i)
-    f(EndomorphismSLP<int>::inverter(i));
-  for (int i = 1; i <= rank; ++i)
-    for (int j = -rank; j <= rank; ++j)
-      if (j != i && j != -i && j != 0) {
-        f(EndomorphismSLP<int>::left_multiplier(j, i));
-        f(EndomorphismSLP<int>::right_multiplier(i, j));
-      }
 }
 
 LongInteger total_images_length(const EndomorphismSLP<int>& em) {
@@ -153,7 +115,7 @@ EndomorphismSLP<int> minimize_morphism(unsigned int rank, const EndomorphismSLP<
     auto min_value = start_value;
     EndomorphismSLP<int> min_trial = EndomorphismSLP<int>::identity();
 
-    enumerate_elementary_automorphisms(rank,
+    EndomorphismSLP<int>::for_each_basic_morphism(rank,
                                        [&] (const EndomorphismSLP<int>& e) {
       auto trial = e * start_morphism * e.inverse();
       auto reduced_trial = trial.free_reduction();
@@ -262,6 +224,40 @@ TargetValues<TargetValueType> conjugation_length_based_attack(unsigned int rank,
   return TargetValues<TargetValueType>(e_val, conj_val, min_e_val, min_val);
 }
 
+//---------------------------------------------------------------------------------------------------------
+// experiments
+
+void composition_statistics() {
+  typedef unsigned int uint;
+  std::cout << "Legend: (num iterations, num of composed elements, rank)" << std::endl;
+  for (auto rank : {3, 5, 10, 20}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {100, 1000, 2000}) {
+      const uint iterations_num = 100;
+      Statistic<unsigned int> height_stat;
+      Statistic<unsigned int> vertices_num_stat;
+
+      our_clock::duration time;
+      for (int i = 0; i < iterations_num; ++i) {
+        auto start_time = our_clock::now();
+        auto e = EndomorphismSLP<int>::composition(size, rnd);
+        time += our_clock::now() - start_time;
+        auto height = crag::height(e);
+        auto vertices_num = slp_vertices_num(e);
+
+        height_stat(height);
+        vertices_num_stat(vertices_num);
+      }
+      auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(time);
+      std::cout << "(iterations=" << iterations_num << ", size=" << size << ", rank=" << rank << "): "
+                << time_in_ms.count() << "ms, "
+                << time_in_ms.count() / iterations_num << "ms per iteration, "
+                << "height " << height_stat << ", "
+                << "vertices num " << vertices_num_stat
+                << std::endl;
+    }
+  }
+}
 
 void conjugation_length_based_attack_statistics() {
   std::ofstream out("lba_based_on_total_length_result.csv");
