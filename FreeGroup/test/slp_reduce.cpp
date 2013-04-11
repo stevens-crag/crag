@@ -215,7 +215,7 @@ TEST(Reduce, Example2) {
 TEST(Reduce, StressTest) {
   const size_t REPEAT = 10000;
   const size_t RANK = 3;
-  const size_t ENDOMORPHISMS_NUMBER = 5;
+  const size_t ENDOMORPHISMS_NUMBER = 20;
   size_t seed = 0;
   while (++seed <= REPEAT) {
     UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
@@ -246,20 +246,20 @@ TEST(Reduce, StressTest) {
   }
 }
 
-TEST(Reduce, PerformanceTest) {
-  int REPEAT = 10;
-  const size_t RANK = 3;
-  const size_t ENDOMORPHISMS_NUMBER = 100;
-  size_t seed = 112233;///time(0);//
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-  while (--REPEAT >= 0) {
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
-
-    Vertex reduced = reduce(image);
-    std::cout << image.length() << std::endl;
-    std::cout << reduced.length() << std::endl;
-  }
-}
+//TEST(Reduce, PerformanceTest) {
+//  int REPEAT = 10;
+//  const size_t RANK = 3;
+//  const size_t ENDOMORPHISMS_NUMBER = 100;
+//  size_t seed = 112233;///time(0);//
+//  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+//  while (--REPEAT >= 0) {
+//    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).slp(1);
+//
+//    Vertex reduced = reduce(image);
+//    std::cout << image.length() << std::endl;
+//    std::cout << reduced.length() << std::endl;
+//  }
+//}
 
 
 } //namespace
