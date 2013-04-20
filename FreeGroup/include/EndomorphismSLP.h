@@ -213,7 +213,15 @@ public:
   }
 
   size_type non_trivial_images_num() const {
-    return images_.size();
+    unsigned int n = 0;
+    for (auto key_image: images_) {
+      auto key = key_image.first;
+      slp::Vertex image = key_image.second;
+      if (image.height() == 1 && TerminalVertex(image).terminal_symbol() == key)
+        continue;
+      ++n;
+    }
+    return n;
   }
 
   //! Returns range (begin, end) of non-trivial images containg pairs (symbol, image)

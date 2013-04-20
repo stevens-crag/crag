@@ -291,6 +291,19 @@ TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
   EXPECT_EQ("-3", img[2]);
 }
 
+TEST_F(EndomorphismSLPTest, NonTrivialImagesNumTest) {
+  EXPECT_EQ(0, EndomorphismSLP<int>::identity().non_trivial_images_num());
+  for (int i = 1; i < 10; ++i) {
+    EXPECT_EQ(1, EMorphism::inverter(i).non_trivial_images_num());
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_EQ(1,EMorphism::right_multiplier(i, j).non_trivial_images_num());
+        EXPECT_EQ(1,EMorphism::left_multiplier(-j, i).non_trivial_images_num());
+      }
+}
+
 TEST_F(EndomorphismSLPTest, ForEachTest) {
   auto e = EMorphism::identity();
   for (int i = 1; i < 20; i += 2) {
