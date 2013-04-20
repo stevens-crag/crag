@@ -180,7 +180,10 @@ public:
     slp::MatchingTable mt;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
     for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
-      result.images_.insert(std::make_pair(pair.first, slp::reduce(pair.second, &mt, &reduced_vertices)));
+      auto reduced = slp::reduce(pair.second, &mt, &reduced_vertices);
+      //insert if it is not an identity map
+      if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
+        result.images_.insert(std::make_pair(pair.first, reduced));
     });
     return result;
   }
