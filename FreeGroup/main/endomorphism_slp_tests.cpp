@@ -576,11 +576,11 @@ void lba_success_precentage() {
   for (auto rank : {3}) {
     std::cout << "rank=" << rank << std::endl;
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (uint size: {1}) {
+    for (uint size: {2}) {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 100;
+        const uint iterations_num = 20;
 
         auto start_time = our_clock::now();
         unsigned int success_num = 0;
@@ -599,7 +599,8 @@ void lba_success_precentage() {
           if (result.values_.minimized_morphism_value == result.values_.minimized_conjugation_value &&
               result.values_.minimized_morphism == result.values_.minimized_conjugation)
             ++success_num;
-          result.save(&out);
+          else
+            result.save(&out);
           auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
           write_comment(&out, "time");
           out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
@@ -649,9 +650,11 @@ int main() {
   lba_success_precentage();
   std::string filename("lba_success_precentage_2.txt");
   auto result = read_result<LongInteger>(filename);
-//  std::cout << result.first << std::endl;
+  std::cout << result.first << std::endl;
   for(auto res: result.second) {
-    res.save(&std::cout);
+    if (res.values_.minimized_morphism_value != res.values_.minimized_conjugation_value ||
+        res.values_.minimized_morphism != res.values_.minimized_conjugation)
+       res.save(&std::cout);
   }
 
 
