@@ -698,7 +698,7 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
 
   //writing roots
   for (auto root_entry: images_) {
-    out << INDENT << "i\"" << root_entry.first << "\" -> ";
+    out << INDENT << "i[" << root_entry.first << "] -> ";
     auto img = root_entry.second;
     if (img.height() <= 1)
       out << "t[" << TerminalVertex(img).terminal_symbol() << "]";
