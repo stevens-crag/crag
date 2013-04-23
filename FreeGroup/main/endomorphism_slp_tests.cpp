@@ -351,13 +351,36 @@ struct Result {
     conjugation_ = morphism_.conjugate_with(conjugation_parts_.begin(), conjugation_parts_.end());
   }
 
-  void save(std::ostream* out);
+  //! Saves to stream so it can be recovered later with load
+  void save(std::ostream* out) const;
+  //! Prints in more user friendly format but can not be recovered
+  /**
+   * Uses graphviz representation for graphs.
+   */
+  void print(std::ostream* out) const;
+  //! Load from file
   static Result load(std::istream* in);
 };
 
+void print_basic_morphism(std::ostream* p_out, const EndomorphismSLP<int>& e) {
+  e.for_each_non_trivial_image([&p_out] (const EndomorphismSLP<int>::symbol_image_pair_type& pair) {
+    *p_out << pair.first << " -> ";
+    slp::Vertex v = pair.second;
+    if (v.height() <= 1)
+      *p_out << slp::TerminalVertexTemplate<int>(v).terminal_symbol();
+    else {
+      auto l = v.left_child();
+      auto r = v.right_child();
+      *p_out << slp::TerminalVertexTemplate<int>(l).terminal_symbol() << " "
+                << slp::TerminalVertexTemplate<int>(r).terminal_symbol();
+    }
+    *p_out << std::endl;
+  });
+}
+
 
 template<typename T>
-void Result<T>::save(std::ostream* p_out) {
+void Result<T>::save(std::ostream* p_out) const {
   std::ostream& out = *p_out;
 
   out << EXPERIMENT_DELIMITER << std::endl;
@@ -423,6 +446,72 @@ void Result<T>::save(std::ostream* p_out) {
   for (const auto& morphism: values_.conjugation_minimizing_sequence) {
     morphism.save_to(p_out);
     write_comment(p_out, "");
+  }
+}
+
+template<typename T>
+void Result<T>::print(std::ostream* p_out) const {
+  std::ostream& out = *p_out;
+
+  out << EXPERIMENT_DELIMITER << std::endl;
+
+  write_comment(p_out, "rank");
+  out << rank_ << std::endl;
+
+  write_comment(p_out, "original morphism value");
+  out << values_.morphism_value << std::endl;
+
+  write_comment(p_out, "conjugation value");
+  out << values_.conjugation_value << std::endl;
+
+  write_comment(p_out, "minimized morphism value");
+  out << values_.minimized_morphism_value << std::endl;
+
+  write_comment(p_out, "minimized conjugation value");
+  out << values_.minimized_conjugation_value << std::endl;
+
+  write_comment(p_out, "num of composed morphisms");
+  out << composition_parts_.size() << std::endl;
+
+  write_comment(p_out, "composed morphisms");
+  for (const auto& morphism: composition_parts_) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "num of conjugation morphisms");
+  out << conjugation_parts_.size() << std::endl;
+
+  write_comment(p_out, "conjugation morphisms");
+  for (const auto& morphism: conjugation_parts_) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "original morphism");
+  morphism_.save_graphviz(p_out, "Morphism");
+
+  write_comment(p_out, "conjugation");
+  conjugation_.save_graphviz(p_out, "Conjugation");
+
+  write_comment(p_out, "minimized morphism");
+  values_.minimized_morphism.save_graphviz(p_out, "MinMorphism");
+
+  write_comment(p_out, "minimized conjugation");
+  values_.minimized_conjugation.save_graphviz(p_out, "MinConjugation");
+
+  write_comment(p_out, "num of morphism minimizing conjugators");
+  out << values_.morphism_minimizing_sequence.size() << std::endl;
+
+  write_comment(p_out, "sequence minimizing morphism");
+  for (const auto& morphism: values_.morphism_minimizing_sequence) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "num of conjugation minimizing conjugators");
+  out << values_.conjugation_minimizing_sequence.size() << std::endl;
+
+  write_comment(p_out, "sequence minimizing conjugaion");
+  for (const auto& morphism: values_.conjugation_minimizing_sequence) {
+    print_basic_morphism(p_out, morphism);
   }
 }
 
@@ -580,7 +669,7 @@ void lba_success_precentage() {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 20;
+        const uint iterations_num = 10;
 
         auto start_time = our_clock::now();
         unsigned int success_num = 0;
@@ -599,8 +688,7 @@ void lba_success_precentage() {
           if (result.values_.minimized_morphism_value == result.values_.minimized_conjugation_value &&
               result.values_.minimized_morphism == result.values_.minimized_conjugation)
             ++success_num;
-          else
-            result.save(&out);
+          result.save(&out);
           auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
           write_comment(&out, "time");
           out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
@@ -650,11 +738,12 @@ int main() {
   lba_success_precentage();
   std::string filename("lba_success_precentage_2.txt");
   auto result = read_result<LongInteger>(filename);
-  std::cout << result.first << std::endl;
+  std::ofstream out("processed_result.txt");
+  out << result.first << std::endl;
   for(auto res: result.second) {
     if (res.values_.minimized_morphism_value != res.values_.minimized_conjugation_value ||
         res.values_.minimized_morphism != res.values_.minimized_conjugation)
-       res.save(&std::cout);
+       res.print(&out);
   }
 
 
