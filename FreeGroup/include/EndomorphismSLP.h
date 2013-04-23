@@ -78,17 +78,7 @@ public:
 
   //! Applies provided function to each inverter, left and right multiplier for the given rank
   template<typename Func>
-  static void for_each_basic_morphism(int rank, Func f) {
-    assert(rank > 0);
-    for (int i = 1; i <= rank; ++i)
-      f(EndomorphismSLP<TerminalSymbol>::inverter(i));
-    for (int i = 1; i <= rank; ++i)
-      for (int j = -static_cast<int>(rank); j <= rank; ++j)
-        if (j != i && j != -i && j != 0) {
-          f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
-          f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
-        }
-  }
+  static void for_each_basic_morphism(int rank, Func f);
 
   //! Returns the composition of endomorphisms specified by the range
   template<typename Iterator>
@@ -215,6 +205,7 @@ public:
     return images_.rbegin()->first;
   }
 
+  //! Returns the number of non-trivial images.
   size_type non_trivial_images_num() const {
     unsigned int n = 0;
     for (auto key_image: images_) {
@@ -284,6 +275,8 @@ public:
   void save_to(std::ostream* out) const;
   static EndomorphismSLP load_from(std::istream* in);
 
+  void save_graphviz(std::ostream* out, const std::string& name = "") const;
+
 private:
   typedef typename slp::TerminalVertexTemplate<TerminalSymbol> TerminalVertex;
 
@@ -316,6 +309,10 @@ private:
   std::map<TerminalSymbol, slp::Vertex> images_;
 };
 
+
+//---------------------------------------------------------------------
+// Helper functions.
+
 //! Compose given endomorphisms.
 /**
  * Returns const to behave consistently with built-in types.
@@ -327,37 +324,11 @@ const EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSy
 
 //! Find the maximal height of SLPs, representing the endomorphism
 template<typename TerminalSymbol>
-unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
-  unsigned int h = 0;
-  auto pick_max_height = [&h] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
-    const unsigned int v_h = v.second.height();
-    if (v_h > h)
-      h = v_h;
-  };
-  e.for_each_non_trivial_image(pick_max_height);
-  return h;
-}
+unsigned int height(const EndomorphismSLP<TerminalSymbol>& e);
 
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
-unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
-  std::unordered_set<slp::Vertex> visited_vertices;
-
-  auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
-    return visited_vertices.find(task.vertex) == visited_vertices.end();
-  };
-
-  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
-    slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
-    while (!inspector.stopped()) {
-      visited_vertices.insert(inspector.vertex());
-      inspector.next();
-    }
-  };
-
-  e.for_each_non_trivial_image(inspect_root);
-  return visited_vertices.size();
-}
+unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 
 
 
@@ -460,17 +431,24 @@ private:
 };
 
 
-//template<typename TerminalSymbol, typename Func>
-//static void EndomorphismSLP<TerminalSymbol>::for_each_basic_morphism(unsigned int rank, Func f) {
-//  for (int i = 1; i <= rank; ++i)
-//    f(EndomorphismSLP<TerminalSymbol>::inverter(i));
-//  for (int i = 1; i <= rank; ++i)
-//    for (int j = 1; j <= rank; ++j)
-//      if (j != i && j != -i && j != 0) {
-//        f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
-//        f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
-//      }
-//}
+//-------------------------------------------------------------------------------------
+// Implementation of EndomorphismSLP methods.
+
+
+template<typename TerminalSymbol>
+template<typename Func>
+void EndomorphismSLP<TerminalSymbol>::for_each_basic_morphism(int rank, Func f) {
+  assert(rank > 0);
+  for (int i = 1; i <= rank; ++i)
+    f(EndomorphismSLP<TerminalSymbol>::inverter(i));
+  for (int i = 1; i <= rank; ++i)
+    for (int j = -static_cast<int>(rank); j <= rank; ++j)
+      if (j != i && j != -i && j != 0) {
+        f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
+        f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
+      }
+}
+
 
 
 template <typename TerminalSymbol>
@@ -686,6 +664,111 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::load_from(std::
   return e;
 }
 
+
+template<typename TerminalSymbol>
+void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const std::string& name) const {
+  static const char* INDENT = "\t";
+
+  std::ostream& out = *p_out;
+  out << "digraph " << name << " {" << std::endl;
+  size_t vertex_num = 0;
+
+  std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
+  std::unordered_map<size_t, TerminalSymbol> terminals;
+
+  auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
+    if (vertex.height() == 1) {//the vertex is terminal
+      const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
+      terminals.insert(std::make_pair(vertex_num, symbol));
+    } else {//nonterminal
+      size_t left_val = mapped_images.find(vertex.left_child())->second;
+      size_t right_val = mapped_images.find(vertex.right_child())->second;
+      non_terminals.insert(std::make_pair(vertex_num, std::make_pair(left_val, right_val)));
+    }
+    return vertex_num++;
+  };
+
+  std::unordered_map<slp::Vertex, size_t> vertex_numbers;
+  for (auto root_entry: images_) {
+    slp::map_vertices(root_entry.second, &vertex_numbers,
+                      processor);
+  }
+
+
+
+  //writing roots
+  for (auto root_entry: images_) {
+    out << INDENT << "i\"" << root_entry.first << "\" -> ";
+    auto img = root_entry.second;
+    if (img.height() <= 1)
+      out << "t[" << TerminalVertex(img).terminal_symbol() << "]";
+    else
+      out << vertex_numbers.find(root_entry.second)->second;
+
+    out << ";" << std::endl;
+  }
+
+  //writing non-terminals
+  for (auto non_terminal: non_terminals) {
+    auto non_terminal_index = non_terminal.first;
+
+    auto left_index = non_terminal.second.first;
+    out << INDENT << non_terminal_index << " -> ";
+    auto left_terminal = terminals.find(left_index);
+    if (left_terminal == terminals.end())
+      out << non_terminal.second.first;
+    else
+      out << "t[" << left_terminal->second << "]";
+    out << ";" << std::endl;
+
+    auto right_index = non_terminal.second.second;
+    out << INDENT << non_terminal_index << " -> ";
+    auto right_terminal = terminals.find(right_index);
+    if (right_terminal == terminals.end())
+      out << non_terminal.second.first;
+    else
+      out << "t[" << right_terminal->second << "]";
+    out << ";" << std::endl;
+  }
+
+  out << "}" << std::endl;
+}
+
+//-------------------------------------------------------------------------
+// Implementation of helper functions.
+
+
+template<typename TerminalSymbol>
+unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
+  unsigned int h = 0;
+  auto pick_max_height = [&h] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    const unsigned int v_h = v.second.height();
+    if (v_h > h)
+      h = v_h;
+  };
+  e.for_each_non_trivial_image(pick_max_height);
+  return h;
+}
+
+template<typename TerminalSymbol>
+unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
+  std::unordered_set<slp::Vertex> visited_vertices;
+
+  auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
+    return visited_vertices.find(task.vertex) == visited_vertices.end();
+  };
+
+  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
+    while (!inspector.stopped()) {
+      visited_vertices.insert(inspector.vertex());
+      inspector.next();
+    }
+  };
+
+  e.for_each_non_trivial_image(inspect_root);
+  return visited_vertices.size();
+}
 
 } /* namespace crag */
 #endif /* CRAG_FREE_GROUPS_ENDOMORPHISM_SLP_H_ */
