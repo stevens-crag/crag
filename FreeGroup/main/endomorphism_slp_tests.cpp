@@ -18,6 +18,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+#include <cstdlib>
+
 #include "EndomorphismSLP.h"
 
 typedef std::chrono::high_resolution_clock our_clock;
@@ -351,13 +353,40 @@ struct Result {
     conjugation_ = morphism_.conjugate_with(conjugation_parts_.begin(), conjugation_parts_.end());
   }
 
-  void save(std::ostream* out);
+  //! Saves to stream so it can be recovered later with load
+  void save(std::ostream* out) const;
+  //! Prints in more user friendly format but can not be recovered
+  /**
+   * Uses graphviz representation for graphs.
+   */
+  void print(std::ostream* out) const;
+  /**
+   * Prints html representation.
+   */
+  void print_html(std::ostream* p_html, const std::string& dir, const std::string& filename_prefix, unsigned int exp_index) const;
+  //! Load from file
   static Result load(std::istream* in);
 };
 
+void print_basic_morphism(std::ostream* p_out, const EndomorphismSLP<int>& e) {
+  e.for_each_non_trivial_image([&p_out] (const EndomorphismSLP<int>::symbol_image_pair_type& pair) {
+    *p_out << pair.first << " -> ";
+    slp::Vertex v = pair.second;
+    if (v.height() <= 1)
+      *p_out << slp::TerminalVertexTemplate<int>(v).terminal_symbol();
+    else {
+      auto l = v.left_child();
+      auto r = v.right_child();
+      *p_out << slp::TerminalVertexTemplate<int>(l).terminal_symbol() << " "
+                << slp::TerminalVertexTemplate<int>(r).terminal_symbol();
+    }
+    *p_out << std::endl;
+  });
+}
+
 
 template<typename T>
-void Result<T>::save(std::ostream* p_out) {
+void Result<T>::save(std::ostream* p_out) const {
   std::ostream& out = *p_out;
 
   out << EXPERIMENT_DELIMITER << std::endl;
@@ -424,6 +453,206 @@ void Result<T>::save(std::ostream* p_out) {
     morphism.save_to(p_out);
     write_comment(p_out, "");
   }
+}
+
+template<typename T>
+void Result<T>::print(std::ostream* p_out) const {
+  std::ostream& out = *p_out;
+
+  out << EXPERIMENT_DELIMITER << std::endl;
+
+  write_comment(p_out, "rank");
+  out << rank_ << std::endl;
+
+  write_comment(p_out, "original morphism value");
+  out << values_.morphism_value << std::endl;
+
+  write_comment(p_out, "conjugation value");
+  out << values_.conjugation_value << std::endl;
+
+  write_comment(p_out, "minimized morphism value");
+  out << values_.minimized_morphism_value << std::endl;
+
+  write_comment(p_out, "minimized conjugation value");
+  out << values_.minimized_conjugation_value << std::endl;
+
+  write_comment(p_out, "num of composed morphisms");
+  out << composition_parts_.size() << std::endl;
+
+  write_comment(p_out, "composed morphisms");
+  for (const auto& morphism: composition_parts_) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "num of conjugation morphisms");
+  out << conjugation_parts_.size() << std::endl;
+
+  write_comment(p_out, "conjugation morphisms");
+  for (const auto& morphism: conjugation_parts_) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "original morphism");
+  morphism_.save_graphviz(p_out, "Morphism");
+
+  write_comment(p_out, "conjugation");
+  conjugation_.save_graphviz(p_out, "Conjugation");
+
+  write_comment(p_out, "minimized morphism");
+  values_.minimized_morphism.save_graphviz(p_out, "MinMorphism");
+
+  write_comment(p_out, "minimized conjugation");
+  values_.minimized_conjugation.save_graphviz(p_out, "MinConjugation");
+
+  write_comment(p_out, "num of morphism minimizing conjugators");
+  out << values_.morphism_minimizing_sequence.size() << std::endl;
+
+  write_comment(p_out, "sequence minimizing morphism");
+  for (const auto& morphism: values_.morphism_minimizing_sequence) {
+    print_basic_morphism(p_out, morphism);
+  }
+
+  write_comment(p_out, "num of conjugation minimizing conjugators");
+  out << values_.conjugation_minimizing_sequence.size() << std::endl;
+
+  write_comment(p_out, "sequence minimizing conjugaion");
+  for (const auto& morphism: values_.conjugation_minimizing_sequence) {
+    print_basic_morphism(p_out, morphism);
+  }
+}
+
+struct indent {
+    unsigned int level;
+
+    indent(unsigned int level) : level(level) {}
+
+    friend std::ostream& operator<<(std::ostream& stream, const indent& val) {
+      for(int i = 0; i < val.level; ++i) {
+          stream << "  ";
+      }
+      return stream;
+  }
+};
+
+
+template<typename T>
+void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const std::string& aux_filename_prefix, unsigned int exp_index) const {
+  std::ostream& html = *p_html;
+
+  html << indent(1) << "<h3>" << "Experiment with rank = " << rank_ << "</h3>" << std::endl;
+
+  html << indent(1) << "<p>" << "Values:" << "</p>" << std::endl;
+  html << indent(1) << "<ul>" << std::endl;
+  html << indent(2) << "<li>Original morphism: " << values_.morphism_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Conjugation: " << values_.conjugation_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Minimized morphism: " << values_.minimized_morphism_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Minimized conjugation: " << values_.minimized_conjugation_value << "</li>" << std::endl;
+  html << indent(1) << "</ul>" << std::endl;
+
+  html << indent(1) << "<p>" << "num of composed morphisms: " << composition_parts_.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugation morphisms: " << conjugation_parts_.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugators minimizing the original morphism: " << values_.morphism_minimizing_sequence.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugators minimizaing conjugation: " << values_.conjugation_minimizing_sequence.size() << "</p>" << std::endl;
+
+
+
+  html << indent(1) << "<table>" << std::endl;
+
+  html << indent(2) << "<thead>" << std::endl;
+
+  html << indent(3) << "<tr>" << std::endl;
+  html << indent(4) << "<th class=\"left\" colspan=\"2\">Sample genrating data</th>" << std::endl;
+  html << indent(4) << "<th colspan=\"2\">Minimizing conjugators</th>" << std::endl;
+  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(3) << "<tr>" << std::endl;
+  html << indent(4) << "<th class=\"left\">Morphism</th>" << std::endl;
+  html << indent(4) << "<th>Conjugators</th>" << std::endl;
+  html << indent(4) << "<th>original</th>" << std::endl;
+  html << indent(4) << "<th>conjgation</th>" << std::endl;
+  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(2) << "</thead>" << std::endl;
+
+  html << indent(2) << "<tbody>" << std::endl;
+  auto comp_iterator = composition_parts_.begin();
+  auto conj_iterator = conjugation_parts_.begin();
+  auto min_iterator = values_.morphism_minimizing_sequence.rbegin();
+  auto min_conj_iterator = values_.conjugation_minimizing_sequence.rbegin();
+
+  while (true) {
+    bool all_done = true;
+    html << indent(3) << "<tr>" << std::endl;
+    if(comp_iterator != composition_parts_.end()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *comp_iterator);
+      html << "</td>" << std::endl;
+      ++comp_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(conj_iterator != conjugation_parts_.end()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *conj_iterator);
+      html << "</td>" << std::endl;
+      ++conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(min_iterator != values_.morphism_minimizing_sequence.rend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *min_iterator);
+      html << "</td>" << std::endl;
+      ++min_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(min_conj_iterator != values_.conjugation_minimizing_sequence.rend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *min_conj_iterator);
+      html << "</td>" << std::endl;
+      ++min_conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    html << indent(3) << "</tr>" << std::endl;
+    if (all_done)
+      break;
+  }
+
+  html << indent(2) << "</tbody>" << std::endl;
+
+  html << indent(1) << "</table>" << std::endl;
+
+  auto generate_morphism_description = [&] (const EndomorphismSLP<int>& e, const std::string& name, const std::string& description) {
+    std::stringstream s;
+    s << aux_filename_prefix << "_" << name << "_" << exp_index;
+    std::string filename = s.str();
+    std::string description_filename(filename + ".gv");
+    std::string image_filename(filename + ".gif");
+
+    html << indent(1) << "<p>" << description << "</p>";
+    html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+
+    std::ofstream description_file(dir + description_filename);
+    e.save_graphviz(&description_file, name);
+    s.str("");
+    s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
+    std::system(s.str().c_str());
+  };
+
+  generate_morphism_description(morphism_, "morphism", "Original morphism.");
+  generate_morphism_description(conjugation_, "conjugation", "Conjugation.");
+  generate_morphism_description(values_.minimized_morphism, "min_morphism", "Minimized morphism");
+  generate_morphism_description(values_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
 }
 
 std::istream& operator>>(std::istream& in, LongInteger& n) {
@@ -504,7 +733,8 @@ Result<T> Result<T>::load(std::istream* p_in) {
   skip_comments(p_in);
   for (unsigned int i = 0; i < min_conjugation_conjugators_num; ++i) {
     result.values_.conjugation_minimizing_sequence.push_back(EndomorphismSLP<int>::load_from(p_in));
-    skip_comments(p_in);
+    if(i < min_conjugation_conjugators_num - 1)
+      skip_comments(p_in);
   }
 
   return result;
@@ -573,14 +803,14 @@ void lba_success_precentage() {
   auto target_function = total_images_length;
 
   typedef unsigned int uint;
-  for (auto rank : {3}) {
+  for (auto rank : {3, 5}) {
     std::cout << "rank=" << rank << std::endl;
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (uint size: {2}) {
+    for (uint size: {1, 2, 3, 4, 5}) {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 20;
+        const uint iterations_num = 5;
 
         auto start_time = our_clock::now();
         unsigned int success_num = 0;
@@ -599,8 +829,7 @@ void lba_success_precentage() {
           if (result.values_.minimized_morphism_value == result.values_.minimized_conjugation_value &&
               result.values_.minimized_morphism == result.values_.minimized_conjugation)
             ++success_num;
-          else
-            result.save(&out);
+          result.save(&out);
           auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
           write_comment(&out, "time");
           out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
@@ -620,27 +849,86 @@ void skip_line(std::istream* in) {
   in->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 }
 
+template<typename T>
+struct Results {
+    std::string value_name;
+    std::vector<Result<T> > exp_results;
+};
 
 template<typename T>
-std::pair<std::string, std::vector<Result<T>>> read_result(const std::string& filename) {
+Results<T> read_results(const std::string& filename) {
   std::ifstream in(filename);
   in.exceptions (std::ios::eofbit | std::ios::failbit |
                  std::ios::badbit);
   skip_comments(&in);
 
-  std::string target_value_name;
-  std::getline(in, target_value_name);
+  Results<T> results;
+  std::getline(in, results.value_name);
 
-  std::vector<Result<T>> results;
 
   try {
   while (in && !in.eof())
-      results.push_back(Result<LongInteger>::load(&in));
+      results.exp_results.push_back(Result<LongInteger>::load(&in));
   } catch(std::ifstream::failure e) {
     //finished reading
   }
 
-  return std::make_pair(target_value_name, results);
+  return results;
+}
+
+template<typename T>
+void print_all_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
+  print_html(dir, filenames_prefix, results, [] (const Result<T>& r) {return true;});
+}
+
+template<typename T>
+void print_not_successful_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
+  print_html(dir, filenames_prefix, results, [] (const Result<LongInteger>& r) {
+    return r.values_.minimized_morphism_value != r.values_.minimized_conjugation_value ||
+        r.values_.minimized_morphism != r.values_.minimized_conjugation;
+  });
+}
+
+template<typename T, typename Filter>
+void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, Filter filter = [] (const Result<T>& r) {return true;}) {
+  std::string stylesheet_filename = "stylesheet.css";
+
+  std::ofstream style(dir + stylesheet_filename);
+
+  style << "th {" << std::endl;
+  style << indent(1) << "padding: 5px;" << std::endl;
+  style << indent(1) << "border-left: 1px solid black;" << std::endl;
+  style << indent(1) << "border-bottom: 1px solid black;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "th.left {" << std::endl;
+  style << indent(1) << "border-left: none;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "td {" << std::endl;
+  style << indent(1) << "text-align: center;" << std::endl;
+  style << "}" << std::endl;
+
+
+  std::ofstream html(dir + "index.html");
+  html << "<!DOCTYPE html>" << std::endl;
+  html << "<html>" << std::endl;
+  html << "<head>" << std::endl;
+  html << "<link type=\"text/css\" rel=\"stylesheet\" href=\"" << stylesheet_filename << "\" />" << std::endl;
+  html << "  <title>" << "Results for minimization value " << results.value_name << "</title>" << std::endl;
+  html << "</head>" << std::endl;
+
+  html << "<body>" << std::endl;
+  int n = 0;
+  for (const Result<T>& result: results.exp_results) {
+    if (filter(result)) {
+      result.print_html(&html, dir, filenames_prefix, n++);
+    }
+  }
+  html << "</body>" << std::endl;
+
+  html << "</html>" << std::endl;
+
 }
 
 
@@ -649,13 +937,6 @@ int main() {
 //  conjugation_length_based_attack_statistics();
   lba_success_precentage();
   std::string filename("lba_success_precentage_2.txt");
-  auto result = read_result<LongInteger>(filename);
-  std::cout << result.first << std::endl;
-  for(auto res: result.second) {
-    if (res.values_.minimized_morphism_value != res.values_.minimized_conjugation_value ||
-        res.values_.minimized_morphism != res.values_.minimized_conjugation)
-       res.save(&std::cout);
-  }
-
-
+  auto results = read_results<LongInteger>(filename);
+  print_not_successful_html("result/", "result", results);
 }
