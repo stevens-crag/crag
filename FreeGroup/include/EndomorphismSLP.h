@@ -672,16 +672,20 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
 
   std::ostream& out = *p_out;
   out << "digraph " << name << " {" << std::endl;
+  out << "node [shape=point]" << std::endl;
+
   size_t vertex_num = 0;
 
   std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
   std::unordered_map<size_t, TerminalSymbol> terminals;
+  std::unordered_map<TerminalSymbol, size_t> sym_to_vertix_num;
 
   auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
     ++vertex_num;
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
       terminals.insert(std::make_pair(vertex_num, symbol));
+      sym_to_vertix_num.insert(std::make_pair(symbol, vertex_num));
     } else {//nonterminal
       size_t left_val = mapped_images.find(vertex.left_child())->second;
       size_t right_val = mapped_images.find(vertex.right_child())->second;
@@ -696,42 +700,39 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
                       processor);
   }
 
-
-
-  //writing roots
+  //writing root styles
   for (auto root_entry: images_) {
+    out << INDENT << "\"i" << root_entry.first << "\" [shape=plaintext, label=\"" << root_entry.first << "\"];" << std::endl;
+
     out << INDENT << "\"i" << root_entry.first << "\" -> ";
     auto img = root_entry.second;
-    if (img.height() <= 1)
-      out <<  "\"t" << TerminalVertex(img).terminal_symbol() << "\"";
-    else
-      out << vertex_numbers.find(root_entry.second)->second;
+    if (img.height() <= 1) {
+      auto symbol = TerminalVertex(img).terminal_symbol();
+      auto terminal = sym_to_vertix_num.find(symbol);
+      if (terminal != sym_to_vertix_num.end()) {
+        out << terminal->second << ";" << std::endl;
+      } else {
+        out << "\"" << symbol << "\"[shape=plaintext];" << std::endl;
+      }
+    } else {
+      out << vertex_numbers.find(img)->second << " [style=dotted];" << std::endl;
+    }
+  }
 
-    out << ";" << std::endl;
+  //writing terminals style
+  for (auto pair: terminals) {
+    out << INDENT << pair.first << " [shape=plaintext, label=\"" << pair.second << "\"];" << std::endl;
   }
 
   //writing non-terminals
   for (auto non_terminal: non_terminals) {
-    auto non_terminal_index = non_terminal.first;
+    size_t non_terminal_index = non_terminal.first;
 
-    auto left_index = non_terminal.second.first;
-    out << INDENT << non_terminal_index << " -> ";
-    auto left_terminal = terminals.find(left_index);
-    if (left_terminal == terminals.end())
-      out << non_terminal.second.first;
-    else
-      out << "\"t" << left_terminal->second << "\"";
-    out << ";" << std::endl;
-
-    auto right_index = non_terminal.second.second;
-    out << INDENT << non_terminal_index << " -> ";
-    auto right_terminal = terminals.find(right_index);
-    if (right_terminal == terminals.end())
-      out << non_terminal.second.second;
-    else
-      out << "\"t" << right_terminal->second << "\"";
-    out << ";" << std::endl;
+    size_t left_index = non_terminal.second.first;
+    size_t right_index = non_terminal.second.second;
+    out << INDENT << non_terminal_index << " -> {" << left_index << "; " << right_index << "}" << std::endl;
   }
+
 
   out << "}" << std::endl;
 }
