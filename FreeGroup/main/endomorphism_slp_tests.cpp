@@ -733,7 +733,8 @@ Result<T> Result<T>::load(std::istream* p_in) {
   skip_comments(p_in);
   for (unsigned int i = 0; i < min_conjugation_conjugators_num; ++i) {
     result.values_.conjugation_minimizing_sequence.push_back(EndomorphismSLP<int>::load_from(p_in));
-    skip_comments(p_in);
+    if(i < min_conjugation_conjugators_num - 1)
+      skip_comments(p_in);
   }
 
   return result;
@@ -802,14 +803,14 @@ void lba_success_precentage() {
   auto target_function = total_images_length;
 
   typedef unsigned int uint;
-  for (auto rank : {3}) {
+  for (auto rank : {3, 5}) {
     std::cout << "rank=" << rank << std::endl;
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (uint size: {2}) {
+    for (uint size: {1, 2, 3, 4, 5}) {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 3;
+        const uint iterations_num = 5;
 
         auto start_time = our_clock::now();
         unsigned int success_num = 0;
@@ -880,9 +881,17 @@ void print_all_html(const std::string& dir, const std::string& filenames_prefix,
   print_html(dir, filenames_prefix, results, [] (const Result<T>& r) {return true;});
 }
 
+template<typename T>
+void print_not_successful_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
+  print_html(dir, filenames_prefix, results, [] (const Result<LongInteger>& r) {
+    return r.values_.minimized_morphism_value != r.values_.minimized_conjugation_value ||
+        r.values_.minimized_morphism != r.values_.minimized_conjugation;
+  });
+}
+
 template<typename T, typename Filter>
 void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, Filter filter = [] (const Result<T>& r) {return true;}) {
-  std::string stylesheet_filename = filenames_prefix + "_stylesheet.css";
+  std::string stylesheet_filename = "stylesheet.css";
 
   std::ofstream style(dir + stylesheet_filename);
 
@@ -901,7 +910,7 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
   style << "}" << std::endl;
 
 
-  std::ofstream html(dir + filenames_prefix + "_index.html");
+  std::ofstream html(dir + "index.html");
   html << "<!DOCTYPE html>" << std::endl;
   html << "<html>" << std::endl;
   html << "<head>" << std::endl;
@@ -928,6 +937,6 @@ int main() {
 //  conjugation_length_based_attack_statistics();
   lba_success_precentage();
   std::string filename("lba_success_precentage_2.txt");
-  auto result = read_results<LongInteger>(filename);
-  print_all_html("result/", "result", result);
+  auto results = read_results<LongInteger>(filename);
+  print_not_successful_html("result/", "result", results);
 }
