@@ -561,12 +561,12 @@ void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const s
   html << indent(2) << "<thead>" << std::endl;
 
   html << indent(3) << "<tr>" << std::endl;
-  html << indent(4) << "<th colspan=\"2\">Sample genrating data</th>" << std::endl;
+  html << indent(4) << "<th class=\"left\" colspan=\"2\">Sample genrating data</th>" << std::endl;
   html << indent(4) << "<th colspan=\"2\">Minimizing conjugators</th>" << std::endl;
   html << indent(3) << "</tr>" << std::endl;
 
   html << indent(3) << "<tr>" << std::endl;
-  html << indent(4) << "<th>Morphism</th>" << std::endl;
+  html << indent(4) << "<th class=\"left\">Morphism</th>" << std::endl;
   html << indent(4) << "<th>Conjugators</th>" << std::endl;
   html << indent(4) << "<th>original</th>" << std::endl;
   html << indent(4) << "<th>conjgation</th>" << std::endl;
@@ -632,41 +632,27 @@ void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const s
 
   html << indent(1) << "</table>" << std::endl;
 
-  std::stringstream s;
-  s << aux_filename_prefix << "_original_morphism_" << exp_index;
-  std::string filename = s.str();
-  std::string description_filename(filename + ".gv");
-  std::string image_filename(filename + ".gif");
+  auto generate_morphism_description = [&] (const EndomorphismSLP<int>& e, const std::string& name, const std::string& description) {
+    std::stringstream s;
+    s << aux_filename_prefix << "_" << name << "_" << exp_index;
+    std::string filename = s.str();
+    std::string description_filename(filename + ".gv");
+    std::string image_filename(filename + ".gif");
 
-  html << indent(1) << "<p>Original morphism.</p>";
-  html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+    html << indent(1) << "<p>" << description << "</p>";
+    html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
 
-  std::ofstream description_file(dir + description_filename);
-  morphism_.save_graphviz(&description_file, "Morphism");
-  s.str("");
-  s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
-  std::system(s.str().c_str());
+    std::ofstream description_file(dir + description_filename);
+    e.save_graphviz(&description_file, name);
+    s.str("");
+    s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
+    std::system(s.str().c_str());
+  };
 
-//  s.str("");
-//  s << dir << aux_filename_prefix << "_conjugation_" << exp_index;
-//  filename = s.str();
-
-//  html << indent(1) << "<p>Conjugation.</p>";
-//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
-
-//  s.str("");
-//  s << dir << aux_filename_prefix << "_min_morphism_" << exp_index;
-//  filename = s.str();
-
-//  html << indent(1) << "<p>Minimized morphism.</p>";
-//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
-
-//  s.str("");
-//  s << dir << aux_filename_prefix << "_min_conj_" << exp_index;
-//  filename = s.str();
-
-//  html << indent(1) << "<p>Minimized conjugation.</p>";
-//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
+  generate_morphism_description(morphism_, "morphism", "Original morphism.");
+  generate_morphism_description(conjugation_, "conjugation", "Conjugation.");
+  generate_morphism_description(values_.minimized_morphism, "min_morphism", "Minimized morphism");
+  generate_morphism_description(values_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
 }
 
 std::istream& operator>>(std::istream& in, LongInteger& n) {
@@ -896,10 +882,30 @@ void print_all_html(const std::string& dir, const std::string& filenames_prefix,
 
 template<typename T, typename Filter>
 void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, Filter filter = [] (const Result<T>& r) {return true;}) {
+  std::string stylesheet_filename = filenames_prefix + "_stylesheet.css";
+
+  std::ofstream style(dir + stylesheet_filename);
+
+  style << "th {" << std::endl;
+  style << indent(1) << "padding: 5px;" << std::endl;
+  style << indent(1) << "border-left: 1px solid black;" << std::endl;
+  style << indent(1) << "border-bottom: 1px solid black;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "th.left {" << std::endl;
+  style << indent(1) << "border-left: none;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "td {" << std::endl;
+  style << indent(1) << "text-align: center;" << std::endl;
+  style << "}" << std::endl;
+
+
   std::ofstream html(dir + filenames_prefix + "_index.html");
   html << "<!DOCTYPE html>" << std::endl;
   html << "<html>" << std::endl;
   html << "<head>" << std::endl;
+  html << "<link type=\"text/css\" rel=\"stylesheet\" href=\"" << stylesheet_filename << "\" />" << std::endl;
   html << "  <title>" << "Results for minimization value " << results.value_name << "</title>" << std::endl;
   html << "</head>" << std::endl;
 
@@ -907,7 +913,7 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
   int n = 0;
   for (const Result<T>& result: results.exp_results) {
     if (filter(result)) {
-      result.print_html(&html, dir, filenames_prefix, n);
+      result.print_html(&html, dir, filenames_prefix, n++);
     }
   }
   html << "</body>" << std::endl;
