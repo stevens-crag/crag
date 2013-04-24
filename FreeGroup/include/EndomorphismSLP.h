@@ -582,6 +582,7 @@ void EndomorphismSLP<TerminalSymbol>::save_to(std::ostream* out) const {
   std::vector<size_t> terminals_order;
 
   auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
+    ++vertex_num;
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
       terminals.insert(std::make_pair(vertex_num, symbol));
@@ -592,7 +593,7 @@ void EndomorphismSLP<TerminalSymbol>::save_to(std::ostream* out) const {
       non_terminals.insert(std::make_pair(vertex_num, std::make_pair(left_val, right_val)));
       non_terminals_order.push_back(vertex_num);
     }
-    return vertex_num++;
+    return vertex_num;
   };
 
   std::unordered_map<slp::Vertex, size_t> vertex_numbers;
@@ -677,6 +678,7 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
   std::unordered_map<size_t, TerminalSymbol> terminals;
 
   auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
+    ++vertex_num;
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
       terminals.insert(std::make_pair(vertex_num, symbol));
@@ -685,7 +687,7 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
       size_t right_val = mapped_images.find(vertex.right_child())->second;
       non_terminals.insert(std::make_pair(vertex_num, std::make_pair(left_val, right_val)));
     }
-    return vertex_num++;
+    return vertex_num;
   };
 
   std::unordered_map<slp::Vertex, size_t> vertex_numbers;
@@ -725,7 +727,7 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
     out << INDENT << non_terminal_index << " -> ";
     auto right_terminal = terminals.find(right_index);
     if (right_terminal == terminals.end())
-      out << non_terminal.second.first;
+      out << non_terminal.second.second;
     else
       out << "\"t" << right_terminal->second << "\"";
     out << ";" << std::endl;
