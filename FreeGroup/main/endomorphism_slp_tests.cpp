@@ -18,6 +18,8 @@
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/xml_parser.hpp>
 
+#include <cstdlib>
+
 #include "EndomorphismSLP.h"
 
 typedef std::chrono::high_resolution_clock our_clock;
@@ -358,6 +360,10 @@ struct Result {
    * Uses graphviz representation for graphs.
    */
   void print(std::ostream* out) const;
+  /**
+   * Prints html representation.
+   */
+  void print_html(std::ostream* p_html, const std::string& dir, const std::string& filename_prefix, unsigned int exp_index) const;
   //! Load from file
   static Result load(std::istream* in);
 };
@@ -515,6 +521,154 @@ void Result<T>::print(std::ostream* p_out) const {
   }
 }
 
+struct indent {
+    unsigned int level;
+
+    indent(unsigned int level) : level(level) {}
+
+    friend std::ostream& operator<<(std::ostream& stream, const indent& val) {
+      for(int i = 0; i < val.level; ++i) {
+          stream << "  ";
+      }
+      return stream;
+  }
+};
+
+
+template<typename T>
+void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const std::string& aux_filename_prefix, unsigned int exp_index) const {
+  std::ostream& html = *p_html;
+
+  html << indent(1) << "<h3>" << "Experiment with rank = " << rank_ << "</h3>" << std::endl;
+
+  html << indent(1) << "<p>" << "Values:" << "</p>" << std::endl;
+  html << indent(1) << "<ul>" << std::endl;
+  html << indent(2) << "<li>Original morphism: " << values_.morphism_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Conjugation: " << values_.conjugation_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Minimized morphism: " << values_.minimized_morphism_value << "</li>" << std::endl;
+  html << indent(2) << "<li>Minimized conjugation: " << values_.minimized_conjugation_value << "</li>" << std::endl;
+  html << indent(1) << "</ul>" << std::endl;
+
+  html << indent(1) << "<p>" << "num of composed morphisms: " << composition_parts_.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugation morphisms: " << conjugation_parts_.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugators minimizing the original morphism: " << values_.morphism_minimizing_sequence.size() << "</p>" << std::endl;
+  html << indent(1) << "<p>" << "num of conjugators minimizaing conjugation: " << values_.conjugation_minimizing_sequence.size() << "</p>" << std::endl;
+
+
+
+  html << indent(1) << "<table>" << std::endl;
+
+  html << indent(2) << "<thead>" << std::endl;
+
+  html << indent(3) << "<tr>" << std::endl;
+  html << indent(4) << "<th colspan=\"2\">Sample genrating data</th>" << std::endl;
+  html << indent(4) << "<th colspan=\"2\">Minimizing conjugators</th>" << std::endl;
+  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(3) << "<tr>" << std::endl;
+  html << indent(4) << "<th>Morphism</th>" << std::endl;
+  html << indent(4) << "<th>Conjugators</th>" << std::endl;
+  html << indent(4) << "<th>original</th>" << std::endl;
+  html << indent(4) << "<th>conjgation</th>" << std::endl;
+  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(2) << "</thead>" << std::endl;
+
+  html << indent(2) << "<tbody>" << std::endl;
+  auto comp_iterator = composition_parts_.begin();
+  auto conj_iterator = conjugation_parts_.begin();
+  auto min_iterator = values_.morphism_minimizing_sequence.rbegin();
+  auto min_conj_iterator = values_.conjugation_minimizing_sequence.rbegin();
+
+  while (true) {
+    bool all_done = true;
+    html << indent(3) << "<tr>" << std::endl;
+    if(comp_iterator != composition_parts_.end()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *comp_iterator);
+      html << "</td>" << std::endl;
+      ++comp_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(conj_iterator != conjugation_parts_.end()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *conj_iterator);
+      html << "</td>" << std::endl;
+      ++conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(min_iterator != values_.morphism_minimizing_sequence.rend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *min_iterator);
+      html << "</td>" << std::endl;
+      ++min_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(min_conj_iterator != values_.conjugation_minimizing_sequence.rend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *min_conj_iterator);
+      html << "</td>" << std::endl;
+      ++min_conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    html << indent(3) << "</tr>" << std::endl;
+    if (all_done)
+      break;
+  }
+
+  html << indent(2) << "</tbody>" << std::endl;
+
+  html << indent(1) << "</table>" << std::endl;
+
+  std::stringstream s;
+  s << aux_filename_prefix << "_original_morphism_" << exp_index;
+  std::string filename = s.str();
+  std::string description_filename(filename + ".gv");
+  std::string image_filename(filename + ".gif");
+
+  html << indent(1) << "<p>Original morphism.</p>";
+  html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+
+  std::ofstream description_file(dir + description_filename);
+  morphism_.save_graphviz(&description_file, "Morphism");
+  s.str("");
+  s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
+  std::system(s.str().c_str());
+
+//  s.str("");
+//  s << dir << aux_filename_prefix << "_conjugation_" << exp_index;
+//  filename = s.str();
+
+//  html << indent(1) << "<p>Conjugation.</p>";
+//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
+
+//  s.str("");
+//  s << dir << aux_filename_prefix << "_min_morphism_" << exp_index;
+//  filename = s.str();
+
+//  html << indent(1) << "<p>Minimized morphism.</p>";
+//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
+
+//  s.str("");
+//  s << dir << aux_filename_prefix << "_min_conj_" << exp_index;
+//  filename = s.str();
+
+//  html << indent(1) << "<p>Minimized conjugation.</p>";
+//  html << indent(1) << "<img src=\"" << filename << ".gif\"/>" << std::endl;
+}
+
 std::istream& operator>>(std::istream& in, LongInteger& n) {
   std::string s;
   std::getline(in, s);
@@ -669,7 +823,7 @@ void lba_success_precentage() {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 10;
+        const uint iterations_num = 3;
 
         auto start_time = our_clock::now();
         unsigned int success_num = 0;
@@ -708,27 +862,58 @@ void skip_line(std::istream* in) {
   in->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
 }
 
+template<typename T>
+struct Results {
+    std::string value_name;
+    std::vector<Result<T> > exp_results;
+};
 
 template<typename T>
-std::pair<std::string, std::vector<Result<T>>> read_result(const std::string& filename) {
+Results<T> read_results(const std::string& filename) {
   std::ifstream in(filename);
   in.exceptions (std::ios::eofbit | std::ios::failbit |
                  std::ios::badbit);
   skip_comments(&in);
 
-  std::string target_value_name;
-  std::getline(in, target_value_name);
+  Results<T> results;
+  std::getline(in, results.value_name);
 
-  std::vector<Result<T>> results;
 
   try {
   while (in && !in.eof())
-      results.push_back(Result<LongInteger>::load(&in));
+      results.exp_results.push_back(Result<LongInteger>::load(&in));
   } catch(std::ifstream::failure e) {
     //finished reading
   }
 
-  return std::make_pair(target_value_name, results);
+  return results;
+}
+
+template<typename T>
+void print_all_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
+  print_html(dir, filenames_prefix, results, [] (const Result<T>& r) {return true;});
+}
+
+template<typename T, typename Filter>
+void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, Filter filter = [] (const Result<T>& r) {return true;}) {
+  std::ofstream html(dir + filenames_prefix + "_index.html");
+  html << "<!DOCTYPE html>" << std::endl;
+  html << "<html>" << std::endl;
+  html << "<head>" << std::endl;
+  html << "  <title>" << "Results for minimization value " << results.value_name << "</title>" << std::endl;
+  html << "</head>" << std::endl;
+
+  html << "<body>" << std::endl;
+  int n = 0;
+  for (const Result<T>& result: results.exp_results) {
+    if (filter(result)) {
+      result.print_html(&html, dir, filenames_prefix, n);
+    }
+  }
+  html << "</body>" << std::endl;
+
+  html << "</html>" << std::endl;
+
 }
 
 
@@ -737,14 +922,6 @@ int main() {
 //  conjugation_length_based_attack_statistics();
   lba_success_precentage();
   std::string filename("lba_success_precentage_2.txt");
-  auto result = read_result<LongInteger>(filename);
-  std::ofstream out("processed_result.txt");
-  out << result.first << std::endl;
-  for(auto res: result.second) {
-    if (res.values_.minimized_morphism_value != res.values_.minimized_conjugation_value ||
-        res.values_.minimized_morphism != res.values_.minimized_conjugation)
-       res.print(&out);
-  }
-
-
+  auto result = read_results<LongInteger>(filename);
+  print_all_html("result/", "result", result);
 }
