@@ -77,6 +77,11 @@ public:
   }
 
   //! Applies provided function to each inverter, left and right multiplier for the given rank
+  /**
+   * Enumerates all inverters, left and right miltiplier morphisms for the given rank and apply
+   * to them the provided function.
+   * @tparam Func type of function applied to morphisms
+   */
   template<typename Func>
   static void for_each_basic_morphism(int rank, Func f);
 
@@ -247,7 +252,7 @@ public:
   //! Applies the given function to each pair of non-trivial images (symbol, image)
   template<class Function>
   Function for_each_non_trivial_image(Function fn) {
-    return std::move(std::for_each(images_.begin(), images_.end(), fn));
+    return std::for_each(images_.begin(), images_.end(), fn);
   }
 
   //! Applies the given function to each pair of non-trivial images (symbol, image)
@@ -269,7 +274,7 @@ public:
   bool operator==(const EndomorphismSLP& a) const;
 
   bool operator!=(const EndomorphismSLP& a) const {
-    return !(this->operator ==(a));
+    return !(*this==a);
   }
 
   void save_to(std::ostream* out) const;
