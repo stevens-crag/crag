@@ -16,33 +16,6 @@
 namespace crag {
 namespace slp {
 
-namespace mapper {
-
-//! Functor that accepts only vertices that were not mapped already.
-/**
- * @tparam MappedVertices collection of vertices such that we can test the membership
- *                        by checking whether obj.find(key) == obj.end(key) as for std::map
- */
-template<typename MappedVertices>
-class SkipMappedVerticesAcceptor {
-  public:
-    //default copy constructor/assignment
-    SkipMappedVerticesAcceptor()
-      : mapped_vertices_(nullptr)
-    { }
-
-    SkipMappedVerticesAcceptor(const MappedVertices& mapped_vertices)
-      : mapped_vertices_(&mapped_vertices) {}
-
-    bool operator()(const inspector::InspectorTask& task) {
-      return mapped_vertices_->find(task.vertex) == mapped_vertices_->end();//do not accept if vertex is mapped already
-    }
-  private:
-    const MappedVertices* mapped_vertices_;
-};
-}//namespace mapper
-
-
 //! Maps #root and its descendants using #f.
 /*
  * It inspects vertices and if a vertex is already a key in #vertices_map then it is skipped
@@ -56,9 +29,10 @@ void map_vertices(const slp::Vertex& root, std::unordered_map<slp::Vertex, Image
   if (p_images->find(root) != p_images->end())
     return;//root is already mapped
 
-  typedef typename mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, ImageType>> Acceptor;
-  Acceptor acceptor(*p_images);
-  slp::Inspector<inspector::Postorder, Acceptor> inspector(root, acceptor);
+  auto acceptor = [&p_images] (const inspector::InspectorTask& task) {
+    return p_images->find(task.vertex) == p_images->end();//do not accept if vertex is mapped already
+  };
+  slp::Inspector<inspector::Postorder, decltype(acceptor)> inspector(root, acceptor);
   while (!inspector.stopped()) {
     auto img = f(inspector.vertex(), *p_images);
     auto new_entry = std::make_pair(inspector.vertex(), img);
