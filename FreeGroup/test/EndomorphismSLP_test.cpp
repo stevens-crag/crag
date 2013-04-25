@@ -189,6 +189,7 @@ TEST_F(EndomorphismSLPTest, RightMultiplier) {
   }
 }
 
+
 TEST_F(EndomorphismSLPTest, BasicComposition) {
   auto prod = EMorphism::right_multiplier(1, 2) * EMorphism::identity();
   EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
@@ -582,6 +583,20 @@ TEST_F(EndomorphismSLPTest, GeneratorDistributionTest) {
     ASSERT_TRUE(dif2 / num < 0.01);
   }
 }
+
+TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
+  int n = 0;
+  auto counter = [&] (const EMorphism& e) {
+    ++n;
+  };
+  //checking counts
+  for (int rank = 1; rank < 10; ++rank) {
+    n = 0;
+    EMorphism::for_each_basic_morphism(rank, counter);
+    EXPECT_EQ(rank + 2 * 2 * rank * (rank - 1), n);
+  }
+}
+
 
 
 } /* namespace crag */

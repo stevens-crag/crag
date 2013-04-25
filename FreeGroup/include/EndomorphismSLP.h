@@ -76,6 +76,20 @@ public:
     return tmp;
   }
 
+  //! Applies provided function to each inverter, left and right multiplier for the given rank
+  template<typename Func>
+  static void for_each_basic_morphism(int rank, Func f) {
+    assert(rank > 0);
+    for (int i = 1; i <= rank; ++i)
+      f(EndomorphismSLP<TerminalSymbol>::inverter(i));
+    for (int i = 1; i <= rank; ++i)
+      for (int j = -static_cast<int>(rank); j <= rank; ++j)
+        if (j != i && j != -i && j != 0) {
+          f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
+          f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
+        }
+  }
+
   //! Returns the composition of endomorphisms specified by the range
   template<typename Iterator>
   static EndomorphismSLP composition(Iterator begin, Iterator end) {
@@ -412,6 +426,19 @@ private:
   std::uniform_real_distribution<double> real_distr_;
   double inverters_probability_;
 };
+
+
+//template<typename TerminalSymbol, typename Func>
+//static void EndomorphismSLP<TerminalSymbol>::for_each_basic_morphism(unsigned int rank, Func f) {
+//  for (int i = 1; i <= rank; ++i)
+//    f(EndomorphismSLP<TerminalSymbol>::inverter(i));
+//  for (int i = 1; i <= rank; ++i)
+//    for (int j = 1; j <= rank; ++j)
+//      if (j != i && j != -i && j != 0) {
+//        f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
+//        f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
+//      }
+//}
 
 
 template <typename TerminalSymbol>
