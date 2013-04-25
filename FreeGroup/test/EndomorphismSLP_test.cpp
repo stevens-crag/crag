@@ -22,8 +22,8 @@ typedef typename slp::TerminalVertexTemplate<int> TVertex;
     if (max != e2.max_non_trivial_image_symbol())
       return false;
     for (int ts = 1; ts < max; ++ts) {
-      auto word1 = e1.image(ts);
-      auto word2 = e2.image(ts);
+      auto word1 = e1.image_word(ts);
+      auto word2 = e2.image_word(ts);
       if (word1.size() != word2.size())
         return false;
       for (auto wi1 = word1.begin(), wi2 = word2.begin();
@@ -36,18 +36,13 @@ typedef typename slp::TerminalVertexTemplate<int> TVertex;
     return true;
   }
 
-  //! Prints vertex
-  std::ostream& operator<<(std::ostream& out, const slp::VertexWord<int>& word) {
-    for (auto wi = word.begin(); wi != word.end(); ++wi) {
-      out << *wi;
-    }
-    return out;
-  }
 
   //! Return string representation of vertex
   std::string to_string(const slp::VertexWord<int>& word) {
     std::stringstream out;
-    out << word;
+    for (auto wi = word.begin(); wi != word.end(); ++wi) {
+      out << *wi;
+    }
     return out.str();
   }
 
@@ -56,7 +51,7 @@ typedef typename slp::TerminalVertexTemplate<int> TVertex;
     const int max = e.max_non_trivial_image_symbol();
     out << "[max non trivial symbol=" << max;
     for (int ts = 1; ts <= max; ++ts)
-      out << "," << std::endl << ts << " => " << e.image(ts);
+      out << "," << std::endl << ts << " => " << e.image_word(ts);
     return out << "]" << std::endl;
   }
 
@@ -82,7 +77,7 @@ typedef typename slp::TerminalVertexTemplate<int> TVertex;
       vector<vector<int>> tmp;//we fill it with images under morph
       tmp.reserve(rank);
       for (int terminal = 1; terminal <= images.size(); ++terminal) {
-        const slp::Vertex v = morph.slp(terminal);
+        const slp::Vertex v = morph.image(terminal);
         assert (v.height() <= 2);
 
         if (v.height() == 1) {//inverter or id
@@ -152,15 +147,15 @@ class EndomorphismSLPTest : public ::testing::Test {
 TEST_F(EndomorphismSLPTest, Identity) {
   auto id = EMorphism::identity();
   ASSERT_EQ(id.max_non_trivial_image_symbol(), int(0));
-  EXPECT_EQ("1", to_string(id.image(1)));
-  EXPECT_EQ("-1", to_string(id.image(-1)));
+  EXPECT_EQ("1", to_string(id.image_word(1)));
+  EXPECT_EQ("-1", to_string(id.image_word(-1)));
 }
 
 TEST_F(EndomorphismSLPTest, Inverter) {
   for (int i = 1; i < 10; ++i) {
     auto inverter = EMorphism::inverter(i);
     EXPECT_EQ(1, inverter.non_trivial_images_num());
-    auto img = inverter.image(i);
+    auto img = inverter.image_word(i);
     EXPECT_EQ(1, img.size());
     EXPECT_EQ(-i, img[0]);
   }
@@ -173,7 +168,7 @@ TEST_F(EndomorphismSLPTest, LeftMultiplier) {
         continue;
       auto inverter = EMorphism::left_multiplier(i, j);
       EXPECT_EQ(1, inverter.non_trivial_images_num());
-      auto img = inverter.image(j);
+      auto img = inverter.image_word(j);
       EXPECT_EQ(2, img.size());
       EXPECT_EQ(i, img[0]);
       EXPECT_EQ(j, img[1]);
@@ -187,39 +182,40 @@ TEST_F(EndomorphismSLPTest, RightMultiplier) {
         continue;
       auto inverter = EMorphism::right_multiplier(i, j);
       EXPECT_EQ(1, inverter.non_trivial_images_num());
-      auto img = inverter.image(i);
+      auto img = inverter.image_word(i);
       EXPECT_EQ(2, img.size());
       EXPECT_EQ(i, img[0]);
       EXPECT_EQ(j, img[1]);
   }
 }
 
+
 TEST_F(EndomorphismSLPTest, BasicComposition) {
   auto prod = EMorphism::right_multiplier(1, 2) * EMorphism::identity();
   EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("12", to_string(prod.image(1))) << prod;
+  EXPECT_EQ("12", to_string(prod.image_word(1))) << prod;
 
   prod = EMorphism::identity() * EMorphism::left_multiplier(1, 2);
   EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("12", to_string(prod.image(2))) << prod;
+  EXPECT_EQ("12", to_string(prod.image_word(2))) << prod;
 
   prod = EMorphism::right_multiplier(1, 2) * EMorphism::right_multiplier(1, 2);
   EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("122", to_string(prod.image(1))) << prod;
+  EXPECT_EQ("122", to_string(prod.image_word(1))) << prod;
 
   prod = EMorphism::right_multiplier(1, 2) * EMorphism::left_multiplier(1, 2);
   EXPECT_EQ(2, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("12", to_string(prod.image(1))) << prod;
-  EXPECT_EQ("122", to_string(prod.image(2))) << prod;
+  EXPECT_EQ("12", to_string(prod.image_word(1))) << prod;
+  EXPECT_EQ("122", to_string(prod.image_word(2))) << prod;
 
   prod = EMorphism::right_multiplier(1, 2) * EMorphism::inverter(1);
   EXPECT_EQ(1, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("-2-1", to_string(prod.image(1))) << prod;
+  EXPECT_EQ("-2-1", to_string(prod.image_word(1))) << prod;
 
   prod = EMorphism::inverter(1) * EMorphism::left_multiplier(1, 2);
   EXPECT_EQ(2, prod.non_trivial_images_num()) << prod;
-  EXPECT_EQ("-1", to_string(prod.image(1))) << prod;
-  EXPECT_EQ("-12", to_string(prod.image(2))) << prod;
+  EXPECT_EQ("-1", to_string(prod.image_word(1))) << prod;
+  EXPECT_EQ("-12", to_string(prod.image_word(2))) << prod;
 }
 
 
@@ -227,29 +223,29 @@ TEST_F(EndomorphismSLPTest, Composition1) {
   auto e = EMorphism::right_multiplier(1, 2);
   e *= EMorphism::right_multiplier(1, 2);
   EXPECT_EQ(1, e.non_trivial_images_num());
-  EXPECT_EQ("122", to_string(e.image(1))) << e;
+  EXPECT_EQ("122", to_string(e.image_word(1))) << e;
 
   e *= EMorphism::inverter(3);
   EXPECT_EQ(2, e.non_trivial_images_num());
-  EXPECT_EQ("122", to_string(e.image(1))) << e;
-  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+  EXPECT_EQ("122", to_string(e.image_word(1))) << e;
+  EXPECT_EQ("-3", to_string(e.image_word(3))) << e;
 
   e *= EMorphism::left_multiplier(3, 1);
   EXPECT_EQ(2, e.non_trivial_images_num());
-  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
-  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+  EXPECT_EQ("-3122", to_string(e.image_word(1))) << e;
+  EXPECT_EQ("-3", to_string(e.image_word(3))) << e;
 
   e *= EMorphism::left_multiplier(1, 2);
   EXPECT_EQ(3, e.non_trivial_images_num());
-  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
-  EXPECT_EQ("-31222", to_string(e.image(2))) << e;
-  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+  EXPECT_EQ("-3122", to_string(e.image_word(1))) << e;
+  EXPECT_EQ("-31222", to_string(e.image_word(2))) << e;
+  EXPECT_EQ("-3", to_string(e.image_word(3))) << e;
 
   e *= EMorphism::inverter(2);
   EXPECT_EQ(3, e.non_trivial_images_num());
-  EXPECT_EQ("-3122", to_string(e.image(1))) << e;
-  EXPECT_EQ("-2-2-2-13", to_string(e.image(2))) << e;
-  EXPECT_EQ("-3", to_string(e.image(3))) << e;
+  EXPECT_EQ("-3122", to_string(e.image_word(1))) << e;
+  EXPECT_EQ("-2-2-2-13", to_string(e.image_word(2))) << e;
+  EXPECT_EQ("-3", to_string(e.image_word(3))) << e;
 }
 
 TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
@@ -295,16 +291,67 @@ TEST_F(EndomorphismSLPTest, DirectImageCalculationTest) {
   EXPECT_EQ("-3", img[2]);
 }
 
+TEST_F(EndomorphismSLPTest, NonTrivialImagesNumTest) {
+  EXPECT_EQ(0, EndomorphismSLP<int>::identity().non_trivial_images_num());
+  for (int i = 1; i < 10; ++i) {
+    EXPECT_EQ(1, EMorphism::inverter(i).non_trivial_images_num());
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_EQ(1,EMorphism::right_multiplier(i, j).non_trivial_images_num());
+        EXPECT_EQ(1,EMorphism::left_multiplier(-j, i).non_trivial_images_num());
+      }
+}
+
+TEST_F(EndomorphismSLPTest, ForEachTest) {
+  auto e = EMorphism::identity();
+  for (int i = 1; i < 20; i += 2) {
+    e *= EMorphism::inverter(i);
+  }
+  int i = 1;
+  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+    auto symbol = v.first;
+    EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
+    i += 2;
+  };
+  e.for_each_non_trivial_image(check);
+  //checking for constant endomorphism
+  i = 1;
+  const auto const_e = e;
+  e.for_each_non_trivial_image(check);
+}
+
+TEST_F(EndomorphismSLPTest, RangeTest) {
+  auto e = EMorphism::identity();
+  for (int i = 1; i < 20; i += 2) {
+    e *= EMorphism::inverter(i);
+  }
+  auto range = e.non_trivial_images_range();
+  int i = 1;
+  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+    auto symbol = v.first;
+    EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
+    i += 2;
+  };
+  std::for_each(range.first, range.second, check);
+  //checking for constant endomorphism
+  i = 1;
+  const auto const_e = e;
+  const auto const_range = e.non_trivial_images_range();
+  std::for_each(const_range.first, const_range.second, check);
+}
+
 TEST_F(EndomorphismSLPTest, RandomGeneratorConstructorsTest) {
   UniformAutomorphismSLPGenerator<int> rnd(5);//default
   UniformAutomorphismSLPGenerator<int> rnd1(10, 546457);//with seed
   std::default_random_engine r_engine;
   UniformAutomorphismSLPGenerator<int> rnd2(4, &r_engine);//with generator
   for (int i = 0; i < 100; ++i) {
-      EXPECT_EQ(1, rnd().non_trivial_images_num());
-      EXPECT_EQ(1, rnd1().non_trivial_images_num());
-      EXPECT_EQ(1, rnd2().non_trivial_images_num());
-    }
+    EXPECT_EQ(1, rnd().non_trivial_images_num());
+    EXPECT_EQ(1, rnd1().non_trivial_images_num());
+    EXPECT_EQ(1, rnd2().non_trivial_images_num());
+  }
 }
 
 TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
@@ -320,7 +367,7 @@ TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
       ASSERT_GE(rank, direct_images.size());
       ASSERT_GE(rank, morphism.max_non_trivial_image_symbol());
       for (int i = 0; i < direct_images.size(); ++i)
-        EXPECT_EQ(direct_images[i], to_string(morphism.image(i + 1)));
+        EXPECT_EQ(direct_images[i], to_string(morphism.image_word(i + 1)));
     }
   }
 }
@@ -328,8 +375,8 @@ TEST_F(EndomorphismSLPTest, RandomGeneratorStressTest) {
 
 TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
   for (auto rank : {1, 5, 10, 20, 30}) {
-      UniformAutomorphismSLPGenerator<int> rnd(rank);
-      for (auto size : {0, 5, 10, 30, 60}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 30, 60}) {
       std::vector<EMorphism> morphisms;
       for (int i = 0; i < size; ++i)
         morphisms.push_back(rnd());
@@ -338,10 +385,261 @@ TEST_F(EndomorphismSLPTest, ProducerVsIteratorGenerationEquality) {
       CachedProducer cp(morphisms);
       auto morphism2 = EMorphism::composition(size, cp);
       for (int i = 0; i < rank; ++i)
-        EXPECT_EQ(to_string(morphism1.image(i + 1)), to_string(morphism2.image(i + 1)));
+        EXPECT_EQ(to_string(morphism1.image_word(i + 1)), to_string(morphism2.image_word(i + 1)));
     }
   }
 }
+
+
+TEST_F(EndomorphismSLPTest, HeightCalculationTest) {
+  EXPECT_EQ(0, height(EMorphism::identity()));
+  auto e = EMorphism::inverter(1);
+  EXPECT_EQ(e.image(1).height(), height(e));
+  e = EMorphism::right_multiplier(1, 2);
+  EXPECT_EQ(e.image(1).height(), height(e));
+  e = EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(e.image(2).height(), height(EMorphism::left_multiplier(1, 2)));
+
+  for (auto rank : {1, 5, 10, 20, 30}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 30, 60}) {
+      auto e = EMorphism::composition(size, rnd);
+      int height = 0;
+      for (int i = 1; i <= e.max_non_trivial_image_symbol(); ++i) {
+        const auto h = e.image(i).height();
+        if (h > height)
+          height = h;
+      }
+      EXPECT_EQ(height, crag::height(e));
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
+  EXPECT_EQ(0, slp_vertices_num(EMorphism::identity()));
+  for (int i = 1; i < 10; ++i)
+    EXPECT_EQ(1, slp_vertices_num(EMorphism::inverter(i)));
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(i, j)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::right_multiplier(i, -j)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(j, i)));
+        EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(-j, i)));
+      }
+
+  for (auto rank : {3, 10, 20}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      auto e = EMorphism::composition(size, rnd);
+      std::unordered_set<slp::Vertex> visited_vertices;
+      e.for_each_non_trivial_image( [&visited_vertices] (const typename EMorphism::symbol_image_pair_type& v) {
+        slp::Inspector<slp::inspector::Postorder> inspector(v.second);
+        while (!inspector.stopped()) {
+          visited_vertices.insert(inspector.vertex());
+          inspector.next();
+        }
+      } );
+      EXPECT_EQ(visited_vertices.size(), slp_vertices_num(e));
+    }
+  }
+}
+
+
+TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
+  EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::identity(), EMorphism::identity().inverse()));
+  for (int i = 1; i < 10; ++i) {
+    EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::inverter(i), EMorphism::identity().inverter(i)));
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = 1; j < 10; ++j)
+      if (i != j) {
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, -j).inverse(),
+                                                   EMorphism::right_multiplier(i, j)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::right_multiplier(i, j).inverse(),
+                                                   EMorphism::right_multiplier(i, -j)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(-j, i).inverse(),
+                                                   EMorphism::left_multiplier(j, i)));
+        EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::left_multiplier(j, i).inverse(),
+                                                   EMorphism::left_multiplier(-j, i)));
+      }
+
+  for (auto rank : {1, 5, 10, 20, 30}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10}) {
+      std::vector<EMorphism> morphisms;
+      for (int i = 0; i < size; ++i)
+        morphisms.push_back(rnd());
+      std::vector<EMorphism> inverted_morhpisms;
+      std::for_each(morphisms.rbegin(), morphisms.rend(),
+                    [&inverted_morhpisms] (const EMorphism& e) {inverted_morhpisms.push_back(e.inverse());} );
+
+      auto e = EMorphism::composition(morphisms.begin(), morphisms.end());
+      auto e_inverse = EMorphism::composition(inverted_morhpisms.begin(), inverted_morhpisms.end());
+
+      auto id = e * e_inverse;
+
+      id.for_each_non_trivial_image([] (const EMorphism::symbol_image_pair_type& pair) {
+        ASSERT_EQ(slp::TerminalVertexTemplate<int>(pair.first), slp::reduce(pair.second));
+      });
+
+    }
+  }
+}
+
+
+TEST_F(EndomorphismSLPTest, IsIdentityTest) {
+  ASSERT_TRUE(EMorphism::identity().is_identity());
+  for (int i = 1; i < 10; ++i) {
+    auto e = EMorphism::inverter(i);
+    EXPECT_FALSE(e.is_identity());
+    e *= e.inverse();
+    EXPECT_TRUE(e.is_identity());
+  }
+  for (int i = 1; i < 10; ++i)
+    for (int j = -10; j < 10; ++j)
+      if (j != i && j != -i && j != 0) {
+        auto e = EMorphism::right_multiplier(i, j);
+        EXPECT_FALSE(e.is_identity());
+        e *= e.inverse();
+        EXPECT_TRUE(e.is_identity());
+      }
+}
+
+TEST_F(EndomorphismSLPTest, EqualityTest) {
+  EXPECT_EQ(EMorphism::identity(), EMorphism::identity());
+  EXPECT_EQ(EMorphism::inverter(1), EMorphism::inverter(1));
+  EXPECT_EQ(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(1, 2));
+  EXPECT_EQ(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(1, 2));
+  EXPECT_NE(EMorphism::inverter(1), EMorphism::inverter(2));
+  EXPECT_NE(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(2, 1));
+  EXPECT_NE(EMorphism::left_multiplier(1, 2), EMorphism::left_multiplier(3, 2));
+  EXPECT_NE(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(2, 1));
+  EXPECT_NE(EMorphism::right_multiplier(1, 2), EMorphism::right_multiplier(1, 3));
+
+  auto e = EMorphism::inverter(1);
+  EXPECT_EQ(e, e);
+  e *= EMorphism::left_multiplier(1, 2);
+  EXPECT_EQ(e, e);
+
+  for (auto rank : {5, 10, 15}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 20}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto e1 = e * rnd();
+        ASSERT_EQ(e, e);
+        ASSERT_NE(e, e1);
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, ConjugationTest) {
+  for (auto rank : {15, 10, 20, 30}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {0, 5, 10, 20}) {
+      auto conj = EndomorphismSLP<int>::identity().conjugate_with(size, rnd);
+      ASSERT_TRUE(conj.is_identity());
+    }
+  }
+}
+
+
+TEST_F(EndomorphismSLPTest, GeneratorDistributionTest) {
+  UniformAutomorphismSLPGenerator<int> rnd(5);
+  unsigned int inverter_num = 0;
+  unsigned int multipliers_num = 0;
+  const int num = 100000;
+  for (int i = 0; i < num; ++i) {
+    auto e = rnd();
+    slp::Vertex v = e.non_trivial_images_range().first->second;
+    auto height = v.height();
+    if (height == 1) {
+      ++inverter_num;
+    } else {
+      ASSERT_EQ(2, height);
+      ++multipliers_num;
+    }
+  }
+  double expected_inverters_num = 5.0 / 45 * num;
+  double expected_multipliers_num = 40.0 / 45 * num;
+  auto dif1 = inverter_num - expected_inverters_num;
+  dif1 = dif1 > 0 ? dif1 : - dif1;
+  auto dif2 = multipliers_num - expected_multipliers_num;
+  dif2 = dif2 > 0 ? dif2 : - dif2;
+  ASSERT_TRUE(dif1 / num < 0.01);
+  ASSERT_TRUE(dif2 / num < 0.01);
+
+  for (double p: {0.1, 0.5, 0.9}) {
+    rnd.set_inverters_probability(p);
+    inverter_num = 0;
+    multipliers_num = 0;
+    for (int i = 0; i < num; ++i) {
+      auto e = rnd();
+      slp::Vertex v = e.non_trivial_images_range().first->second;
+      auto height = v.height();
+      if (height == 1) {
+        ++inverter_num;
+      } else {
+        ASSERT_EQ(2, height);
+        ++multipliers_num;
+      }
+    }
+    double expected_inverters_num = p * num;
+    double expected_multipliers_num = (1.0 - p) * num;
+    auto dif1 = inverter_num - expected_inverters_num;
+    dif1 = dif1 > 0 ? dif1 : - dif1;
+    auto dif2 = multipliers_num - expected_multipliers_num;
+    dif2 = dif2 > 0 ? dif2 : - dif2;
+    ASSERT_TRUE(dif1 / num < 0.01);
+    ASSERT_TRUE(dif2 / num < 0.01);
+  }
+}
+
+TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
+  int n = 0;
+  auto counter = [&] (const EMorphism& e) {
+    ++n;
+    EXPECT_EQ(1, e.non_trivial_images_num());
+  };
+  //checking counts
+  for (int rank = 1; rank < 10; ++rank) {
+    n = 0;
+    EMorphism::for_each_basic_morphism(rank, counter);
+    EXPECT_EQ(rank + 2 * 2 * rank * (rank - 1), n);
+  }
+}
+
+TEST_F(EndomorphismSLPTest, SaveAndLoad) {
+  auto check_save_load = [] (const EMorphism& e) {
+    std::stringstream s;
+    e.save_to(&s);
+//    e.save_to(&std::cout);
+    EXPECT_EQ(e, EMorphism::load_from(&s));
+  };
+
+
+  check_save_load(EMorphism::identity());
+
+  for(int rank = 1; rank < 5; ++rank) {
+    EMorphism::for_each_basic_morphism(rank, check_save_load);
+    //composition of two
+    EMorphism::for_each_basic_morphism(rank, [&] (const EMorphism& e) {
+      EMorphism::for_each_basic_morphism(rank, [&] (const EMorphism& e1) {
+        check_save_load(e * e1);
+      });
+    });
+  }
+  for (auto rank : {5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {5, 10, 20, 50}) {
+      for (int i = 0; i < 10; ++i)
+        check_save_load(EMorphism::composition(size, rnd));
+    }
+  }
+}
+
 
 
 } /* namespace crag */
