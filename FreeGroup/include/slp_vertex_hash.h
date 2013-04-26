@@ -22,177 +22,65 @@ namespace crag {
 namespace slp {
 
 //! Basic class to calculate hashes. Hash types are listed as template parameters.
-//template <class... Hashers> class TVertexHash {
-//  public:
-//    /**
-//     * Calculate hash of some terminal vertex using its singed id, usually
-//     * just conversion of value to Vertex::SignedVertexId. All hashers should implement such constructor.
-//     */
-//    TVertexHash(Vertex::VertexSignedId terminal_id);
-//
-//    //! Hash of empty vertex. Also should be implemented by every hasher.
-//    TVertexHash();
-//
-//    //! Copy constructor. Should be implemented by each hasher.
-//    TVertexHash(const TVertexHash& other);
-//
-//    //! Calculate the hash of concatenated words. Each hasher should implement is as concatenate_with method.
-//    TVertexHash& operator*=(const TVertexHash& other);
-//
-//    //! Hash comparison. Each hasher should implement it as method is_equal_to
-//    bool operator==(const TVertexHash& other);
-//
-//    //! Return the hash of inverted word.
-//    TVertexHash inverse() const;
-//
-//    //! Replace with the hash of inverted word and return *this. Each hasher should implements it.
-//    TVertexHash& inverse_inplace();
-//};
-//
+template <class... Hashers> class TVertexHash {
+  public:
+    /**
+     * Calculate hash of some terminal vertex using its singed id, usually
+     * just conversion of value to Vertex::SignedVertexId. All hashers should implement such constructor.
+     */
+    TVertexHash(Vertex::VertexSignedId terminal_id);
+
+    //! Hash of empty vertex. Also should be implemented by every hasher.
+    TVertexHash();
+
+    //! Copy constructor. Should be implemented by each hasher.
+    TVertexHash(const TVertexHash& other);
+
+    //! Calculate the hash of concatenated words. Each hasher should implement is as concatenate_with method.
+    TVertexHash& operator*=(const TVertexHash& other);
+
+    //! Hash comparison. Each hasher should implement it as method is_equal_to
+    bool operator==(const TVertexHash& other);
+
+    //! Return the hash of inverted word.
+    TVertexHash inverse() const;
+
+    //! Replace with the hash of inverted word and return *this. Each hasher should implements it.
+    TVertexHash& inverse_inplace();
+};
+
 //Here are details of realisation, no documentation
-//template <class TFirstHasher, class... TOtherHashers>
-//class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public TVertexHash<TOtherHashers...> {
-//    typedef TFirstHasher FirstHasher;
-//    typedef TVertexHash<TOtherHashers...> OtherHasher;
-//  public:
-//
-//    TVertexHash(Vertex::VertexSignedId terminal_id)
-//      : FirstHasher(terminal_id)
-//      , OtherHasher(terminal_id)
-//    { }
-//
-//    TVertexHash()
-//    { }
-//
-//    TVertexHash(const TVertexHash& other)
-//      : FirstHasher(other)
-//      , OtherHasher(other)
-//    { }
-//
-//    TVertexHash& operator*=(const TVertexHash& other) {
-//      FirstHasher::concatenate_with(other);
-//      OtherHasher::operator*=(other);
-//
-//      return *this;
-//    }
-//
-//    //I do not add move support right now, since for current hashers it makes no sense
-//
-//    bool operator==(const TVertexHash& other) {
-//      return FirstHasher::is_equal_to(other) && OtherHasher::operator==(other);
-//    }
-//
-//    TVertexHash inverse() const {
-//      TVertexHash copy(*this);
-//      return copy.inverse_inplace();
-//    }
-//
-//    TVertexHash& inverse_inplace() {
-//      FirstHasher::inverse_inplace();
-//      OtherHasher::inverse_inplace();
-//
-//      return *this;
-//    }
-//
-//    typedef std::unordered_map<Vertex, TVertexHash> Cache;
-//
-//
-//};
-//
-//template <>
-//class TVertexHash<> {
-//  public:
-//    TVertexHash& operator*=(const TVertexHash& other) {
-//      return *this;
-//    }
-//
-//    TVertexHash& inverse_inplace() {
-//      return *this;
-//    }
-//
-//    TVertexHash inverse() const {
-//      return *this;
-//    }
-//
-//    TVertexHash(Vertex::VertexSignedId terminal) {}
-//    TVertexHash() {}
-//
-//    bool operator==(const TVertexHash& other) {
-//      return true;
-//    }
-//};
-
-union MaxAlign
-{
-    int                 i     ;
-    long                l     ;
-    long long           ll    ;
-    long double         ld    ;
-    double              d     ;
-    void*               p     ;
-    void (*             pf)() ;
-    MaxAlign*           ps    ;
-} ;
-
-template <class... Hashers> class TVertexHash;
-
-template <class... Hashers> class TVertexHash;
 template <class TFirstHasher, class... TOtherHashers>
-class TVertexHash<TFirstHasher, TOtherHashers...> : public TVertexHash<TOtherHashers...> {
+class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public TVertexHash<TOtherHashers...> {
     typedef TFirstHasher FirstHasher;
     typedef TVertexHash<TOtherHashers...> OtherHasher;
   public:
-    TVertexHash()
-      : OtherHasher()
-      , first_hasher_(nullptr)
-    {}
 
-    TVertexHash(Vertex::VertexSignedId terminal_symbol)
-      : OtherHasher(terminal_symbol)
-      , first_hasher_(nullptr)
+    TVertexHash(Vertex::VertexSignedId terminal_id)
+      : FirstHasher(terminal_id)
+      , OtherHasher(terminal_id)
     { }
 
-    TVertexHash(std::shared_ptr<TVertexHash> left, std::shared_ptr<TVertexHash> right)
-      : OtherHasher(left, right)
-      , first_hasher_(nullptr)
+    TVertexHash()
     { }
 
     TVertexHash(const TVertexHash& other)
-      : OtherHasher(other)
-      , first_hasher_(nullptr)
-    {
-      if (other.first_hasher_) {
-        first_hasher_ = reinterpreter_cast<FirstHasher*>(new (first_hasher_storage_.o) FirstHasher(*(other.first_hasher_)));
-      }
+      : FirstHasher(other)
+      , OtherHasher(other)
+    { }
+
+    TVertexHash& operator*=(const TVertexHash& other) {
+      FirstHasher::concatenate_with(other);
+      OtherHasher::operator*=(other);
+
+      return *this;
     }
 
-    ~TVertexHashImpl() {
-      first_hasher_->~FirstHasher();
-    }
+    //I do not add move support right now, since for current hashers it makes no sense
 
-    const FirstHasher& calculate_first(Vertex::VertexSignedId terminal_id) const {
-      if (!first_hasher_) {
-        first_hasher_ = reinterpreter_cast<FirstHasher*>(new (first_hasher_storage_.o) FirstHasher(terminal_id));
-      }
-      return *first_hasher_;
+    bool operator==(const TVertexHash& other) {
+      return FirstHasher::is_equal_to(other) && OtherHasher::operator==(other);
     }
-
-    const FirstHasher& calculate_first(const FirstHasher& left, const FirstHasher& right) const {
-      if (!first_hasher_) {
-        first_hasher_ = reinterpreter_cast<FirstHasher*>(new (first_hasher_storage_.o) FirstHasher(left));
-        *first_hasher_ *= right;
-      }
-      return *first_hasher_;
-    }
-
-    const FirstHasher& calculate_first(const TVertexHash& this_container) const {
-      if (!first_hasher_) {
-        first_hasher_ = reinterpreter_cast<FirstHasher*>(new (first_hasher_storage_.o) FirstHasher(terminal_id));
-      }
-      return *first_hasher_;
-    }
-
-    bool is_equal_to(const TVertexHash& this_container, const TVertexHash& other_container) const;
 
     TVertexHash inverse() const {
       TVertexHash copy(*this);
@@ -208,13 +96,7 @@ class TVertexHash<TFirstHasher, TOtherHashers...> : public TVertexHash<TOtherHas
 
     typedef std::unordered_map<Vertex, TVertexHash> Cache;
 
-  private:
-    union
-    {
-        MaxAlign dummyForAlignment;
-        unsigned char o[sizeof(FirstHasher)];
-    } first_hasher_storage_;
-    mutable FirstHasher* first_hasher_;
+
 };
 
 template <>
@@ -238,19 +120,7 @@ class TVertexHash<> {
     bool operator==(const TVertexHash& other) {
       return true;
     }
-  protected:
-    std::shared_ptr<TVertexHash> left_hash_or_negate_;
-    std::shared_ptr<TVertexHash> right_hash_or_null_;
-    Vertex::VertexSignedId terminal_symbol_;
 };
-
-template <class... Hashers> class TVertexHash {
-    template <class...> friend TVertexHashImpl;
-  private:
-    TVertexHashImpl<Hashers> impl;
-    Vertex::VertexSignedId terminal_symbol_;
-};
-
 
 
 namespace hashers {
