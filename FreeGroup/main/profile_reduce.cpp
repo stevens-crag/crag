@@ -15,7 +15,7 @@
 
 #include "slp.h"
 #include "EndomorphismSLP.h"
-//#include "gmp_boost_pool_allocator.h"
+#include "gmp_boost_pool_allocator.h"
 
 using crag::slp::Vertex;
 using crag::slp::PreorderInspector;
@@ -26,7 +26,7 @@ using crag::UniformAutomorphismSLPGenerator;
 using crag::EndomorphismSLP;
 
 int main() {
-//  gmp_pool_setup();
+  gmp_pool_setup();
   int REPEAT = 50;
   const size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 100;
