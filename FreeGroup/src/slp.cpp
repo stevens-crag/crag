@@ -30,7 +30,7 @@ const Vertex::VertexAllocator& NonterminalVertex::get_allocator() {
 Vertex::VertexSignedId NonterminalVertex::last_vertex_id_;
 constexpr std::hash<Vertex::VertexSignedId> Vertex::vertex_id_hash_;
 
-}
+} //namespace slp
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {
   return out << sequence.first() << ":" << sequence.last() << ".." << sequence.step();
@@ -205,17 +205,11 @@ FiniteArithmeticSequence PatternMatchesGenerator::next_match() {
   FiniteArithmeticSequence result;
 
   while (!text_inspector_.stopped()) {
-    //::std::cout << "Generator on ";
-    //PrintTo(text_inspector_.vertex(), &::std::cout);
-    //::std::cout << ::std::endl;
     FiniteArithmeticSequence new_match = matching_table_.matches(pattern_, text_inspector_.vertex());
-    //::std::cout << "Match is " << new_match << ::std::endl;
     //Adjust match start
     new_match.shift_right(text_inspector_.vertex_left_siblings_length());
-    //::std::cout << "After shift: " << new_match << ::std::endl;
     //cut the sequence to begin after the large_pattern_part_left_bound
     new_match.fit_into(first_lookup_begin_position_, last_lookup_begin_position_);
-    //::std::cout << "After fit into [" << first_lookup_begin_position_ << ", " << last_lookup_begin_position_ << "]: " << new_match << ::std::endl;
     new_match.join_with(result);
 
     if (result &&
@@ -242,17 +236,19 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
     return FiniteArithmeticSequence::NullSequence();
   }
 
+  if (pattern == text) { //If we are checking the same vertex
+    static FiniteArithmeticSequence trivial(0, 1, 1);
+    return trivial;
+  }
+
   auto match_result_iterator = match_table_->find(std::make_pair(pattern, text));
 
   if (match_result_iterator != match_table_->end()) { //if already calculated
     return match_result_iterator->second;
   }
-
   FiniteArithmeticSequence match_result;
 
-  if (pattern == text) { //If we are checking the same vertex
-    match_result = FiniteArithmeticSequence(0, 1, 1);
-  } else if (pattern.length() == 1) {//Trivial case
+  if (pattern.length() == 1) {//Trivial case
     Vertex pattern_vertex = pattern;
     while (pattern_vertex.height() > 1) {
       if (pattern_vertex.left_child()) {
@@ -302,24 +298,11 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
           this
       );
     }
-    //::std::cout << "Not calculated match(";
-    //PrintTo(pattern, &::std::cout);
-    //::std::cout << ",";
-    //PrintTo(text, &::std::cout);
-    //::std::cout << ") is " << match_result << ::std::endl;
-
   }
 
   FiniteArithmeticSequence inversed_result = FiniteArithmeticSequence(match_result).shift_right(text.length() - pattern.length() - match_result.last() - match_result.first());
-
-//  PrintTo(pattern, &std::cout);
-//  std::cout << std::endl;
-//  PrintTo(text, &std::cout);
-//  std::cout << std::endl;
   match_table_->insert(std::make_pair(std::make_pair(pattern.negate(), text.negate()), std::move(inversed_result)));
   auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), std::move(match_result)));
-//  std::cout << match_result << std::endl;
-//  std::cout << inversed_result << std::endl;
 
   return inserted_element.first->second;
 }
@@ -352,8 +335,6 @@ FiniteArithmeticSequence nontrivial_match(
   while(large_part_hunter) {
     auto large_part_matches = large_part_hunter.next_match();
 
-    //::std::cout << "Found large: " << large_part_matches << ::std::endl;
-
     if (large_part_matches) {
       FiniteArithmeticSequence small_part_candidates = large_part_matches;
 
@@ -363,7 +344,6 @@ FiniteArithmeticSequence nontrivial_match(
       } else {
         small_part_candidates.shift_right(-small_pattern_part.length());
       }
-      //::std::cout << "Candidates: " << small_part_candidates << ::std::endl;
       LongInteger seaside_candidates_bound = (small_pattern_is_after ? small_part_candidates.last() - small_pattern_part.length(): small_part_candidates.first());
 
       PatternMatchesGenerator seaside_hunter(
@@ -375,9 +355,7 @@ FiniteArithmeticSequence nontrivial_match(
       );
 
       auto seaside_matches = seaside_hunter.next_match();
-      //::std::cout << "Seaside matches: " << seaside_matches << ::std::endl;
       seaside_matches.intersect_with(small_part_candidates);
-      //::std::cout << "Found seaside: " << seaside_matches << ::std::endl;
 
       const LongInteger& continental_candidate_start = small_pattern_is_after ? small_part_candidates.first() : small_part_candidates.last();
       PatternMatchesGenerator continental_hunter(
@@ -392,15 +370,12 @@ FiniteArithmeticSequence nontrivial_match(
 
       FiniteArithmeticSequence& small_part_approved_candidates = seaside_matches;
       if (continental_matches) {
-        //::std::cout << "Found continental: " << continental_matches << ::std::endl;
         continental_matches = small_part_candidates;
         if (small_pattern_is_after) {
           continental_matches.fit_into(continental_matches.first(), seaside_candidates_bound - 1);
         } else {
           continental_matches.fit_into(seaside_candidates_bound + small_pattern_part.length() + 1, continental_matches.last());
         }
-        //::std::cout << "Multiplied continental: " << continental_matches << ::std::endl;
-
 
         small_part_approved_candidates.join_with(continental_matches);
       }
