@@ -35,7 +35,7 @@ int main() {
   auto begin = std::chrono::system_clock::now();
   int count = REPEAT;
   while (--count >= 0) {
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).slp(1);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
     Vertex reduced = reduce(image);
     auto end = std::chrono::system_clock::now();

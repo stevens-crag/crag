@@ -99,8 +99,11 @@ std::string print_tree_preorder(const Vertex& vertex) {
 std::string print_tree_preorder_single(const Vertex& vertex) {
   std::ostringstream out;
   std::unordered_map<slp::Vertex, bool> mapping;
-  mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, bool>> acceptor(mapping);
-  Inspector<inspector::Preorder, mapper::SkipMappedVerticesAcceptor<std::unordered_map<slp::Vertex, bool>>> inspector(vertex, acceptor);
+  auto acceptor = [&] (const inspector::InspectorTask& task) {
+    return mapping.find(task.vertex) == mapping.end();//do not accept if vertex is mapped already
+  };
+
+  Inspector<inspector::Preorder, decltype(acceptor)> inspector(vertex, acceptor);
   while (!inspector.stopped()) {
     PrintTo(inspector.vertex(), &out);
     out << " << ";
@@ -131,7 +134,7 @@ TEST(HashedReduce, StressTest) {
   size_t seed = 0;
   while (++seed <= REPEAT) {
     UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).slp(1);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
     Vertex reduced = VertexHashAlgorithms::reduce(image);
 

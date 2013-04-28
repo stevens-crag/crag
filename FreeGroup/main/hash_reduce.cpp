@@ -87,7 +87,7 @@ int main() {
   //size_t reduce_different = 0;
 
   while (--count >= 0) {
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).slp(1);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
     crag::slp::MatchingTable matching_table;
     std::unordered_map<Vertex, Vertex> reduced_vertices;
     auto reduce_start = std::chrono::system_clock::now();
