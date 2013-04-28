@@ -27,7 +27,7 @@ override DEFINE +=
 # used by default
 #
 
-LOCAL_LIBS = -L/lib/ -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic
+LOCAL_LIBS = -L/lib/ -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic -ltcmalloc_minimal
 
 
 # 
