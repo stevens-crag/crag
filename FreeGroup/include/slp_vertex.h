@@ -73,6 +73,9 @@ class Vertex {
     inline void debug_print(::std::ostream* out) const;
 
     typedef int64_t VertexSignedId;
+    VertexSignedId vertex_id() const {
+      return vertex_signed_id_;
+    }
 
   protected:
     typedef std::allocator<internal::BasicVertex> VertexAllocator;
