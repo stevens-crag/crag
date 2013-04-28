@@ -436,7 +436,7 @@ LongInteger longest_common_prefix(const Vertex& first, const Vertex& second, Mat
 }
 
 //Be aware passing temporary objects as root - maybe, this temporary object will be returned.
-const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end, std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex>* cache) {
+Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end) {
   if (begin >= root.length() || end < 0 || end <= begin) {
     static Vertex Null;
     return Null;
@@ -448,28 +448,15 @@ const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
     assert(root.height() != 1 || root.length() == 1);
     return root;
   } else {
-    auto cache_item = cache->find(std::make_tuple(root, begin, end));
-    if (cache_item != cache->end()) {
-      return cache_item->second;
-    }
     if (root.split_point() >= end) {
-      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.left_child(), begin, end, cache)))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return get_sub_slp(root.left_child(), begin, end);
     } else if (root.split_point() <= begin) {
-      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point());
     } else {
-      const Vertex& result = cache->insert(
-          std::make_pair(
-              std::make_tuple(root, begin, end),
-              NonterminalVertex(
-                  get_sub_slp(root.left_child(), begin, end, cache),
-                  get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)
-          ))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return NonterminalVertex(
+        get_sub_slp(root.left_child(), begin, root.split_point()),
+        get_sub_slp(root.right_child(), 0, end - root.split_point())
+      );
     }
   }
 }
@@ -478,4 +465,3 @@ const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
 } //namespace crag
 
 constexpr std::hash<mp_limb_t*> std::hash<LongInteger>::limb_hasher_;
-
