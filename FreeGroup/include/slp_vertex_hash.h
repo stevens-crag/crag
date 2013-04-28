@@ -40,7 +40,8 @@ template <class... Hashers> class TVertexHash {
     TVertexHash& operator*=(const TVertexHash& other);
 
     //! Hash comparison. Each hasher should implement it as method is_equal_to
-    bool operator==(const TVertexHash& other);
+    bool operator==(const TVertexHash& other) const;
+    bool operator!=(const TVertexHash& other) const;
 
     //! Return the hash of inverted word.
     TVertexHash inverse() const;
@@ -78,8 +79,12 @@ class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public 
 
     //I do not add move support right now, since for current hashers it makes no sense
 
-    bool operator==(const TVertexHash& other) {
+    bool operator==(const TVertexHash& other) const {
       return FirstHasher::is_equal_to(other) && OtherHasher::operator==(other);
+    }
+
+    bool operator!=(const TVertexHash& other) const {
+      return !(*this == other);
     }
 
     TVertexHash inverse() const {
@@ -117,9 +122,14 @@ class TVertexHash<> {
     TVertexHash(Vertex::VertexSignedId terminal) {}
     TVertexHash() {}
 
-    bool operator==(const TVertexHash& other) {
+    bool operator==(const TVertexHash& other) const {
       return true;
     }
+
+    bool operator!=(const TVertexHash& other) const {
+      return false;
+    }
+
 };
 
 
@@ -159,7 +169,7 @@ class PowerCountHash {
       }
     }
 
-    bool is_equal_to(const PowerCountHash& other) {
+    bool is_equal_to(const PowerCountHash& other) const {
       for (size_t i = 0; i < RANK; ++i) {
         if (terminal_power_[i] != other.terminal_power_[i]) {
           return false;
@@ -192,7 +202,7 @@ class SinglePowerHash {
       terminals_power_ *= -1;
     }
 
-    bool is_equal_to(const SinglePowerHash& other) {
+    bool is_equal_to(const SinglePowerHash& other) const {
       return terminals_power_ == other.terminals_power_;
     }
 };
@@ -244,7 +254,7 @@ class PermutationHash {
       permutation_ = permutation_.inverse();
     }
 
-    bool is_equal_to(const PermutationHash& other) {
+    bool is_equal_to(const PermutationHash& other) const {
       return permutation_ == other.permutation_;
     }
 };

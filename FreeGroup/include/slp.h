@@ -16,5 +16,6 @@
 #include "slp_pattern_matching.h"
 #include "slp_common_prefix.h"
 #include "slp_reduce.h"
+#include "slp_vertex_hash.h"
 
 #endif /* CRAG_FREEGROUP_SLP_H_ */

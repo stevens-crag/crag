@@ -66,6 +66,23 @@ REGISTER_TYPED_TEST_CASE_P(HasherTest, InterfaceImplementation);
 typedef ::testing::Types<hashers::PowerCountHash<2>, hashers::PermutationHash> HasherTypes;
 INSTANTIATE_TYPED_TEST_CASE_P(All, HasherTest, HasherTypes);
 
+TEST(HasherTest, SimpleCombinedHash) {
+  typedef TVertexHash<hashers::PowerCountHash<2>, hashers::PermutationHash> VertexHash;
+  auto a = VertexHash(1);
+  auto b = VertexHash(2);
+
+  EXPECT_NE(a, b);
+
+  auto ab = VertexHash(a) *= b;
+  auto ba = VertexHash(b) *= a;
+
+  EXPECT_NE(ab, ba);
+
+  auto b_1a_1 = (VertexHash(-2) *= VertexHash(-1));
+
+  EXPECT_EQ(b_1a_1, ab.inverse());
+}
+
 std::string print_tree_preorder(const Vertex& vertex) {
   std::ostringstream out;
   PreorderInspector inspector(vertex);
@@ -119,7 +136,7 @@ TEST(HashedReduce, StressTest) {
     Vertex reduced = VertexHashAlgorithms::reduce(image);
 
     std::vector<int> reduced_image;
-    for (auto symbol : VertexWord<int>(reduced)) {
+    for (auto symbol : VertexWord<int>(image)) {
       if (!reduced_image.empty() && symbol == -reduced_image.back()) {
         reduced_image.pop_back();
       } else {
