@@ -206,12 +206,16 @@ class VertexWord {
       return is_equal_to(other, &table);
     }
 
+    bool operator!=(const VertexWord& other) {
+       return !(*this == other);
+    }
+
     bool is_equal_to(const VertexWord& other, MatchingTable* matching_table) {
       if (this->root_.length() != other.root_.length()) {
         return false;
       }
-      auto match_sequence = matching_table->matches(root_, other.root_);
-      return match_sequence.count() == 1 && match_sequence.first() == 0;
+
+      return static_cast<bool>(matching_table->matches(root_, other.root_));
     }
 
     TerminalSymbol operator[](LongInteger index) const; //!< Get one letter from the word
