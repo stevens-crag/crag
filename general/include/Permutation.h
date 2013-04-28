@@ -6,7 +6,7 @@
 // Revision History:
 //
 
-
+#pragma once
 #ifndef _Permutation_h_
 #define _Permutation_h_
 
@@ -42,7 +42,7 @@ class Permutation
 public:
   
   //! Default constructor (size specifies the size of the permutation)
-  Permutation( int size=0 );
+  explicit Permutation( int size=0 );
   
   //! Construct a permutation of the specified size given by the array p
   Permutation( int size , const int* p );
@@ -52,7 +52,7 @@ public:
   
 
   //! Construct a permutation by a sequence of numbers
-  template< class IntIterator > Permutation( const IntIterator& B , const IntIterator& E ) : theValue( B , E ) { }
+  template< class IntIterator > Permutation( IntIterator B , IntIterator E ) : theValue( B , E ) { }
 
   
   //! Copy constructor provided by compiler

@@ -13,6 +13,7 @@
 #include <iostream>
 #include <math.h>
 #include <stdlib.h>
+#include <cassert>
 
 using namespace std;
 
@@ -199,8 +200,9 @@ Permutation
 Permutation::computeConjugator( const Permutation& p ) const
 {
   int size = theValue.size( );
-  if( size!=p.theValue.size( ) )
-    return false;
+  assert(size == p.theValue.size( ));
+//  if( size!=p.theValue.size( ) ) Do something with this!!!
+//    return false;
   
   Permutation result( size );
   
@@ -961,7 +963,7 @@ Permutation Permutation::increaseSize( int N ) const
 //---------------------------------------------------------------------------//
 
 
-static Permutation Permutation::getCyclePermutation( int size )
+Permutation Permutation::getCyclePermutation( int size )
 {
   Permutation result;
   
