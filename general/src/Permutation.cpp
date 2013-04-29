@@ -442,24 +442,7 @@ bool Permutation::operator < ( const Permutation& p ) const
 
 Permutation Permutation::operator * ( const Permutation& p ) const 
 {
-  int l1 = theValue.size( );
-  int l2 = p.theValue.size( );
-
-  int len = l1<l2 ? l2:l1;
-  Permutation res( len );
-  for( int t=0 ; t<len ; ++t ) {
-    if( t>=l1 ) {
-      res.theValue[t] = p.theValue[t];
-      continue;
-    }
-    if( t>=l2 ) {
-      res.theValue[t] = theValue[t];
-      continue;
-    }
-    res.theValue[t] = p.theValue[theValue[t]];
-  }
-  
-  return res;
+  return (Permutation(*this) *= p);
 }
 
 
@@ -473,8 +456,11 @@ Permutation& Permutation::operator *= ( const Permutation& p )
       theValue.push_back( i );
   }
   
-  for( int t=0 ; t<l2 ; ++t )
-    theValue[t] = p.theValue[theValue[t]];
+  for( int t=0 ; t < theValue.size( ) ; ++t ) {
+    if (theValue[t] < p.theValue.size()) {
+      theValue[t] = p.theValue[theValue[t]];
+    }
+  }
   return *this;
 }
 

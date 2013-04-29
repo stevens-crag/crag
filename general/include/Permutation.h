@@ -53,6 +53,7 @@ public:
 
   //! Construct a permutation by a sequence of numbers
   template< class IntIterator > Permutation( IntIterator B , IntIterator E ) : theValue( B , E ) { }
+  Permutation( const std::initializer_list< int > & p) : theValue(p) {}
 
   
   //! Copy constructor provided by compiler
