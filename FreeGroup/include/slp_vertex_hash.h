@@ -15,6 +15,7 @@
 typedef mpz_class LongInteger;
 
 #include "Permutation.h"
+#include "permutation16.h"
 #include "slp_vertex.h"
 #include "slp_reduce.h"
 
@@ -209,21 +210,22 @@ class SinglePowerHash {
 
 
 //! Assign some random permutations to each of the terminals and work in the group of substitutions.
+template <class TPermutation>
 class PermutationHash {
   private:
     constexpr static size_t PERMUTATION_RANK = 16;
-    Permutation permutation_;
-    static Permutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
-      static std::vector<Permutation> permutations = {
-        Permutation(PERMUTATION_RANK), //for null terminal
-        Permutation(std::vector<int>({11, 4, 5, 13, 15, 0, 12, 8, 3, 1, 6, 14, 9, 7, 2, 10})), //permutation of the maximal order in S16
-        Permutation(std::vector<int>({6, 14, 0, 4, 13, 7, 11, 12, 1, 10, 15, 9, 5, 8, 2, 3})), //combined with the previous, it can give the whole group
+    TPermutation permutation_;
+    static TPermutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
+      static std::vector<TPermutation> permutations = {
+        TPermutation(), //for null terminal
+        TPermutation({11, 4, 5, 13, 15, 0, 12, 8, 3, 1, 6, 14, 9, 7, 2, 10}), //permutation of the maximal order in S16
+        TPermutation({6, 14, 0, 4, 13, 7, 11, 12, 1, 10, 15, 9, 5, 8, 2, 3}), //combined with the previous, it can give the whole group
       };
 
       size_t terminal = terminal_id < 0 ? -terminal_id : terminal_id;
 
       while (permutations.size() <= terminal) {
-        permutations.push_back(Permutation::random(PERMUTATION_RANK));
+        permutations.push_back(TPermutation::random(PERMUTATION_RANK));
       }
 
       if (terminal_id >= 0) {
@@ -258,6 +260,7 @@ class PermutationHash {
       return permutation_ == other.permutation_;
     }
 };
+
 
 } //namespace hashers
 

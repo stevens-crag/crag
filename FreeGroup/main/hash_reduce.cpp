@@ -61,9 +61,9 @@ using crag::EndomorphismSLP;
 
 int main() {
   gmp_pool_setup();
-  int REPEAT = 10;
+  int REPEAT = 1;
   constexpr size_t RANK = 3;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 1000;
+  constexpr size_t ENDOMORPHISMS_NUMBER = 2000;
   size_t seed = 112233;
   UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
   auto begin = std::chrono::system_clock::now();
@@ -73,18 +73,18 @@ int main() {
   LongInteger total_calculations;
   typedef crag::slp::TVertexHashAlgorithms<
       crag::slp::hashers::PowerCountHash<RANK>,
-      crag::slp::hashers::PermutationHash
+      crag::slp::hashers::PermutationHash<crag::Permutation16>
   > VertexHashAlgorithms;
 
   typedef crag::slp::TVertexHashAlgorithms<
-      //crag::slp::hashers::SinglePowerHash,
-      crag::slp::hashers::PermutationHash
+      crag::slp::hashers::SinglePowerHash,
+      crag::slp::hashers::PermutationHash<crag::Permutation16>
   > WeakVertexHashAlgorithms;
 
   auto strong_duration = begin - begin;
   auto weak_duration = begin - begin;
 
-  //size_t reduce_different = 0;
+  size_t reduce_different = 0;
 
   while (--count >= 0) {
     auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
@@ -96,16 +96,17 @@ int main() {
     reduce_start = std::chrono::system_clock::now();
     Vertex weak_reduced = WeakVertexHashAlgorithms::reduce(image);
     weak_duration += std::chrono::system_clock::now() - reduce_start;
-//    if (VertexWord<int>(weak_reduced) != VertexWord<int>(reduced)) {
-//      ++reduce_different;
-//    }
+    if (reduced.length() != weak_reduced.length()) {
+      ++reduce_different;
+    }
+
     auto end = std::chrono::system_clock::now();
     std::cout << "Duration: "<< std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
   }
 
   auto end = std::chrono::system_clock::now();
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count()/REPEAT << std::endl;
-  //std::cout << reduce_different << " of " << REPEAT << std::endl;
+  std::cout << reduce_different << " of " << REPEAT << std::endl;
   std::cout << "Strong: " << std::chrono::duration_cast<std::chrono::milliseconds>(strong_duration).count()/REPEAT << std::endl;
   std::cout << "Weak: " << std::chrono::duration_cast<std::chrono::milliseconds>(weak_duration).count()/REPEAT << std::endl;
 
