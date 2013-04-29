@@ -735,7 +735,8 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
 
     size_t left_index = non_terminal.second.first;
     size_t right_index = non_terminal.second.second;
-    out << INDENT << non_terminal_index << " -> {" << left_index << "; " << right_index << "}" << std::endl;
+    out << INDENT << non_terminal_index << " -> " << left_index << ";" << std::endl;
+    out << INDENT << non_terminal_index << " -> " << right_index << "[color=red,style=dashed];" << std::endl;
   }
 
 
