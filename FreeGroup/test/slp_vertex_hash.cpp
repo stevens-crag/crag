@@ -63,11 +63,11 @@ TYPED_TEST_P(HasherTest, InterfaceImplementation) {
 
 REGISTER_TYPED_TEST_CASE_P(HasherTest, InterfaceImplementation);
 
-typedef ::testing::Types<hashers::PowerCountHash<2>, hashers::PermutationHash> HasherTypes;
+typedef ::testing::Types<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > HasherTypes;
 INSTANTIATE_TYPED_TEST_CASE_P(All, HasherTest, HasherTypes);
 
 TEST(HasherTest, SimpleCombinedHash) {
-  typedef TVertexHash<hashers::PowerCountHash<2>, hashers::PermutationHash> VertexHash;
+  typedef TVertexHash<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHash;
   auto a = VertexHash(1);
   auto b = VertexHash(2);
 
@@ -130,7 +130,7 @@ TEST(HashedReduce, StressTest) {
   constexpr size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 20;
 
-  typedef TVertexHashAlgorithms<hashers::PowerCountHash<RANK>, hashers::PermutationHash> VertexHashAlgorithms;
+  typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
   size_t seed = 0;
   while (++seed <= REPEAT) {
     UniformAutomorphismSLPGenerator<int> generator(RANK, seed);

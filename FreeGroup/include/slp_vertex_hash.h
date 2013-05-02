@@ -49,6 +49,9 @@ template <class... Hashers> class TVertexHash {
 
     //! Replace with the hash of inverted word and return *this. Each hasher should implements it.
     TVertexHash& inverse_inplace();
+
+    //! Return size_t value to be used as hash in std::unordered_map/set
+    size_t get_std_hash() const;
 };
 
 //Here are details of realisation, no documentation
@@ -100,6 +103,11 @@ class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public 
       return *this;
     }
 
+    size_t get_std_hash() const {
+      size_t first_hash_value = FirstHasher::get_std_hash();
+      return OtherHasher::get_std_hash() + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
+    }
+
     typedef std::unordered_map<Vertex, TVertexHash> Cache;
 
 
@@ -129,6 +137,10 @@ class TVertexHash<> {
 
     bool operator!=(const TVertexHash& other) const {
       return false;
+    }
+
+    size_t get_std_hash() const {
+      return 0;
     }
 
 };
@@ -183,6 +195,7 @@ class PowerCountHash {
 class SinglePowerHash {
   private:
     int64_t terminals_power_;
+    constexpr static std::hash<int64_t> int64_t_hasher_ = std::hash<int64_t>();
   public:
     SinglePowerHash()
       : terminals_power_(0)
@@ -206,6 +219,10 @@ class SinglePowerHash {
     bool is_equal_to(const SinglePowerHash& other) const {
       return terminals_power_ == other.terminals_power_;
     }
+
+    size_t get_std_hash() const {
+      return int64_t_hasher_(terminals_power_);
+    }
 };
 
 
@@ -215,6 +232,7 @@ class PermutationHash {
   private:
     constexpr static size_t PERMUTATION_RANK = 16;
     TPermutation permutation_;
+    constexpr static std::hash<TPermutation> permutation_hasher_ = std::hash<TPermutation>();
     static TPermutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
       static std::vector<TPermutation> permutations = {
         TPermutation(), //for null terminal
@@ -259,6 +277,11 @@ class PermutationHash {
     bool is_equal_to(const PermutationHash& other) const {
       return permutation_ == other.permutation_;
     }
+
+    size_t get_std_hash() const {
+      return permutation_hasher_(permutation_);
+    }
+
 };
 
 
@@ -403,5 +426,15 @@ class TVertexHashAlgorithms {
 } //namespace slp
 } //namespace crag
 
+
+namespace std {
+template <class... Hashers>
+struct hash<crag::slp::TVertexHash<Hashers...>> {
+  public:
+    size_t operator()(const crag::slp::TVertexHash<Hashers...>& hash) const {
+      return hash.get_std_hash();
+    }
+};
+}
 
 #endif /* SLP_VERTEX_HASH_H_ */
