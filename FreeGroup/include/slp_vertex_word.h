@@ -121,17 +121,20 @@ class VertexWordIterator : public std::iterator <
     VertexWordIterator()
       : inspector_()
       , root_(nullptr)
+      , current_symbol_()
     { }
 
     explicit VertexWordIterator(const Vertex& root)
       : inspector_(root)
       , root_(&root)
+      , current_symbol_(TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol())
     { }
 
     //use default copy/move constructors/assignments
 
     VertexWordIterator& operator++() {   //!< Preincrement
       ++inspector_;
+      current_symbol_ = TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
       return *this;
     }
 
@@ -142,15 +145,16 @@ class VertexWordIterator : public std::iterator <
     }
 
     reference operator*() const { //!< "Dereference" current symbol
-      return TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
+      return current_symbol_;
     }
 
     pointer operator->() const {
-      return &TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
+      return &current_symbol_;
     }
 
     VertexWordIterator& operator+=(const LongInteger& shift) {
       inspector_.go_to_position(shift);
+      current_symbol_ = TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
       return *this;
     }
 
@@ -174,6 +178,7 @@ class VertexWordIterator : public std::iterator <
   private:
     inspector::TerminalVertexInspector<> inspector_; //!< Subtree inspector
     const Vertex* root_;                           //!< Root. Used only for comparison
+    TerminalSymbol current_symbol_;                //!< We have to store it due to type conversion
 };
 
 //! Word produced by some #slp::Vertex
@@ -201,15 +206,19 @@ class VertexWord {
       return is_equal_to(other, &table);
     }
 
+    bool operator!=(const VertexWord& other) {
+       return !(*this == other);
+    }
+
     bool is_equal_to(const VertexWord& other, MatchingTable* matching_table) {
       if (this->root_.length() != other.root_.length()) {
         return false;
       }
-      auto match_sequence = matching_table->matches(root_, other.root_);
-      return match_sequence.count() == 1 && match_sequence.first() == 0;
+
+      return static_cast<bool>(matching_table->matches(root_, other.root_));
     }
 
-    const_reference operator[](LongInteger index) const; //!< Get one letter from the word
+    TerminalSymbol operator[](LongInteger index) const; //!< Get one letter from the word
 
     const_iterator begin() const { //!< Get the iterator to the first symbol
       return const_iterator(root_);
@@ -241,7 +250,7 @@ template <typename TerminalSymbol>
 }
 
 template <typename TerminalSymbol>
-typename VertexWord<TerminalSymbol>::const_reference VertexWord<TerminalSymbol>::operator[](LongInteger index) const {
+TerminalSymbol VertexWord<TerminalSymbol>::operator[](LongInteger index) const {
   Vertex current_vertex = root_;
 
   while (current_vertex.height() > 1) {

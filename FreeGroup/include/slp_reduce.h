@@ -110,12 +110,7 @@ constexpr tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tu
 
 namespace crag {
 namespace slp {
-
-const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end, std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex>* cache);
-inline Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end) {
-  std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex> cache;
-  return get_sub_slp(root, begin, end, &cache);
-}
+Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end);
 
 inline LongInteger get_cancellation_length(const Vertex& vertex, MatchingTable* matching_table) {
   return longest_common_prefix(vertex.left_child().negate(), vertex.right_child(), matching_table);
@@ -125,54 +120,81 @@ inline LongInteger get_cancellation_length(const Vertex& vertex) {
   MatchingTable temp;
   return get_cancellation_length(vertex, &temp);
 }
-inline Vertex reduce(const Vertex& vertex, MatchingTable* matching_table, std::unordered_map<Vertex, Vertex>* reduced_vertices) {
-  map_vertices(vertex, reduced_vertices, [&matching_table](const slp::Vertex& vertex, const std::unordered_map<Vertex, Vertex>& reduced_vertices) -> Vertex {
-    if (vertex.height() <= 1) {
-      return vertex;
-    }
-    const Vertex& left = reduced_vertices.find(vertex.left_child())->second;
-    const Vertex& right = reduced_vertices.find(vertex.right_child())->second;
-    if (!left && !right) {
-      return Vertex();
-    } else {
-      NonterminalVertex result(left, right);
-      LongInteger cancellation_length = get_cancellation_length(result, matching_table);
-      if (cancellation_length == 0) {
-        if (left == vertex.left_child() && right == vertex.right_child()) {
-          assert((vertex.height() > 1 && vertex.length() > 1) || (vertex.length() == 1 && vertex.height() == 1) || (vertex.length() == 0 && vertex.height() == 0));
-          return vertex;
-        } else if (!left) {
-          return right;
-        } else if (!right) {
-          return left;
-        } else {
-          assert((result.height() > 1 && result.length() > 1) || (result.length() == 1 && result.height() == 1) || (result.length() == 0 && result.height() == 0));
-          return result;
-        }
+
+template <typename GetCancellationLengthFunctor>
+inline Vertex base_reduce(
+    const Vertex& vertex,
+    GetCancellationLengthFunctor get_cancellation_length,
+    std::unordered_map<Vertex, Vertex>* reduced_vertices)
+{
+  map_vertices(vertex, reduced_vertices,
+    [get_cancellation_length](
+        const slp::Vertex& vertex,
+        const std::unordered_map<Vertex, Vertex>& reduced_vertices
+    ) -> Vertex {
+      if (vertex.height() <= 1) {
+        return vertex;
+      }
+      auto reversed = reduced_vertices.find(vertex.negate());
+      if (reversed != reduced_vertices.end()) {
+        return reversed->second.negate();
+      }
+      const Vertex& left = reduced_vertices.find(vertex.left_child())->second;
+      const Vertex& right = reduced_vertices.find(vertex.right_child())->second;
+      if (!left && !right) {
+        return Vertex();
       } else {
-        Vertex reduced_left = get_sub_slp(left, 0, left.length() - cancellation_length);
-        Vertex reduced_right = get_sub_slp(right, cancellation_length, right.length());
-        if (!reduced_left && !reduced_right) {
-          return Vertex();
-        } else if (!reduced_left) {
-          assert(reduced_right.height() >= 1);
-          assert(reduced_right.height() != 1 || reduced_right.length() == 1);
-          return reduced_right;
-        } else if (!reduced_right) {
-          assert(reduced_left.height() >= 1);
-          assert(reduced_left.height() != 1 || reduced_left.length() == 1);
-          return reduced_left;
+        NonterminalVertex result(left, right);
+        LongInteger cancellation_length = get_cancellation_length(result);
+        if (cancellation_length == 0) {
+          if (left == vertex.left_child() && right == vertex.right_child()) {
+            assert((vertex.height() > 1 && vertex.length() > 1) || (vertex.length() == 1 && vertex.height() == 1) || (vertex.length() == 0 && vertex.height() == 0));
+            return vertex;
+          } else if (!left) {
+            return right;
+          } else if (!right) {
+            return left;
+          } else {
+            assert((result.height() > 1 && result.length() > 1) || (result.length() == 1 && result.height() == 1) || (result.length() == 0 && result.height() == 0));
+            return result;
+          }
         } else {
-          auto result = NonterminalVertex(reduced_left, reduced_right);
-          assert(result.length() > 1);
-          assert(result.height() > 1);
-          return result;
+          Vertex reduced_left = get_sub_slp(left, 0, left.length() - cancellation_length);
+          Vertex reduced_right = get_sub_slp(right, cancellation_length, right.length());
+
+          if (!reduced_left && !reduced_right) {
+            return Vertex();
+          } else if (!reduced_left) {
+            assert(reduced_right.height() >= 1);
+            assert(reduced_right.height() != 1 || reduced_right.length() == 1);
+            return reduced_right;
+          } else if (!reduced_right) {
+            assert(reduced_left.height() >= 1);
+            assert(reduced_left.height() != 1 || reduced_left.length() == 1);
+            return reduced_left;
+          } else {
+            auto result = NonterminalVertex(reduced_left, reduced_right);
+            assert(result.length() > 1);
+            assert(result.height() > 1);
+            return result;
+          }
         }
       }
-    }
   });
   return (*reduced_vertices)[vertex];
 }
+
+inline Vertex reduce(
+    const Vertex& vertex,
+    MatchingTable* matching_table,
+    std::unordered_map<Vertex, Vertex>* reduced_vertices)
+{
+  return base_reduce(vertex,
+                     [matching_table](const Vertex& vertex) { return get_cancellation_length(vertex, matching_table); },
+                     reduced_vertices
+  );
+}
+
 
 inline Vertex reduce(const Vertex& vertex) {
   MatchingTable matching_table;

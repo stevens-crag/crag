@@ -60,6 +60,10 @@ class MatchingTable {
       return pattern.length() <= 1 || text.length() <= 1 || match_table_->count(::std::make_pair(pattern, text));
     }
 
+    size_t size() const {
+      return match_table_->size();
+    }
+
     MatchingTable()
       : match_table_(::std::make_shared<std::unordered_map<std::pair<Vertex, Vertex>, FiniteArithmeticSequence>>())
     { }

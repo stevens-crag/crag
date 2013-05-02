@@ -27,7 +27,7 @@ override DEFINE +=
 # used by default
 #
 
-LOCAL_LIBS = -L/lib/ -lgmpxx -lgmp
+LOCAL_LIBS = -L/lib/ -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic -ltcmalloc_minimal
 
 
 # 
@@ -38,7 +38,7 @@ SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_o
 # 
 # MAIN lists all source files with main function:
 
-MAIN = test_cs
+MAIN = test_cs profile_matching_new profile_matching_old profile_reduce hash_reduce
 
 
 ## All the compiler and linker stuff here:                           

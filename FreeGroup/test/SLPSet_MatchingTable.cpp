@@ -853,7 +853,7 @@ TEST(SLPMatchingTable, InversedTest) {
 }
 
 TEST(SLPMatchingTable, StressTest) {
-  const unsigned int WORD_SIZE = 10;
+  const unsigned int WORD_SIZE = 16;
   int repeat = 5000;
 
   srand(time(NULL));
