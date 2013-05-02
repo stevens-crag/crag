@@ -134,7 +134,7 @@ public:
    * @return a this a^{-1}
    */
   template<typename Iterator>
-  const EndomorphismSLP conjugate_with(Iterator begin, Iterator end) const {
+  EndomorphismSLP conjugate_with(Iterator begin, Iterator end) const {
     std::vector<EndomorphismSLP> inverses;
     EndomorphismSLP e(*this);
     for(;begin != end; ++begin) {
@@ -152,7 +152,7 @@ public:
    * @return a this a^{-1}
    */
   template<typename Generator>
-  const EndomorphismSLP conjugate_with(unsigned int num, Generator& generator) const {
+  EndomorphismSLP conjugate_with(unsigned int num, Generator& generator) const {
     std::vector<EndomorphismSLP> inverses;
     inverses.reserve(num);
     EndomorphismSLP e(*this);
@@ -185,7 +185,6 @@ public:
     });
     return result;
   }
-
 
   //! Returns the image of the terminal.
   slp::VertexWord<TerminalSymbol> image_word(const TerminalSymbol& t) const {
@@ -502,7 +501,9 @@ class AutomorphismDescription {
         this->a_inv_parts_.push_back(e.inverse());
       });
       a_ = Automorphism::composition(a_parts_.begin(), a_parts_.end());
+      a_ = a_.free_reduction();
       a_inv_ = Automorphism::composition(a_inv_parts_.begin(), a_inv_parts_.end());
+      a_inv_ = a_inv_.free_reduction();
     }
 
     //! Returns the automorphism itself.
@@ -534,6 +535,9 @@ class AutomorphismDescription {
 
     //! Returns description of the composition of automorphisms.
     AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
+      Automorphism prod = a_ * ad.a_;
+      Automorhpism inv_prod = ad.a_inv_ * a_inv_;
+
       std::vector<Automorphism> prod_parts;
       prod_parts.reserve(a_parts_.size() + ad.a_parts_.size());
       prod_parts.insert(prod_parts.end(), a_parts_.begin(), a_parts_.end());
@@ -544,7 +548,8 @@ class AutomorphismDescription {
       inv_prod_parts.insert(inv_prod_parts.end(), ad.a_inv_parts_.begin(), ad.a_inv_parts_.end());
       inv_prod_parts.insert(inv_prod_parts.end(), a_inv_parts_.begin(), a_inv_parts_.end());
 
-      return AutomorphismDescription(a_ * ad.a_, ad.a_inv_ * a_inv_, prod_parts, inv_prod_parts);
+      return AutomorphismDescription(prod.free_reduction(), inv_prod.free_reduction(),
+                                     prod_parts, inv_prod_parts);
     }
 
     //! Modifies itself to be a description of the composition of itself and the given automorphism.
