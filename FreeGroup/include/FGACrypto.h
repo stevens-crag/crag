@@ -24,13 +24,35 @@ namespace crag {
         const unsigned int B_SIZE = 4;
         const unsigned int U_LENGTH = 25;
         const unsigned int V_LENGTH = 25;
-        const unsigned int C_SIZE = 59;
+        const unsigned int C_SIZE = 50;
         //TODO make constructor
     };
 
+    //! A pair of automorphism and its inverse. We use it only because we can not find inverses effeciently.
+    struct AutomorphismInvPair {
+        EndomorphismSLP<int> a;
+        EndomorphismSLP<int> a_inv;
+
+        static AutomorphismInvPair make_conjugation(const AutomorphismDescription& morphism, const AutomorphismDescription& conjugator) {
+          AutomorphismInvPair result;
+          result.a = (conjugator.inverse() * morphism() * conjugator()).free_reduction();
+          result.a_inv = (conjugator.inverse() * morphism.inverse() * conjugator()).free_reduction();
+          return result;
+        }
+
+        static std::vector<AutomorphismInvPair> make_conjugations(const std::vector<AutomorphismDescription>& morphisms, const AutomorphismDescription& conjugator) {
+          std::vector<AutomorphismInvPair> result;
+          result.reserve(morphisms.size());
+          for (int i = 0; i < morphisms.size(); ++i) {
+            result.push_back(make_conjugation(morphisms[i], conjugator));
+          }
+          return result;
+        }
+    };
+
     struct PublicKeys {
-        std::vector<AutmorphismDescription> s;
-        std::vector<AutmorphismDescription> r;
+        std::vector<AutomorphismInvPair> s;
+        std::vector<AutomorphismInvPair> r;
     };
 
     class KeysGenerator {
@@ -46,9 +68,14 @@ namespace crag {
             betas_(),
             u_(),
             v_(),
+            s_(),
+            r_(),
+            priv_key_base_(),
             c_(params.C_SIZE, UniformAutomorphismSLPGenerator<int, RandomEngine>(2 * params.N, p_rand)),
             priv_key_(),
-            pub_keys_() {
+            pub_keys_(),
+            shared_key_() {
+
           //generating alphas, betas
           UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_alphas(params.N, p_rand);
           UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_betas(params.N + 1, 2 * params.N, p_rand);
@@ -82,25 +109,61 @@ namespace crag {
             v_.push_back(next_generator);
           }
 
-          //generating public keys
-          pub_keys_.s.reserve(4);
+          //generating public and private keys bases
+          s_.reserve(4);
           for (int i = 0; i < 4; ++i) {
-            pub_keys_.s.push_back(alphas_[i] * betas_[i]);
+            s_.push_back(alphas_[i] * betas_[i]);
           }
 
           auto commutator = [] (const AutomorphismDescription& a1, const AutomorphismDescription& a2) {
             return a1 * a2 * a1.invert() * a2.invert();
           };
 
-          pub_keys_.r.reserve(4);
+          r_.reserve(4);
           for (unsigned int i = 0; i <= 1; ++i)
             for (unsigned int j = 3; j <= 4; ++j)
-              pub_keys_.r.push_back(commutator(betas_[i], betas_[j]));
+              r_.push_back(commutator(betas_[i], betas_[j]));
 
-          //generating private key
-          priv_key_ = commutator(get_automorphism_composition(betas_[0], betas_[1], u_),
+          priv_key_base_ = commutator(get_automorphism_composition(betas_[0], betas_[1], u_),
               get_automorphism_composition(betas_[2], betas_[3], v_));
 
+          //generating keys
+          priv_key_ = AutomorphismInvPair::make_conjugation(a, c);
+
+          pub_keys_.s = AutomorphismInvPair::make_conjugations(s_, c);
+          pub_keys_.r = AutomorphismInvPair::make_conjugations(r_, c);
+        }
+
+        const PublicKeys& public_keys() const {
+          return pub_keys_;
+        }
+
+        const AutomorphismDescription& private_key() const {
+          return priv_key_;
+        }
+
+        //! Processes public keys provided by other party to send them back
+        PublicKeys process_incoming_public_keys(const PublicKeys& other_public_keys) {
+          PublicKeys result;
+          result.s = AutomorphismInvPair::make_conjugations(other_public_keys.s, c);
+          result.r = AutomorphismInvPair::make_conjugations(other_public_keys.r, c);
+          return result;
+        }
+
+        //! Make shared keys with the given public keys of another party
+        /**
+         * @param processed_public_keys our public keys processed by another party
+         * @param order chooses the order in which we multiply our private key with the key made from processed public keys.
+         * @return
+         */
+        AutomorphismInvPair make_shared_key(const PulbicKeys& processed_public_keys, bool order = true) {
+          EndomorphismSLP<int> key;
+
+          if (order) {
+            key = priv_key_.a_inv * key;
+          } else {
+            key = priv_key
+          }
         }
 
       private:
@@ -109,11 +172,18 @@ namespace crag {
         std::vector<AutomorphismDescription> betas_;
         std::vector<int> u_;
         std::vector<int> v_;
+        std::vector<AutmorphismDescription> s_;
+        std::vector<AutmorphismDescription> r_;
+
+        AutomorphismDescription priv_key_base_;
+
         AutomorphismDescription c_;
 
-        AutmorphismDescription priv_key_;
+        AutomorphismInvPair priv_key_;
 
         PublicKeys pub_keys_;
+
+        AutomorphismInvPair shared_key_;
 
         static AutomorphismDescription get_automorphism_composition(const AutomorphismDescription& a1,
                                                                     const AutomorphismDescription& a2,
@@ -138,13 +208,12 @@ namespace crag {
           return result;
         }
 
+        //! Using public key calculate the private key.
+        AutomorphismInvPair calculate_private_key(const PublicKeys& keys) {
+
+        }
+
      };
-
-
-    template
-    AutomorphismDescription invert() const {
-
-    }
   }
 }
 
