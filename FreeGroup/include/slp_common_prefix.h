@@ -162,7 +162,8 @@ class LongestPrefixInspectorPath : public InspectorPath<AcceptFunctor> {
 
     bool is_prefix(const InspectorTask& current_task) {
       auto matches = matching_table_.matches(current_task.vertex, other_vertex());
-      return matches.shift_right(other_vertex_left_siblings()).contains(current_task.left_siblings_length);
+      matches.shift_right(other_vertex_left_siblings());
+      return matches.contains(current_task.left_siblings_length);
     }
 
     const Vertex& other_vertex() const {

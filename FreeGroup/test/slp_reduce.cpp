@@ -12,6 +12,8 @@
 #include <string>
 #include <algorithm>
 #include <vector>
+#include <iterator>
+#include <sstream>
 
 #include "gtest/gtest.h"
 #include "slp.h"
@@ -68,7 +70,7 @@ Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
 //}
 
 TEST(SubSLP, StressTest) {
-  const size_t size = 500;
+  const size_t size = 10;
   int repeat = 1000;
   srand(time(0));
   while (--repeat >= 0) {
@@ -213,7 +215,7 @@ TEST(Reduce, Example2) {
 TEST(Reduce, StressTest) {
   const size_t REPEAT = 10000;
   const size_t RANK = 3;
-  const size_t ENDOMORPHISMS_NUMBER = 15;
+  const size_t ENDOMORPHISMS_NUMBER = 20;
   size_t seed = 0;
   while (++seed <= REPEAT) {
     UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
@@ -229,32 +231,35 @@ TEST(Reduce, StressTest) {
         reduced_image.push_back(symbol);
       }
     }
+    std::ostringstream reduced_image_string;
+    std::copy(reduced_image.begin(), reduced_image.end(), std::ostream_iterator<int>(reduced_image_string, ""));
     auto correct_symbol = reduced_image.begin();
     for (auto symbol : VertexWord<int>(reduced)) {
       ASSERT_EQ(*correct_symbol, symbol) << seed << std::endl
           << print_tree_preorder_single(image) << std::endl
           << print_tree_preorder(reduced) << std::endl
           << VertexWord<int>(image) << std::endl
-          << VertexWord<int>(reduced) << std::endl;
+          << VertexWord<int>(reduced) << std::endl
+          << reduced_image_string.str() << std::endl;
       ++correct_symbol;
     }
   }
 }
 
-TEST(Reduce, PerformanceTest) {
-  int REPEAT = 10;
-  const size_t RANK = 3;
-  const size_t ENDOMORPHISMS_NUMBER = 100;
-  size_t seed = time(0);
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-  while (--REPEAT >= 0) {
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
-
-    Vertex reduced = reduce(image);
-    std::cout << image.length() << std::endl;
-    std::cout << reduced.length() << std::endl;
-  }
-}
+//TEST(Reduce, PerformanceTest) {
+//  int REPEAT = 10;
+//  const size_t RANK = 3;
+//  const size_t ENDOMORPHISMS_NUMBER = 100;
+//  size_t seed = 112233;///time(0);//
+//  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+//  while (--REPEAT >= 0) {
+//    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).slp(1);
+//
+//    Vertex reduced = reduce(image);
+//    std::cout << image.length() << std::endl;
+//    std::cout << reduced.length() << std::endl;
+//  }
+//}
 
 
 } //namespace

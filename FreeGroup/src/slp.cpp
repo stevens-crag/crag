@@ -17,17 +17,20 @@ const LongInteger& Vertex::LongZero() { //We use it to return length of Null ver
   return zero;
 }
 
-Vertex internal::BasicNonterminalVertex::negate() const {
-  return NonterminalVertex(::std::make_shared<BasicNonterminalVertex>(
-      ::std::shared_ptr<NonterminalVertexNodeData>(node_data_ptr_),
-      !negate_node_
-  ));
+const LongInteger& Vertex::LongOne() { //We use it to return length of Null vertex
+  static LongInteger one = 1;
+  return one;
 }
 
-constexpr ::std::hash<std::shared_ptr<internal::NonterminalVertexNodeData>> internal::BasicNonterminalVertex::ptr_hash;
-
-size_t internal::BasicNonterminalVertex::last_vertex_id_;
+const Vertex::VertexAllocator& NonterminalVertex::get_allocator() {
+  static Vertex::VertexAllocator allocator;
+  return allocator;
 }
+
+Vertex::VertexSignedId NonterminalVertex::last_vertex_id_;
+constexpr std::hash<Vertex::VertexSignedId> Vertex::vertex_id_hash_;
+
+} //namespace slp
 
 ::std::ostream& operator<<(::std::ostream& out, const FiniteArithmeticSequence& sequence) {
   return out << sequence.first() << ":" << sequence.last() << ".." << sequence.step();
@@ -202,17 +205,11 @@ FiniteArithmeticSequence PatternMatchesGenerator::next_match() {
   FiniteArithmeticSequence result;
 
   while (!text_inspector_.stopped()) {
-    //::std::cout << "Generator on ";
-    //PrintTo(text_inspector_.vertex(), &::std::cout);
-    //::std::cout << ::std::endl;
     FiniteArithmeticSequence new_match = matching_table_.matches(pattern_, text_inspector_.vertex());
-    //::std::cout << "Match is " << new_match << ::std::endl;
     //Adjust match start
     new_match.shift_right(text_inspector_.vertex_left_siblings_length());
-    //::std::cout << "After shift: " << new_match << ::std::endl;
     //cut the sequence to begin after the large_pattern_part_left_bound
     new_match.fit_into(first_lookup_begin_position_, last_lookup_begin_position_);
-    //::std::cout << "After fit into [" << first_lookup_begin_position_ << ", " << last_lookup_begin_position_ << "]: " << new_match << ::std::endl;
     new_match.join_with(result);
 
     if (result &&
@@ -239,17 +236,19 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
     return FiniteArithmeticSequence::NullSequence();
   }
 
+  if (pattern == text) { //If we are checking the same vertex
+    static FiniteArithmeticSequence trivial(0, 1, 1);
+    return trivial;
+  }
+
   auto match_result_iterator = match_table_->find(std::make_pair(pattern, text));
 
   if (match_result_iterator != match_table_->end()) { //if already calculated
     return match_result_iterator->second;
   }
-
   FiniteArithmeticSequence match_result;
 
-  if (pattern == text) { //If we are checking the same vertex
-    match_result = FiniteArithmeticSequence(0, 1, 1);
-  } else if (pattern.length() == 1) {//Trivial case
+  if (pattern.length() == 1) {//Trivial case
     Vertex pattern_vertex = pattern;
     while (pattern_vertex.height() > 1) {
       if (pattern_vertex.left_child()) {
@@ -299,15 +298,11 @@ const FiniteArithmeticSequence& MatchingTable::matches(const Vertex& pattern,
           this
       );
     }
-    //::std::cout << "Not calculated match(";
-    //PrintTo(pattern, &::std::cout);
-    //::std::cout << ",";
-    //PrintTo(text, &::std::cout);
-    //::std::cout << ") is " << match_result << ::std::endl;
-
   }
 
-  auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), match_result));
+  FiniteArithmeticSequence inversed_result = FiniteArithmeticSequence(match_result).shift_right(text.length() - pattern.length() - match_result.last() - match_result.first());
+  match_table_->insert(std::make_pair(std::make_pair(pattern.negate(), text.negate()), std::move(inversed_result)));
+  auto inserted_element = match_table_->insert(std::make_pair(std::make_pair(pattern, text), std::move(match_result)));
 
   return inserted_element.first->second;
 }
@@ -340,8 +335,6 @@ FiniteArithmeticSequence nontrivial_match(
   while(large_part_hunter) {
     auto large_part_matches = large_part_hunter.next_match();
 
-    //::std::cout << "Found large: " << large_part_matches << ::std::endl;
-
     if (large_part_matches) {
       FiniteArithmeticSequence small_part_candidates = large_part_matches;
 
@@ -351,7 +344,6 @@ FiniteArithmeticSequence nontrivial_match(
       } else {
         small_part_candidates.shift_right(-small_pattern_part.length());
       }
-      //::std::cout << "Candidates: " << small_part_candidates << ::std::endl;
       LongInteger seaside_candidates_bound = (small_pattern_is_after ? small_part_candidates.last() - small_pattern_part.length(): small_part_candidates.first());
 
       PatternMatchesGenerator seaside_hunter(
@@ -363,9 +355,7 @@ FiniteArithmeticSequence nontrivial_match(
       );
 
       auto seaside_matches = seaside_hunter.next_match();
-      //::std::cout << "Seaside matches: " << seaside_matches << ::std::endl;
       seaside_matches.intersect_with(small_part_candidates);
-      //::std::cout << "Found seaside: " << seaside_matches << ::std::endl;
 
       const LongInteger& continental_candidate_start = small_pattern_is_after ? small_part_candidates.first() : small_part_candidates.last();
       PatternMatchesGenerator continental_hunter(
@@ -380,15 +370,12 @@ FiniteArithmeticSequence nontrivial_match(
 
       FiniteArithmeticSequence& small_part_approved_candidates = seaside_matches;
       if (continental_matches) {
-        //::std::cout << "Found continental: " << continental_matches << ::std::endl;
         continental_matches = small_part_candidates;
         if (small_pattern_is_after) {
           continental_matches.fit_into(continental_matches.first(), seaside_candidates_bound - 1);
         } else {
           continental_matches.fit_into(seaside_candidates_bound + small_pattern_part.length() + 1, continental_matches.last());
         }
-        //::std::cout << "Multiplied continental: " << continental_matches << ::std::endl;
-
 
         small_part_approved_candidates.join_with(continental_matches);
       }
@@ -424,7 +411,7 @@ LongInteger longest_common_prefix(const Vertex& first, const Vertex& second, Mat
 }
 
 //Be aware passing temporary objects as root - maybe, this temporary object will be returned.
-const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end, std::unordered_map<std::tuple<Vertex, LongInteger, LongInteger>, Vertex>* cache) {
+Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end) {
   if (begin >= root.length() || end < 0 || end <= begin) {
     static Vertex Null;
     return Null;
@@ -436,28 +423,15 @@ const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
     assert(root.height() != 1 || root.length() == 1);
     return root;
   } else {
-    auto cache_item = cache->find(std::make_tuple(root, begin, end));
-    if (cache_item != cache->end()) {
-      return cache_item->second;
-    }
     if (root.split_point() >= end) {
-      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.left_child(), begin, end, cache)))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return get_sub_slp(root.left_child(), begin, end);
     } else if (root.split_point() <= begin) {
-      const Vertex& result = cache->insert(std::make_pair(std::make_tuple(root, begin, end), Vertex(get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point());
     } else {
-      const Vertex& result = cache->insert(
-          std::make_pair(
-              std::make_tuple(root, begin, end),
-              NonterminalVertex(
-                  get_sub_slp(root.left_child(), begin, end, cache),
-                  get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point(), cache)
-          ))).first->second;
-      assert(result.height() != 1 || result.length() == 1);
-      return result;
+      return NonterminalVertex(
+        get_sub_slp(root.left_child(), begin, root.split_point()),
+        get_sub_slp(root.right_child(), 0, end - root.split_point())
+      );
     }
   }
 }
@@ -467,3 +441,4 @@ const Vertex& get_sub_slp(const Vertex& root, const LongInteger& begin, const Lo
 
 constexpr std::hash<mp_limb_t*> std::hash<LongInteger>::limb_hasher_;
 
+constexpr std::hash<uint64_t> crag::Permutation16::uint_hasher_;

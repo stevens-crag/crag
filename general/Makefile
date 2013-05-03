@@ -32,7 +32,7 @@ LOCAL_LIBS =
 
 # 
 # SRC: lists all source files
-SRC = Permutation ConfigFile BalancedTree VectorEnumerator
+SRC = Permutation ConfigFile BalancedTree VectorEnumerator gmp_boost_pool_allocator
 
 
 # 
