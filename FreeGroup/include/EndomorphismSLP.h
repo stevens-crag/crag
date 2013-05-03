@@ -472,15 +472,96 @@ private:
 };
 
 
-
-
-//! Automorphism description keeping track of the automorphisms and its inverse and the parts of which they are composed.
+//! Automorphism description keeping track of the automorphisms and its inverse.
 template<typename Automorphism = EndomorphismSLP<int> >
 class AutomorphismDescription {
   public:
 
+    static AutomorphismDescription make_commutator(const AutomorphismDescription& first, const AutomorphismDescription& second) {
+      Automorphism a = (first() * second() * first.inverse() * second.inverse()).free_reduction();
+      Automorphism a_inv = (second() * first() * second.inverse() * first.inverse()).free_reduction();
+      return AutomorphismDescription(a, a_inv);
+    }
+
     //! Creates the description for a single autmorphism.
     AutomorphismDescription(const Automorphism& e)
+      : a_(e),
+        a_inv_(e.inverse()) {}
+
+    //! Generates a random autmorphism.
+    template<typename RandomAutomorphismGenerator>
+    AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random) {
+      std::vector<Automorphism> parts;
+      parts.reserve(size);
+      for (unsigned int i = 0; i < size; ++i) {
+        parts.push_back(random());
+      }
+      a_ = Automorphism::composition(parts.begin(), parts.end()).free_reduction();
+      std::for_each(parts.rbegin(), parts.rend(), [&] (const Automorphism& a) {
+        a_inv_ *= a.inverse();
+      });
+      a_inv_ = a_inv_.free_reduction();
+    }
+
+    //! Returns the automorphism itself.
+    const Automorphism& operator()() const {
+      return a_;
+    }
+
+    //! Returns the automorphism inverse.
+    const Automorphism& inverse() const {
+      return a_inv_;
+    }
+
+    //! Returns description of inverse automorphism.
+    AutomorphismDescription inverse_description() const {
+      return AutomorphismDescription(a_inv_, a_);
+    }
+
+    //! Returns description of the composition of automorphisms.
+    AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
+      Automorphism prod = a_ * ad.a_;
+      Automorphism inv_prod = ad.a_inv_ * a_inv_;
+      return AutomorphismDescription(prod.free_reduction(), inv_prod.free_reduction());
+    }
+
+    //! Modifies itself to be a description of the composition of itself and the given automorphism.
+    AutomorphismDescription& operator*=(const AutomorphismDescription& ad) {
+      *this = *this * ad;
+      return *this;
+    }
+
+    AutomorphismDescription conjugate_with(const AutomorphismDescription& conjugator) const {
+      Automorphism a = (conjugator() * a_ * conjugator.inverse()).free_reduction();
+      Automorphism a_inv = (conjugator() * a_inv_ * conjugator.inverse()).free_reduction();
+      return AutomorphismDescription(a, a_inv);
+    }
+
+    AutomorphismDescription free_reduction() const {
+      return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction());
+    }
+
+
+  private:
+    Automorphism a_;
+    Automorphism a_inv_;
+
+    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv)
+      : a_(a),
+        a_inv_(a_inv) {}
+
+    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv)
+      : a_(a),
+        a_inv_(a_inv) {}
+};
+
+//! Automorphism description keeping track of the automorphisms and its inverse and the parts of which they are composed.
+template<typename Automorphism = EndomorphismSLP<int> >
+class AutomorphismDescriptionWithHistory {
+  public:
+
+    //! Creates the description for a single autmorphism.
+    AutomorphismDescriptionWithHistory(const Automorphism& e)
       : a_(e),
         a_inv_(e.inverse()),
         a_parts_(),
@@ -491,7 +572,7 @@ class AutomorphismDescription {
 
     //! Generates a random autmorphism.
     template<typename RandomAutomorphismGenerator>
-    AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random) {
+    AutomorphismDescriptionWithHistory(unsigned int size, RandomAutomorphismGenerator& random) {
       a_parts_.reserve(size);
       a_inv_parts_.reserve(size);
       for (unsigned int i = 0; i < size; ++i) {
@@ -529,14 +610,14 @@ class AutomorphismDescription {
     }
 
     //! Returns description of inverse automorphism.
-    AutomorphismDescription description_of_inverse() const {
-      return AutomorphismDescription(a_inv_, a_, a_inv_parts_, a_parts_);
+    AutomorphismDescriptionWithHistory description_of_inverse() const {
+      return AutomorphismDescriptionWithHistory(a_inv_, a_, a_inv_parts_, a_parts_);
     }
 
     //! Returns description of the composition of automorphisms.
-    AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
+    AutomorphismDescriptionWithHistory operator*(const AutomorphismDescriptionWithHistory& ad) const {
       Automorphism prod = a_ * ad.a_;
-      Automorhpism inv_prod = ad.a_inv_ * a_inv_;
+      Automorphism inv_prod = ad.a_inv_ * a_inv_;
 
       std::vector<Automorphism> prod_parts;
       prod_parts.reserve(a_parts_.size() + ad.a_parts_.size());
@@ -548,12 +629,12 @@ class AutomorphismDescription {
       inv_prod_parts.insert(inv_prod_parts.end(), ad.a_inv_parts_.begin(), ad.a_inv_parts_.end());
       inv_prod_parts.insert(inv_prod_parts.end(), a_inv_parts_.begin(), a_inv_parts_.end());
 
-      return AutomorphismDescription(prod.free_reduction(), inv_prod.free_reduction(),
+      return AutomorphismDescriptionWithHistory(prod.free_reduction(), inv_prod.free_reduction(),
                                      prod_parts, inv_prod_parts);
     }
 
     //! Modifies itself to be a description of the composition of itself and the given automorphism.
-    AutomorphismDescription& operator*=(const AutomorphismDescription& ad) {
+    AutomorphismDescriptionWithHistory& operator*=(const AutomorphismDescriptionWithHistory& ad) {
       *this = *this * ad;
       return *this;
     }
@@ -564,7 +645,7 @@ class AutomorphismDescription {
     std::vector<Automorphism> a_parts_;
     std::vector<Automorphism> a_inv_parts_;
 
-    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv,
+    AutomorphismDescriptionWithHistory(const Automorphism& a, const Automorphism& a_inv,
                             const std::vector<Automorphism>& a_parts,
                             const std::vector<Automorphism>& a_inv_parts)
       : a_(a),
@@ -572,6 +653,16 @@ class AutomorphismDescription {
         a_parts_(a_parts),
         a_inv_parts_(a_inv_parts) {}
 };
+
+template<typename T>
+static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const T& conjugator) {
+  std::vector<T> result;
+  result.reserve(morphisms.size());
+  for (int i = 0; i < morphisms.size(); ++i) {
+    result.push_back(morphisms[i].conjugate_with(conjugator));
+  }
+  return result;
+}
 
 //-------------------------------------------------------------------------------------
 // Implementation of EndomorphismSLP methods.
