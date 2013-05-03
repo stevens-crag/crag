@@ -483,6 +483,8 @@ class AutomorphismDescription {
       return AutomorphismDescription(a, a_inv);
     }
 
+    AutomorphismDescription() {}
+
     //! Creates the description for a single autmorphism.
     AutomorphismDescription(const Automorphism& e)
       : a_(e),
@@ -653,8 +655,8 @@ class AutomorphismDescriptionWithHistory {
         a_inv_parts_(a_inv_parts) {}
 };
 
-template<typename T>
-static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const T& conjugator) {
+template<typename T, typename Conjugator>
+static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conjugator& conjugator) {
   std::vector<T> result;
   result.reserve(morphisms.size());
   for (int i = 0; i < morphisms.size(); ++i) {
