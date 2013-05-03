@@ -13,7 +13,7 @@ namespace fga_crypto {
   TEST(FGACryptoTest, Basic) {
     SchemeParameters params(3, 2, 2, 2, 2, 2);
     std::default_random_engine rnd;
-    KeysGenerator alice(params, rnd);
+    KeysGenerator alice(SchemeParameters::canonical(), rnd);
   }
 
 } // namespace fga_crypto

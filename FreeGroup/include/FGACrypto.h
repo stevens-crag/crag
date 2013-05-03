@@ -136,28 +136,41 @@ namespace fga_crypto {
         c_ = AutomorphismDescription(params.C_SIZE, random_for_c);
 
         //generating u, v
-        std::uniform_int_distribution<int> binary_rand(1, 2);
+        std::uniform_int_distribution<int> binary_rand(0, 1);
+        auto next_gen = [&binary_rand, &rand] (int shift) {
+          int base = shift + binary_rand(rand);
+          return binary_rand(rand) == 0 ? base : -base;
+        };
+
         u_.reserve(params.U_LENGTH);
-        int next_generator = binary_rand(rand) == 1 ? binary_rand(rand) : -binary_rand(rand);
+        int next_generator = next_gen(1);
         u_.push_back(next_generator);
         for (unsigned int i = 1; i < params.U_LENGTH; ++i) {
           int prev = u_[i - 1];
           do {
-            next_generator = binary_rand(rand) == 1 ? binary_rand(rand) : -binary_rand(rand);
+            next_generator = next_gen(1);
           } while (next_generator == -prev);
           u_.push_back(next_generator);
         }
 
+        for (int i: u_)
+          std::cout << i << " ";
+        std::cout << std::endl;
+
         v_.reserve(params.V_LENGTH);
-        next_generator = binary_rand(rand) == 1 ? params.N + binary_rand(rand) : -params.N - binary_rand(rand);
+        next_generator = next_gen(params.N);
         v_.push_back(next_generator);
         for (unsigned int i = 1; i < params.V_LENGTH; ++i) {
           int prev = v_[i - 1];
           do {
-            next_generator = binary_rand(rand) == 1 ? params.N + binary_rand(rand) : -params.N - binary_rand(rand);
+            next_generator = next_gen(params.N);
           } while (next_generator == -prev);
           v_.push_back(next_generator);
         }
+        for (int i: v_)
+          std::cout << i << " ";
+        std::cout << std::endl;
+
 
         //generating public and private keys bases
         s_.reserve(4);
@@ -171,7 +184,7 @@ namespace fga_crypto {
 
         r_.reserve(4);
         for (int i: {0, 1})
-          for (int j: {3, 4})
+          for (int j: {2, 3})
             r_.push_back(CommutatorSet(betas_[i], betas_[j]));
 
         priv_key_base_ = commutator(get_betas_composition(u_),
@@ -244,9 +257,9 @@ namespace fga_crypto {
       AutomorphismDescription get_betas_composition(const std::vector<int>& pattern) {
         auto pick = [&] (int i) {
           if (i > 0) {
-            return betas_[i - 1]();
+            return betas_[i - 1];
           } else {
-            return betas_[- i - 1].inverse();
+            return betas_[- i - 1].inverse_description();
           }
         };
         AutomorphismDescription result;
