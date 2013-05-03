@@ -522,7 +522,7 @@ class AutomorphismDescription {
     AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
       Automorphism prod = a_ * ad.a_;
       Automorphism inv_prod = ad.a_inv_ * a_inv_;
-      return AutomorphismDescription(prod.free_reduction(), inv_prod.free_reduction());
+      return AutomorphismDescription(prod, inv_prod).free_reduction();
     }
 
     //! Modifies itself to be a description of the composition of itself and the given automorphism.
@@ -540,7 +540,6 @@ class AutomorphismDescription {
     AutomorphismDescription free_reduction() const {
       return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction());
     }
-
 
   private:
     Automorphism a_;
