@@ -48,11 +48,13 @@ namespace fga_crypto {
   class CommutatorSet {
     public:
       CommutatorSet(const AutomorphismDescription& first, const AutomorphismDescription& second) {
+        auto inv_first = first.inverse_description();
+        auto inv_second = second.inverse_description();
         comm_.reserve(4);
         comm_.push_back(AutomorphismDescription::make_commutator(first, second));
-        comm_.push_back(AutomorphismDescription::make_commutator(first.inverse(), second));
-        comm_.push_back(AutomorphismDescription::make_commutator(first, second.inverse()));
-        comm_.push_back(AutomorphismDescription::make_commutator(first.inverse(), second.inverse()));
+        comm_.push_back(AutomorphismDescription::make_commutator(inv_first, second));
+        comm_.push_back(AutomorphismDescription::make_commutator(first, inv_second));
+        comm_.push_back(AutomorphismDescription::make_commutator(inv_first, inv_second));
       }
 
       const AutomorphismDescription& get(bool first_inversed, bool second_inversed) const {
@@ -134,26 +136,26 @@ namespace fga_crypto {
         c_ = AutomorphismDescription(params.C_SIZE, random_for_c);
 
         //generating u, v
-        std::uniform_int_distribution<int> rand_generators(1, 2);
+        std::uniform_int_distribution<int> binary_rand(1, 2);
         u_.reserve(params.U_LENGTH);
-        int next_generator = rand() < 0.5 ? rand_generators(rand) : -rand_generators(rand);
+        int next_generator = binary_rand(rand) == 1 ? binary_rand(rand) : -binary_rand(rand);
         u_.push_back(next_generator);
         for (unsigned int i = 1; i < params.U_LENGTH; ++i) {
           int prev = u_[i - 1];
           do {
-            next_generator = rand() < 0.5 ? rand_generators(rand) : -rand_generators(rand);
-          } while (next_generator != -prev);
+            next_generator = binary_rand(rand) == 1 ? binary_rand(rand) : -binary_rand(rand);
+          } while (next_generator == -prev);
           u_.push_back(next_generator);
         }
 
         v_.reserve(params.V_LENGTH);
-        next_generator = rand() < 0.5 ? params.N + rand_generators(rand) : -params.N - rand_generators(rand);
+        next_generator = binary_rand(rand) == 1 ? params.N + binary_rand(rand) : -params.N - binary_rand(rand);
         v_.push_back(next_generator);
         for (unsigned int i = 1; i < params.V_LENGTH; ++i) {
           int prev = v_[i - 1];
           do {
-            next_generator = rand() < 0.5 ? params.N + rand_generators(rand) : -params.N - rand_generators(rand);
-          } while (next_generator != -prev);
+            next_generator = binary_rand(rand) == 1 ? params.N + binary_rand(rand) : -params.N - binary_rand(rand);
+          } while (next_generator == -prev);
           v_.push_back(next_generator);
         }
 
