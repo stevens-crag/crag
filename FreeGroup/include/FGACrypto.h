@@ -28,31 +28,54 @@ namespace crag {
         //TODO make constructor
     };
 
-    //! A pair of automorphism and its inverse. We use it only because we can not find inverses effeciently.
-    struct AutomorphismInvPair {
-        EndomorphismSLP<int> a;
-        EndomorphismSLP<int> a_inv;
+    //! Set of commutators for a given pair of automorphisms. We use it only because we can not find inverses efficiently.
+    class CommutatorSet {
 
-        static AutomorphismInvPair make_conjugation(const AutomorphismDescription& morphism, const AutomorphismDescription& conjugator) {
-          AutomorphismInvPair result;
-          result.a = (conjugator.inverse() * morphism() * conjugator()).free_reduction();
-          result.a_inv = (conjugator.inverse() * morphism.inverse() * conjugator()).free_reduction();
+        CommutatorSet(const AutomorphismDescription& first, const AutomorphismDescription& second) {
+          comm_.reserve(4);
+          comm_.push_back(AutomorphismDescription::make_commutator(first, second));
+          comm_.push_back(AutomorphismDescription::make_commutator(first.inverse(), second));
+          comm_.push_back(AutomorphismDescription::make_commutator(first, second.inverse()));
+          comm_.push_back(AutomorphismDescription::make_commutator(first.inverse(), second.inverse()));
+        }
+
+        const AutomorphismDescription& get(bool first_inversed, bool second_inversed) const {
+          return comm_[(first_inversed ? 1 : 0) + (second_inversed ? 2 : 0)];
+        }
+
+        CommutatorSet conjugate_with(const AutomorphismDescription& conjugator) const{
+          CommutatorSet result;
+          result.comm_ = conjugate_all(comm_, conjugator);
           return result;
         }
 
-        static std::vector<AutomorphismInvPair> make_conjugations(const std::vector<AutomorphismDescription>& morphisms, const AutomorphismDescription& conjugator) {
-          std::vector<AutomorphismInvPair> result;
-          result.reserve(morphisms.size());
-          for (int i = 0; i < morphisms.size(); ++i) {
-            result.push_back(make_conjugation(morphisms[i], conjugator));
-          }
-          return result;
-        }
+      private:
+        std::vector<AutomorphismDescription> comm_;
     };
 
+
     struct PublicKeys {
-        std::vector<AutomorphismInvPair> s;
-        std::vector<AutomorphismInvPair> r;
+        std::vector<AutomorphismDescription> s;
+        std::vector<CommutatorSet> r;
+
+
+        AutomorphismDescription get_s(int index) {
+          if (index > 0) {
+            return s[index - 1];
+          } else {
+            return s[- index - 1].inverse_description();
+          }
+        }
+
+        AutomorphismDescription get_r(int first_index, int second_index) {
+          bool first_inversed = first_index < 0;
+          bool second_inversed = second_index < 0;
+          first_index = first_inversed ? - first_index : first_index;
+          first_index -= 1;
+          second_index = first_inversed ? - second_index : second_index;
+          second_index -= 3;
+          return r[2 * first_index + second_index].get(first_inversed, second_inversed);
+        }
     };
 
     class KeysGenerator {
@@ -89,6 +112,7 @@ namespace crag {
 
           //generating u, v
           std::uniform_int_distribution<int> rand_generators(1, 2);
+          u_.reserve(params.U_LENGTH);
           int next_generator = *p_rand() < 0.5 ? rand_generators(rand) : -rand_generators(rand);
           u_.push_back(next_generator);
           for (unsigned int i = 1; i < params.U_LENGTH; ++i) {
@@ -99,6 +123,7 @@ namespace crag {
             u_.push_back(next_generator);
           }
 
+          v_.reserve(params.V_LENGTH);
           next_generator = *p_rand() < 0.5 ? params.N + rand_generators(rand) : -params.N - rand_generators(rand);
           v_.push_back(next_generator);
           for (unsigned int i = 1; i < params.V_LENGTH; ++i) {
@@ -116,22 +141,22 @@ namespace crag {
           }
 
           auto commutator = [] (const AutomorphismDescription& a1, const AutomorphismDescription& a2) {
-            return a1 * a2 * a1.invert() * a2.invert();
+            return (a1 * a2 * a1.inverse_description() * a2.inverse_description()).free_reduction();
           };
 
           r_.reserve(4);
-          for (unsigned int i = 0; i <= 1; ++i)
-            for (unsigned int j = 3; j <= 4; ++j)
-              r_.push_back(commutator(betas_[i], betas_[j]));
+          for (int i: {0, 1})
+            for (int j: {3, 4})
+              r_.push_back(CommutatorSet(betas_[i], betas_[j]));
 
-          priv_key_base_ = commutator(get_automorphism_composition(betas_[0], betas_[1], u_),
-              get_automorphism_composition(betas_[2], betas_[3], v_));
+          priv_key_base_ = commutator(get_betas_composition(u_),
+              get_betas_composition(v_));
 
           //generating keys
-          priv_key_ = AutomorphismInvPair::make_conjugation(a, c);
+          priv_key_ = a.conjugate_with(c);
 
-          pub_keys_.s = AutomorphismInvPair::make_conjugations(s_, c);
-          pub_keys_.r = AutomorphismInvPair::make_conjugations(r_, c);
+          pub_keys_.s = conjugate_all(s_, c);
+          pub_keys_.r = conjugate_all(r_, c);
         }
 
         const PublicKeys& public_keys() const {
@@ -143,27 +168,33 @@ namespace crag {
         }
 
         //! Processes public keys provided by other party to send them back
-        PublicKeys process_incoming_public_keys(const PublicKeys& other_public_keys) {
+        PublicKeys process_incoming_public_keys(const PublicKeys& incoming_public_keys) {
           PublicKeys result;
-          result.s = AutomorphismInvPair::make_conjugations(other_public_keys.s, c);
-          result.r = AutomorphismInvPair::make_conjugations(other_public_keys.r, c);
+          result.s = conjugate_all(incoming_public_keys.s, priv_key_);
+          result.r = conjugate_all(incoming_public_keys.r, priv_key_);
           return result;
         }
 
         //! Make shared keys with the given public keys of another party
         /**
          * @param processed_public_keys our public keys processed by another party
-         * @param order chooses the order in which we multiply our private key with the key made from processed public keys.
+         * @param order if true Alice makes the key, otherwise Bob
          * @return
          */
-        AutomorphismInvPair make_shared_key(const PulbicKeys& processed_public_keys, bool order = true) {
-          EndomorphismSLP<int> key;
+        AutomorphismDescription make_shared_key(const PulbicKeys& processed_public_keys, bool order = true) {
+          AutomorphismDescription key;
+          AutomorphismDescription conjugator;
+          for (int row_index: v_) {
+            conjugator *= public_key.get_s(row_index);
+            key *= calculate_private_key_line(row_index, processed_public_keys).conjugate_with(conjugator);
+          }
 
           if (order) {
-            key = priv_key_.a_inv * key;
+            key = priv_key_ * key.inverse_description();//Alice: a * (bab^-1)^-1
           } else {
-            key = priv_key
+            key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
           }
+          return key;
         }
 
       private:
@@ -172,34 +203,26 @@ namespace crag {
         std::vector<AutomorphismDescription> betas_;
         std::vector<int> u_;
         std::vector<int> v_;
-        std::vector<AutmorphismDescription> s_;
-        std::vector<AutmorphismDescription> r_;
+        std::vector<AutomorphismDescription> s_;
+        std::vector<CommutatorSet> r_;
 
         AutomorphismDescription priv_key_base_;
 
         AutomorphismDescription c_;
 
-        AutomorphismInvPair priv_key_;
+        AutomorphismDescription priv_key_;
 
         PublicKeys pub_keys_;
 
-        AutomorphismInvPair shared_key_;
+        AutomorphismDescription shared_key_;
 
-        static AutomorphismDescription get_automorphism_composition(const AutomorphismDescription& a1,
-                                                                    const AutomorphismDescription& a2,
-                                                                    const std::vector<int>& pattern) {
-          auto pick = [&a1, &a2] (int i) {
-            switch(i) {
-              case -2:
-                return a2.description_of_inverse();
-              case -1:
-                return a1.description_of_inverse();
-              case 1:
-                return a1;
-              case 2:
-                return a2;
+        static AutomorphismDescription get_betas_composition(const std::vector<int>& pattern) {
+          auto pick = [&] (int i) {
+            if (i > 0) {
+              return betas_[i - 1]();
+            } else {
+              return betas_[- i - 1].inverse();
             }
-            assert(false);//should not get here
           };
           AutomorphismDescription result;
           for (auto i: pattern) {
@@ -208,9 +231,16 @@ namespace crag {
           return result;
         }
 
-        //! Using public key calculate the private key.
-        AutomorphismInvPair calculate_private_key(const PublicKeys& keys) {
-
+        AutomorphismDescription calculate_private_key_line(int row_index, const PublicKeys& public_key) {
+          //TODO cache
+          AutomorphismDescription conjugator;
+          AutomorphismDescription value;
+          for (int col_index: u_) {
+            conjugator *= public_key.get_s(col_index);
+            auto beta_conj = public_key.get_r(col_index, row_index);
+            value = beta_conj.conjugate_with(conjugator) * value;
+          }
+          return value;
         }
 
      };
