@@ -172,8 +172,29 @@ public:
    */
   EndomorphismSLP inverse() const;
 
-  //! Returns the automorphisms with freely reduced images.
+  //! Returns the automorphisms with freely reduced images. Might make mistakes but much faster precise verstion.
   EndomorphismSLP free_reduction() const {
+    typedef crag::slp::TVertexHashAlgorithms<
+        crag::slp::hashers::SinglePowerHash,
+        crag::slp::hashers::PermutationHash<crag::Permutation16>
+    > WeakVertexHashAlgorithms;
+
+    WeakVertexHashAlgorithms::Cache vertex_hashes;
+
+    EndomorphismSLP result;
+    slp::MatchingTable mt;
+    std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
+    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+      auto reduced = WeakVertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
+      //insert if it is not an identity map
+      if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
+        result.images_.insert(std::make_pair(pair.first, reduced));
+    });
+    return result;
+  }
+
+  //! Returns the automorphisms with freely reduced images. It uses matching tables.
+  EndomorphismSLP free_reduction_precise() const {
     EndomorphismSLP result;
     slp::MatchingTable mt;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;

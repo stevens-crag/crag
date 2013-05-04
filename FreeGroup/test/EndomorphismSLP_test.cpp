@@ -686,6 +686,28 @@ TEST_F(EndomorphismSLPTest, AutomorphismDescriptionComposition) {
   });
 }
 
+TEST_F(EndomorphismSLPTest, FreeReductionTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd).free_reduction();
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd).free_reduction_precise();
+      }
+    }
+  }
+}
+
 
 
 } /* namespace crag */
