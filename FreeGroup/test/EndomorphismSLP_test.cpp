@@ -519,6 +519,41 @@ TEST_F(EndomorphismSLPTest, EqualityTest) {
   }
 }
 
+
+TEST_F(EndomorphismSLPTest, SmallSamplesConjugationTest) {
+  //sample 1->12^2->23
+  auto e = EMorphism::right_multiplier(2, 3);
+  auto conj = EMorphism::right_multiplier(1, 2);
+  std::vector<EMorphism> v = {conj};
+
+  auto conjugation = e.conjugate_with(v.begin(), v.end());
+
+  EXPECT_EQ(2, conjugation.non_trivial_images_num());
+  EXPECT_EQ("12-3-2", to_string(conjugation.image_word(1))) << conjugation;
+  EXPECT_EQ("23", to_string(conjugation.image_word(2))) << conjugation;
+
+  //sample 1->-1^1->21
+  e = EMorphism::inverter(1);
+  conj = EMorphism::left_multiplier(2, 1);
+  v = {conj};
+
+  conjugation = e.conjugate_with(v.begin(), v.end());
+
+  EXPECT_EQ(1, conjugation.non_trivial_images_num());
+  EXPECT_EQ("-2-1-2", to_string(conjugation.image_word(1))) << conjugation;
+
+  //sample 1->-1^(2->23 1->21)
+
+  v = {EMorphism::right_multiplier(2, 3), EMorphism::left_multiplier(2, 1)};
+
+  conjugation = e.conjugate_with(v.begin(), v.end());
+
+  EXPECT_EQ(2, conjugation.non_trivial_images_num());
+  EXPECT_EQ("-3-2-1-3-2", to_string(conjugation.image_word(1))) << conjugation;
+  EXPECT_EQ("23-3", to_string(conjugation.image_word(2))) << conjugation;
+
+}
+
 TEST_F(EndomorphismSLPTest, ConjugationTest) {
   for (auto rank : {15, 10, 20, 30}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
@@ -670,8 +705,8 @@ TEST_F(EndomorphismSLPTest, AutomorphismDescriptionComposition) {
     EMorphism::for_each_basic_morphism(3, [&e] (const EMorphism& e1) {
       AutomorphismDescription<> a(e);
       AutomorphismDescription<> a1(e1);
-      auto prod = (e * e1).free_reduction();
-      auto inv_prod = (e1.inverse() * e.inverse()).free_reduction();
+      auto prod = e * e1;
+      auto inv_prod = e1.inverse() * e.inverse();
 
       EXPECT_EQ(prod, (a * a1)());
       EXPECT_EQ(inv_prod, (a * a1).inverse());
@@ -682,6 +717,76 @@ TEST_F(EndomorphismSLPTest, AutomorphismDescriptionComposition) {
 
     });
   });
+}
+
+TEST_F(EndomorphismSLPTest, MakeCommutatorTest) {
+  AutomorphismDescription<> a(EMorphism::identity());
+  auto comm = make_commutator(a, a);
+  EXPECT_TRUE(comm().is_identity());
+  EXPECT_TRUE(comm.inverse().is_identity());
+
+  EMorphism::for_each_basic_morphism(3, [] (const EMorphism& e) {
+    AutomorphismDescription<> a(e);
+    auto comm = make_commutator(a, a);
+    EXPECT_TRUE(comm().is_identity());
+    EXPECT_TRUE(comm.inverse().is_identity());
+  });
+
+  comm = make_commutator(AutomorphismDescription<>(EndomorphismSLP<int>::inverter(1)),
+                         AutomorphismDescription<>(EndomorphismSLP<int>::inverter(2)));
+  EXPECT_TRUE(comm().is_identity());
+  EXPECT_TRUE(comm.inverse().is_identity());
+
+  comm = make_commutator(AutomorphismDescription<>(EndomorphismSLP<int>::right_multiplier(1, 2)),
+                         AutomorphismDescription<>(EndomorphismSLP<int>::inverter(1)));
+
+  EXPECT_EQ(1, comm().non_trivial_images_num());
+  EXPECT_EQ(1, comm.inverse().non_trivial_images_num());
+  EXPECT_EQ("212", to_string(comm().image_word(1)));
+  EXPECT_EQ("-21-2", to_string(comm.inverse().image_word(1)));
+
+  comm = make_commutator(AutomorphismDescription<>(EndomorphismSLP<int>::left_multiplier(1, 2)),
+                         AutomorphismDescription<>(EndomorphismSLP<int>::inverter(1)));
+
+  EXPECT_EQ(1, comm().non_trivial_images_num());
+  EXPECT_EQ(1, comm.inverse().non_trivial_images_num());
+  EXPECT_EQ("112", to_string(comm().image_word(2)));
+  EXPECT_EQ("-1-12", to_string(comm.inverse().image_word(2)));
+
+
+  comm = make_commutator(AutomorphismDescription<>(EndomorphismSLP<int>::left_multiplier(1, 2)),
+                         AutomorphismDescription<>(EndomorphismSLP<int>::right_multiplier(1, 3)));
+
+  EXPECT_EQ(2, comm().non_trivial_images_num());
+  EXPECT_EQ(2, comm.inverse().non_trivial_images_num());
+
+  EXPECT_EQ("-3-112", to_string(comm().image_word(2)));
+  EXPECT_EQ("13-3", to_string(comm().image_word(1)));
+
+  EXPECT_EQ("3-3-1132", to_string(comm.inverse().image_word(2)));
+  EXPECT_EQ("13-3", to_string(comm.inverse().image_word(1)));
+}
+
+TEST_F(EndomorphismSLPTest, FreeReductionTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd).free_reduction();
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd).free_reduction_precise();
+      }
+    }
+  }
 }
 
 
