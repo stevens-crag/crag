@@ -305,6 +305,9 @@ public:
 
   void save_graphviz(std::ostream* out, const std::string& name = "") const;
 
+  //! Prints human readable format
+  void print(std::ostream* out) const;
+
 private:
   typedef typename slp::TerminalVertexTemplate<TerminalSymbol> TerminalVertex;
 
@@ -498,20 +501,14 @@ template<typename Automorphism = EndomorphismSLP<int> >
 class AutomorphismDescription {
   public:
 
-    static AutomorphismDescription make_commutator(const AutomorphismDescription& first, const AutomorphismDescription& second) {
-      Automorphism a = (first() * second() * first.inverse() * second.inverse()).free_reduction();
-      Automorphism a_inv = (second() * first() * second.inverse() * first.inverse()).free_reduction();
-      return AutomorphismDescription(a, a_inv);
-    }
-
     AutomorphismDescription() {}
 
-    //! Creates the description for a single autmorphism.
+    //! Creates the description of a single autmorphism.
     AutomorphismDescription(const Automorphism& e)
       : a_(e),
         a_inv_(e.inverse()) {}
 
-    //! Generates a random autmorphism.
+    //! Generates a random autmorphism.l
     template<typename RandomAutomorphismGenerator>
     AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random) {
       std::vector<Automorphism> parts;
@@ -537,7 +534,7 @@ class AutomorphismDescription {
     }
 
     //! Returns description of inverse automorphism.
-    AutomorphismDescription inverse_description() const {
+    AutomorphismDescription inverse_description() const {//TODO optimze so it would be without copying
       return AutomorphismDescription(a_inv_, a_);
     }
 
@@ -555,9 +552,9 @@ class AutomorphismDescription {
     }
 
     AutomorphismDescription conjugate_with(const AutomorphismDescription& conjugator) const {
-      Automorphism a = (conjugator() * a_ * conjugator.inverse()).free_reduction();
-      Automorphism a_inv = (conjugator() * a_inv_ * conjugator.inverse()).free_reduction();
-      return AutomorphismDescription(a, a_inv);
+//      Automorphism a = (conjugator() * a_ * conjugator.inverse()).free_reduction();
+//      Automorphism a_inv = (conjugator() * a_inv_ * conjugator.inverse()).free_reduction();
+      return conjugator * (*this) * conjugator.inverse_description();
     }
 
     AutomorphismDescription free_reduction() const {
@@ -685,6 +682,12 @@ static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conju
   }
   return result;
 }
+
+template<typename T>
+T make_commutator(const T& first, const T& second) {
+  return first * second * first.inverse_description() * second.inverse_description();
+}
+
 
 //-------------------------------------------------------------------------------------
 // Implementation of EndomorphismSLP methods.
@@ -933,14 +936,14 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
 
   std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
   std::unordered_map<size_t, TerminalSymbol> terminals;
-  std::unordered_map<TerminalSymbol, size_t> sym_to_vertix_num;
+  std::unordered_map<TerminalSymbol, size_t> sym_to_vertex_num;
 
   auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
     ++vertex_num;
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
       terminals.insert(std::make_pair(vertex_num, symbol));
-      sym_to_vertix_num.insert(std::make_pair(symbol, vertex_num));
+      sym_to_vertex_num.insert(std::make_pair(symbol, vertex_num));
     } else {//nonterminal
       size_t left_val = mapped_images.find(vertex.left_child())->second;
       size_t right_val = mapped_images.find(vertex.right_child())->second;
@@ -963,8 +966,8 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
     auto img = root_entry.second;
     if (img.height() <= 1) {
       auto symbol = TerminalVertex(img).terminal_symbol();
-      auto terminal = sym_to_vertix_num.find(symbol);
-      if (terminal != sym_to_vertix_num.end()) {
+      auto terminal = sym_to_vertex_num.find(symbol);
+      if (terminal != sym_to_vertex_num.end()) {
         out << terminal->second << ";" << std::endl;
       } else {
         out << "\"" << symbol << "\"[shape=plaintext];" << std::endl;
@@ -991,6 +994,79 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
 
 
   out << "}" << std::endl;
+}
+
+template<typename TerminalSymbol>
+void EndomorphismSLP<TerminalSymbol>::print(std::ostream *p_out) const {
+  std::ostream& out = *p_out;
+
+  size_t vertex_num = 0;
+
+  std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
+  std::unordered_map<size_t, TerminalSymbol> terminals;
+
+  auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
+    ++vertex_num;
+    if (vertex.height() == 1) {//the vertex is terminal
+      const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
+      terminals.insert(std::make_pair(vertex_num, symbol));
+    } else {//nonterminal
+      size_t left_val = mapped_images.find(vertex.left_child())->second;
+      size_t right_val = mapped_images.find(vertex.right_child())->second;
+      non_terminals.insert(std::make_pair(vertex_num, std::make_pair(left_val, right_val)));
+    }
+    return vertex_num;
+  };
+
+  std::unordered_map<slp::Vertex, size_t> vertex_numbers;
+  for (auto root_entry: images_) {
+    slp::map_vertices(root_entry.second, &vertex_numbers,
+                      processor);
+  }
+
+  std::unordered_map<size_t, TerminalSymbol> non_terminals_to_roots;
+
+  //writing root styles
+  for (auto root_entry: images_) {
+    auto img = root_entry.second;
+    if (img.height() <= 1) {
+      auto symbol = TerminalVertex(img).terminal_symbol();
+      out << "\"" << root_entry.first << "\" -> \"" << symbol << "\"" << std::endl;
+    } else {
+      non_terminals_to_roots.insert(std::make_pair(vertex_numbers.find(img)->second, root_entry.first));
+    }
+  }
+
+  //writing non-terminals
+  for (auto non_terminal: non_terminals) {
+    size_t non_terminal_index = non_terminal.first;
+
+    size_t left_index = non_terminal.second.first;
+    size_t right_index = non_terminal.second.second;
+    auto left_terminal = terminals.find(left_index);
+    auto right_terminal = terminals.find(right_index);
+
+    auto root_symbol = non_terminals_to_roots.find(non_terminal_index);
+    if (root_symbol == non_terminals_to_roots.end()) {
+      out << non_terminal_index;
+    } else {
+      out << "\"" << root_symbol->second << "\"";
+    }
+
+    out << " -> ";
+    if (left_terminal == terminals.end()) {
+      out << left_index;
+    } else {
+      out << "\"" << left_terminal->second << "\"";
+    }
+    out << " ";
+    if (right_terminal == terminals.end()) {
+      out << right_index;
+    } else {
+      out << "\"" << right_terminal->second << "\"";
+    }
+    out << std::endl;
+  }
 }
 
 //-------------------------------------------------------------------------
