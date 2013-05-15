@@ -59,27 +59,52 @@ class Vertex {
       return Vertex(-vertex_signed_id_, std::shared_ptr<internal::BasicVertex>(vertex_));
     }
 
+    //! Get the left child of vertex
     inline Vertex left_child() const;
 
+    //! Get the right child of vertex
     inline Vertex right_child() const;
 
+    //! Get the length of left child
+    /**
+     * Position of the split - place where right child starts. More efficient then
+     * left_child().length() since left_child() sometimes need to copy left child.
+     *
+     * @return The length of left child
+     */
     const LongInteger& split_point() const;
 
+    //! Get the length of the word produced by this vertex
     const LongInteger& length() const;
 
+    //! Get the maximum path length to the leaf
     unsigned int height() const;
 
+    //! Internal function to define std::hash<Vertex>
     size_t vertex_hash() const {
       return vertex_id_hash_(vertex_signed_id_);
     }
 
+    //! false only if the vertex is null
     explicit operator bool() const {
       return vertex_signed_id_;
     }
 
+    //! Print debug representation. Used in different tests.
     inline void debug_print(::std::ostream* out) const;
 
     typedef int64_t VertexSignedId;
+
+    //! This is internal vertex id.
+    /**
+     * 64-bit integer, sign of it determines whether the vertex is negated,
+     * and the absolute value meaning is different:
+     *   1. If vertex is terminal, then the value of static_cast<int>(terminal symbol) is stored
+     *   2. If vertex is non-terminal, then some auto-incremented value if stored. If the number of nonterminal vertices is greater that \f$2^{63}\f$, then this could case some problems.
+     *   3. If vertex is Null, then it is 0.
+     *
+     * @return Signed vertex id
+     */
     VertexSignedId vertex_id() const {
       return vertex_signed_id_;
     }
