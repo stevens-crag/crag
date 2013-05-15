@@ -99,10 +99,10 @@ class TerminalVertexInspector : public Inspector<TerminalVertexPath, AcceptFunct
 
 } //namespace inspector
 
-//! Iterator of #slp::VertexWord.
+//! Iterator of #crag::slp::VertexWord.
 /**
- * This is a forward iterator for slp::VertexWord. Note that even difference_type is standard ptrdiff_t,
- * it is possible that the actual difference between two iterator may be more than 2^sizeof(ptrdiff_t). However,
+ * This is a forward iterator for VertexWord. Note that even difference_type is standard ptrdiff_t,
+ * it is possible that the actual difference between two iterator may be more than exp(sizeof(ptrdiff_t)). However,
  * in all standard algorithms this distance can not be achieved, because it takes too long to move
  * this iterator so far.
  */
@@ -152,6 +152,7 @@ class VertexWordIterator : public std::iterator <
       return &current_symbol_;
     }
 
+    //! Move iterator shift symbols right
     VertexWordIterator& operator+=(const LongInteger& shift) {
       inspector_.go_to_position(shift);
       current_symbol_ = TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
@@ -181,7 +182,7 @@ class VertexWordIterator : public std::iterator <
     TerminalSymbol current_symbol_;                //!< We have to store it due to type conversion
 };
 
-//! Word produced by some #slp::Vertex
+//! Word produced by some #crag::slp::Vertex
 template <typename TerminalSymbol>
 class VertexWord {
   public:
@@ -201,6 +202,7 @@ class VertexWord {
 
    //TODO: define swap
 
+    //! Check whether two words are equivalent. Polynomial algorithm.
     bool operator==(const VertexWord& other) {
       MatchingTable table;
       return is_equal_to(other, &table);

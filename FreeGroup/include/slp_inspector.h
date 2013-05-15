@@ -1,8 +1,8 @@
-/*
- * slp_inspector.h
+/**
+ * \file slp_inspector.h
+ * \brief Definition of the utilities for tree traversal
  *
- *  Created on: Feb 11, 2013
- *      Author: dpantele
+ * Definition of several classes to perform SLP vertex traversal in abstract way. See \ref slp_description for examples.
  */
 
 #pragma once
@@ -15,34 +15,12 @@
 #include "slp_vertex.h"
 #include "boost/pool/pool_alloc.hpp"
 
-/**
- * Module defining inspector over SLP representation.
- *
- * An inspector follows given order policy, there are several predefined ones and the corresponding inspectors {@link PostorderInspector}, ...
- *
- * An inspector action (to visit a vertex, to go to the left from a vertex, etc) is described by InspectorTask.
- * When inspector is about to perform an action the corresponding InspectorTask object is passed to the method #accept
- * of the associated with this inspector TaskAcceptor, and if the call returns true the inspector performs the action, and skips it otherwise moving
- * to the next action defined by the order policy.
- * To change the default acceptor, extend class TaskAcceptor and override its method #accept, and then pass it to the corresponding inspector constructor.
- *
- * Example:
- * {@code
- *  PostorderInspector inspector(slp_vertex, ::std::unique_ptr<MyTaskAcceptor>(new MyTaskAcceptor(...));
- *  while (!inspector.stopped()) {
- *    //some code here using inspector.vertex()
- *    ...
- *    inspector.next();
- *  }
- * }
- */
-
 namespace crag {
 namespace slp {
 
 namespace inspector{
 
-//!
+//! Internal structure used in path policy
 struct InspectorTask {
     Vertex vertex;
 
@@ -118,6 +96,15 @@ struct AcceptPolicy<std::nullptr_t> {
     }
 };
 
+//! Core of inspector customizations
+/**
+ * This class is the base class for path strategy (see pattern strategy, or policy).
+ * It defines the next task based on the current one. All other routine (calling
+ * process()) is implemented in the #crag::slp::Inspector. If you
+ * want to redefine this, see crag:slp::inspector::Preorder, crag:slp::inspector::Postorder,
+ * crag:slp::inspector::Inorder, crag::slp::PatternMatchesGenerator, crag::slp::TerminalVertexPath
+ * for examples.
+ */
 template <typename AcceptFunctor>
 class InspectorPath : public AcceptPolicy<AcceptFunctor> {
   //redefine these methods
@@ -167,6 +154,8 @@ class InspectorPath : public AcceptPolicy<AcceptFunctor> {
     std::vector<InspectorTask, boost::pool_allocator<InspectorTask, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex, 128, 0>> scheduled_tasks_;
 };
 
+
+//! Define preorder tree traversal
 template <typename AcceptFunctor>
 class Preorder : public InspectorPath<AcceptFunctor> {
   public:
@@ -188,6 +177,7 @@ class Preorder : public InspectorPath<AcceptFunctor> {
 
 };
 
+//! Define inorder tree traversal
 template <typename AcceptFunctor>
 class Inorder : public InspectorPath<AcceptFunctor> {
   public:
@@ -210,6 +200,7 @@ class Inorder : public InspectorPath<AcceptFunctor> {
     }
 };
 
+//! Define postorder tree traversal
 template <typename AcceptFunctor>
 class Postorder : public InspectorPath<AcceptFunctor> {
   public:
@@ -238,10 +229,18 @@ class Postorder : public InspectorPath<AcceptFunctor> {
 
 }//namespace inspector
 
-
+//! Main class to walk through all vertices of SLP
+/**
+ * This class provides all methods to deal with SLP traversal
+ *
+ * @tparam PathPolicy The policy defining the function which basically provides the next vertex
+ * @tparam AcceptFunctor Addition to PathPolicy which provides the possibility to consider some
+ *                       vertices as Null vertices, so omitting them and all their children.
+ */
 template <template <typename> class PathPolicy, typename AcceptFunctor = std::nullptr_t>
 class Inspector {
   public:
+    //! Traverse the subtree of \a root using \a inspector_path to choose next vertex
     Inspector(Vertex root, PathPolicy<AcceptFunctor> inspector_path)
       : inspector_path_(::std::move(inspector_path))
       , current_task_(inspector_path_.initial_task(::std::move(root)))
@@ -249,6 +248,7 @@ class Inspector {
       init();
     }
 
+    //! Traverse the subtree of \a root using \a accept_functor to consider some vertices as Null and default PathPolicy()
     Inspector(Vertex root, AcceptFunctor accept_functor)
       : inspector_path_(std::move(accept_functor))
       , current_task_(inspector_path_.initial_task(::std::move(root)))
@@ -256,6 +256,7 @@ class Inspector {
       init();
     }
 
+    //! Traverse the subtree of \a root using default PathPolicy()
     Inspector(Vertex root)
       : inspector_path_()
       , current_task_(inspector_path_.initial_task(::std::move(root)))
@@ -263,11 +264,13 @@ class Inspector {
       init();
     }
 
+    //! Empty inspector (stops immediately). Useful for 'end' iterators, and other 'Null' objects
     Inspector()
       : inspector_path_()
       , current_task_(InspectorTask())
     { }
 
+    //! Check whether the position of this inspector is the same as the other one
     bool operator==(const Inspector& other) const {
       return stopped() ? other.stopped() : !other.stopped() &&
               current_task_.left_siblings_length == other.current_task_.left_siblings_length &&
@@ -291,12 +294,12 @@ class Inspector {
       return *this;
     }
 
-    //! Returns the current vertex.
+    //! Returns current vertex.
     const Vertex& vertex() const {
       return current_task_.vertex;
     }
 
-    //! Returns the number of times an inspector going from left to right not skipping any vertices would visit a terminal vertex.
+    //! Returns the number of terminal vertices which the inspector, going from left to right and not skipping any vertices, would visit.
     const LongInteger& vertex_left_siblings_length() const {
       return current_task_.left_siblings_length;
     }
@@ -306,6 +309,7 @@ class Inspector {
       return !current_task_;
     }
 
+    //! Alias for next()
     Inspector& operator++() {
       return next();
     }
@@ -316,6 +320,7 @@ class Inspector {
       return copy;
     }
 
+    //! Alias for vertex()
     const Vertex& operator*() const {
       return vertex();
     }
@@ -347,8 +352,11 @@ class Inspector {
 
 };
 
+//! Shortcut to inspect SLP in Post order (left child, right child, vertex)
 typedef Inspector<inspector::Postorder> PostorderInspector;
+//! Shortcut to inspect SLP in Pre order (vertex, left child, right child)
 typedef Inspector<inspector::Preorder> PreorderInspector;
+//! Shortcut to inspect SLP in In order (left child, vertex, right child)
 typedef Inspector<inspector::Inorder> InorderInspector;
 
 } //namespace slp

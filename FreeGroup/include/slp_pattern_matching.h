@@ -1,8 +1,6 @@
-/*
- * slp_pattern_matching.h
- *
- *  Created on: Feb 26, 2013
- *      Author: dpantele
+/**
+ * \file slp_pattern_matching.h
+ * \brief Compressed pattern matching using combinatorial properties of compressed texts.
  */
 
 #pragma once
@@ -28,10 +26,10 @@ namespace slp {
  * It is calculated for two SLPs \em P and \em T, and has \em nm cells, where
  * \em n and \em are the numbers of vertices in \em P and  \em T correspondingly.
  * In the cell PT[i][j] we have all entries of the word produced by
- * the vertex \p$P_i\p$ into the word produced by vertex \p$T_j\p$, which have
- * some common part with the <em>split point</em> of \p$T_j\p$. Split point is
- * the position in the word \p$T_j\p$ just after the end of the first part,
- * i.e. part \p$T_r\p$ of the production rule \p$T_j \to T_r T_s\p$.
+ * the vertex \f$P_i\f$ into the word produced by vertex \f$T_j\f$, which have
+ * some common part with the <em>split point</em> of \f$T_j\f$. Split point is
+ * the position in the word \f$T_j\f$ just after the end of the first part,
+ * i.e. part \f$T_r\f$ of the production rule \f$T_j \to T_r T_s\f$.
  *
  * The important fact that we use here is that if some entries have the common
  * point (split point in this case), then the beginning of these entries make
@@ -45,8 +43,8 @@ class MatchingTable {
   public:
     //! Return all matches of the pattern around the "split point"
     /**
-     * This function get the result from #match_table_ and recursively calculate
-     * it if needed.
+     * This function recursively calculate the result and store it
+     * in cache.
      *
      * @param pattern The SLP for a word we want to find in text.
      * @param text    The SLP for the text where we are searching.
@@ -102,8 +100,11 @@ class BoundedTaskAcceptor {
 
 };
 
+
+//! Class which emits all inclusions of the pattern into text
 class PatternMatchesGenerator {
   public:
+    //! Create generator of pattern matches in text, use external MatchingTable
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length, MatchingTable* matching_table)
       : first_lookup_begin_position_(lookup_from)
       , first_lookup_end_position_(lookup_from + pattern.length())
@@ -116,7 +117,7 @@ class PatternMatchesGenerator {
       , matching_table_(matching_table ? *matching_table : MatchingTable())
     { }
 
-
+    //! Create generator of pattern matches in text, create temporary matching table
     PatternMatchesGenerator(const Vertex& pattern, const Vertex& text, LongInteger lookup_from, LongInteger lookup_length)
       : PatternMatchesGenerator(
           pattern,
@@ -127,8 +128,10 @@ class PatternMatchesGenerator {
         )
     { }
 
+    //! Get the next set of matches, as an arithmetic sequence.
     FiniteArithmeticSequence next_match();
 
+    //! False only if there are no more matches
     explicit operator bool() const {
       return !text_inspector_.stopped();
     }
