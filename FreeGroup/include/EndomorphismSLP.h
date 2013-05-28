@@ -346,7 +346,7 @@ private:
  * Returns const to behave consistently with built-in types.
  */
 template<typename TerminalSymbol>
-const EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
+EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
   return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
 }
 
@@ -357,6 +357,10 @@ unsigned int height(const EndomorphismSLP<TerminalSymbol>& e);
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
+
+//! Find the total number of vertices in SLPs, representing the endomorphism
+template<typename TerminalSymbol>
+unsigned int slp_unique_images_num(const EndomorphismSLP<TerminalSymbol>& e);
 
 
 
@@ -501,26 +505,30 @@ template<typename Automorphism = EndomorphismSLP<int> >
 class AutomorphismDescription {
   public:
 
-    AutomorphismDescription() {}
+    AutomorphismDescription()
+      : a_(),
+        a_inv_(),
+        num_(0) {}
 
     //! Creates the description of a single autmorphism.
     AutomorphismDescription(const Automorphism& e)
       : a_(e),
-        a_inv_(e.inverse()) {}
+        a_inv_(e.inverse()),
+        num_(1u) {}
 
     //! Generates a random autmorphism.l
     template<typename RandomAutomorphismGenerator>
-    AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random) {
+    AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random)
+      : num_(size) {
       std::vector<Automorphism> parts;
       parts.reserve(size);
       for (unsigned int i = 0; i < size; ++i) {
         parts.push_back(random());
       }
-      a_ = Automorphism::composition(parts.begin(), parts.end()).free_reduction();
+      a_ = Automorphism::composition(parts.begin(), parts.end());
       std::for_each(parts.rbegin(), parts.rend(), [&] (const Automorphism& a) {
         a_inv_ *= a.inverse();
       });
-      a_inv_ = a_inv_.free_reduction();
     }
 
     //! Returns the automorphism itself.
@@ -535,14 +543,12 @@ class AutomorphismDescription {
 
     //! Returns description of inverse automorphism.
     AutomorphismDescription inverse_description() const {//TODO optimze so it would be without copying
-      return AutomorphismDescription(a_inv_, a_);
+      return AutomorphismDescription(a_inv_, a_, num_);
     }
 
     //! Returns description of the composition of automorphisms.
     AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
-      Automorphism prod = a_ * ad.a_;
-      Automorphism inv_prod = ad.a_inv_ * a_inv_;
-      return AutomorphismDescription(prod, inv_prod).free_reduction();
+      return AutomorphismDescription(a_ * ad.a_, ad.a_inv_ * a_inv_, num_ + ad.num_);
     }
 
     //! Modifies itself to be a description of the composition of itself and the given automorphism.
@@ -558,121 +564,31 @@ class AutomorphismDescription {
     }
 
     AutomorphismDescription free_reduction() const {
-      return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction());
+      return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction(), num_);
+    }
+
+    //! Number of composed morphisms consituting the given one.
+    unsigned int composed_num() const {
+      return num_;
     }
 
   private:
-    Automorphism a_;
+    Automorphism a_;//todo shared pointer
     Automorphism a_inv_;
+    unsigned long num_;//num of composed automorphisms
 
-    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv)
-      : a_(a),
-        a_inv_(a_inv) {}
-
-    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv)
-      : a_(a),
-        a_inv_(a_inv) {}
-};
-
-//! Automorphism description keeping track of the automorphisms and its inverse and the parts of which they are composed.
-template<typename Automorphism = EndomorphismSLP<int> >
-class AutomorphismDescriptionWithHistory {
-  public:
-
-    //! Creates the description for a single autmorphism.
-    AutomorphismDescriptionWithHistory(const Automorphism& e)
-      : a_(e),
-        a_inv_(e.inverse()),
-        a_parts_(),
-        a_inv_parts_() {
-      a_parts_.push_back(a_);
-      a_inv_parts_.push_back(a_inv_);
-    }
-
-    //! Generates a random autmorphism.
-    template<typename RandomAutomorphismGenerator>
-    AutomorphismDescriptionWithHistory(unsigned int size, RandomAutomorphismGenerator& random) {
-      a_parts_.reserve(size);
-      a_inv_parts_.reserve(size);
-      for (unsigned int i = 0; i < size; ++i) {
-        a_parts_.push_back(random());
-      }
-      std::for_each(a_parts_.rbegin(), a_parts_.rend(), [&] (const Automorphism& e) {
-        this->a_inv_parts_.push_back(e.inverse());
-      });
-      a_ = Automorphism::composition(a_parts_.begin(), a_parts_.end());
-      a_ = a_.free_reduction();
-      a_inv_ = Automorphism::composition(a_inv_parts_.begin(), a_inv_parts_.end());
-      a_inv_ = a_inv_.free_reduction();
-    }
-
-    //! Returns the automorphism itself.
-    const Automorphism& operator()() const {
-      return a_;
-    }
-
-    //! Returns the automorphism inverse.
-    const Automorphism& inverse() const {
-      return a_inv_;
-    }
-
-    //! Apply the provided function to each of the composition parts of the automorphism.
-    template<typename Func>
-    Func for_each_comp_part(Func f) const {
-      return std::for_each(a_parts_.begin(), a_parts_.end(), f);
-    }
-
-    //! Apply the provided function to each of the composition parts of the autmorphism inverse.
-    template<typename Func>
-    Func for_each_inv_comp_part(Func f) const {
-      return std::for_each(a_inv_parts_.begin(), a_inv_parts_.end(), f);
-    }
-
-    //! Returns description of inverse automorphism.
-    AutomorphismDescriptionWithHistory description_of_inverse() const {
-      return AutomorphismDescriptionWithHistory(a_inv_, a_, a_inv_parts_, a_parts_);
-    }
-
-    //! Returns description of the composition of automorphisms.
-    AutomorphismDescriptionWithHistory operator*(const AutomorphismDescriptionWithHistory& ad) const {
-      Automorphism prod = a_ * ad.a_;
-      Automorphism inv_prod = ad.a_inv_ * a_inv_;
-
-      std::vector<Automorphism> prod_parts;
-      prod_parts.reserve(a_parts_.size() + ad.a_parts_.size());
-      prod_parts.insert(prod_parts.end(), a_parts_.begin(), a_parts_.end());
-      prod_parts.insert(prod_parts.end(), ad.a_parts_.begin(), ad.a_parts_.end());
-
-      std::vector<Automorphism> inv_prod_parts;
-      inv_prod_parts.reserve(a_inv_parts_.size() + ad.a_inv_parts_.size());
-      inv_prod_parts.insert(inv_prod_parts.end(), ad.a_inv_parts_.begin(), ad.a_inv_parts_.end());
-      inv_prod_parts.insert(inv_prod_parts.end(), a_inv_parts_.begin(), a_inv_parts_.end());
-
-      return AutomorphismDescriptionWithHistory(prod.free_reduction(), inv_prod.free_reduction(),
-                                     prod_parts, inv_prod_parts);
-    }
-
-    //! Modifies itself to be a description of the composition of itself and the given automorphism.
-    AutomorphismDescriptionWithHistory& operator*=(const AutomorphismDescriptionWithHistory& ad) {
-      *this = *this * ad;
-      return *this;
-    }
-
-  private:
-    Automorphism a_;
-    Automorphism a_inv_;
-    std::vector<Automorphism> a_parts_;
-    std::vector<Automorphism> a_inv_parts_;
-
-    AutomorphismDescriptionWithHistory(const Automorphism& a, const Automorphism& a_inv,
-                            const std::vector<Automorphism>& a_parts,
-                            const std::vector<Automorphism>& a_inv_parts)
+    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv, unsigned int num)
       : a_(a),
         a_inv_(a_inv),
-        a_parts_(a_parts),
-        a_inv_parts_(a_inv_parts) {}
+        num_(num) {}
+
+    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv, unsigned int num)
+      : a_(a),
+        a_inv_(a_inv),
+        num_(num) {}
 };
 
+//! Conjugate the elements of the given vector by the given conjugator.
 template<typename T, typename Conjugator>
 static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conjugator& conjugator) {
   std::vector<T> result;
@@ -683,6 +599,7 @@ static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conju
   return result;
 }
 
+//! Calculates commutator of the arguments.
 template<typename T>
 T make_commutator(const T& first, const T& second) {
   return first * second * first.inverse_description() * second.inverse_description();
@@ -1097,6 +1014,27 @@ unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
     slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
     while (!inspector.stopped()) {
       visited_vertices.insert(inspector.vertex());
+      inspector.next();
+    }
+  };
+
+  e.for_each_non_trivial_image(inspect_root);
+  return visited_vertices.size();
+}
+
+
+template<typename TerminalSymbol>
+unsigned int slp_unique_images_length_num(const EndomorphismSLP<TerminalSymbol>& e) {
+  std::set<LongInteger> visited_vertices;//map sum images length -> vertex
+
+  auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
+    return visited_vertices.find(task.vertex.length()) == visited_vertices.end();
+  };
+
+  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
+    slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
+    while (!inspector.stopped()) {
+      visited_vertices.insert(inspector.vertex().length());
       inspector.next();
     }
   };
