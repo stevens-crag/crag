@@ -7,72 +7,69 @@
  */
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <chrono>
-#include <boost/accumulators/accumulators.hpp>
-#include <boost/accumulators/statistics/stats.hpp>
-#include <boost/accumulators/statistics/mean.hpp>
-#include <boost/accumulators/statistics/min.hpp>
-#include <boost/accumulators/statistics/max.hpp>
-#include <boost/accumulators/statistics/moment.hpp>
-
-#include <boost/property_tree/ptree.hpp>
-#include <boost/property_tree/xml_parser.hpp>
 
 #include <cstdlib>
+
+#include <gsl/gsl_histogram.h>
 
 #include "EndomorphismSLP.h"
 
 typedef std::chrono::high_resolution_clock our_clock;
 using namespace crag;
-using namespace boost::accumulators;
 
 
 //----------------------------------------------------------------------------------------
 // Statistic accumulators
 
-//! Our statistics accumulator for non LongInteger. If needed add extra tags for more statistics.
+//! Our statistics accumulator.
 template<typename T>
-struct Statistic: public accumulator_set<T, stats<tag::min, tag::max, tag::mean>> {
-};
-
-//! Specialization for LongInteger. We need this because accumulator does not work correctly with mean and LongInteger
-template<>
-struct Statistic<LongInteger>: public accumulator_set<LongInteger, stats<tag::count, tag::sum, tag::max>> {
-    void operator()(const LongInteger& val) {
-      accumulator_set<LongInteger, stats<tag::count, tag::sum, tag::max>>::operator()(val);
-      if (count(*this) == 1 || val < min_) {
-        min_ = val;
+class Statistic {
+  public:
+    void operator()(const T& val) {
+      if (count_++ > 0) {
+        sum_ += val;
+        min_ = min_ > val ? val : min_;
+        max_ = max_ < val ? val : max_;
+      } else {
+        min_ = max_ = sum_ = val;
       }
     }
 
-    LongInteger min_;
+    T max() const {
+      return max_;
+    }
+
+    T min() const {
+      return min_;
+    }
+
+    T sum() const {
+      return sum_;
+    }
+
+    T count() const {
+      return count_;
+    }
+
+  private:
+    T max_;
+    T min_;
+    T sum_;
+    T count_;
 };
 
-template<typename T>
-T minimum(const Statistic<T>& stat) {
-  return min(stat);
-}
-
-template<>
-LongInteger minimum(const Statistic<LongInteger>& stat) {
- return stat.min_;
-}
-
-template<typename T>
-LongInteger average(const Statistic<T>& stat) {
-  return mean(stat);
-}
-
-template<>
-LongInteger average(const Statistic<LongInteger>& stat) {
-  return sum(stat) / count(stat);
+template<typename Stat>
+auto average(const Stat& stat) -> decltype(stat.sum() / stat.count()) {
+  return stat.sum() / stat.count();
 }
 
 template <typename T>
 std::ostream& operator<<(std::ostream& out, const Statistic<T>& stat) {
   return out << "(avg = " << average(stat) << ", "
-                 << "min = " << minimum(stat) << ", "
-                 << "max = " << max(stat) << ")";
+                 << "min = " << stat.min() << ", "
+                 << "max = " << stat.max() << ")";
 }
 
 //----------------------------------------------------
@@ -89,11 +86,11 @@ Statistic<LongInteger> get_endomorphism_images_lengths_stat(const EndomorphismSL
 }
 
 LongInteger total_images_length(const EndomorphismSLP<int>& em) {
-  return sum(get_endomorphism_images_lengths_stat(em));
+  return get_endomorphism_images_lengths_stat(em).sum();
 }
 
 LongInteger _images_length(const EndomorphismSLP<int>& em) {
-  return max(get_endomorphism_images_lengths_stat(em));
+  return get_endomorphism_images_lengths_stat(em).max();
 }
 
 //! returns statistics on the absoulute value of distances of length of images
@@ -268,6 +265,7 @@ TargetValues<TargetValueType> conjugation_function_minimization_attack(unsigned 
   return TargetValues<TargetValueType>(e_val, conj_val, min_e_val, min_val, reduced_min_e, reduced_min_conj, min_e_seq, min_conj_seq);
 }
 
+
 //---------------------------------------------------------------------------------------------------------
 // experiments
 
@@ -319,6 +317,11 @@ void skip_comments(std::istream* in) {
   }
 }
 
+enum GenerateImages {
+  generate_images,
+  not_generate_images
+};
+
 template<typename T>
 struct Result {
   unsigned int rank_;
@@ -363,7 +366,7 @@ struct Result {
   /**
    * Prints html representation.
    */
-  void print_html(std::ostream* p_html, const std::string& dir, const std::string& filename_prefix, unsigned int exp_index) const;
+  void print_html(std::ostream* p_html, const std::string& dir, const std::string& filename_prefix, unsigned int exp_index, GenerateImages is_generating_images) const;
   //! Load from file
   static Result load(std::istream* in);
 };
@@ -534,9 +537,8 @@ struct indent {
   }
 };
 
-
 template<typename T>
-void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const std::string& aux_filename_prefix, unsigned int exp_index) const {
+void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const std::string& aux_filename_prefix, unsigned int exp_index, GenerateImages is_generating_images) const {
   std::ostream& html = *p_html;
 
   html << indent(1) << "<h3>" << "Experiment with rank = " << rank_ << "</h3>" << std::endl;
@@ -632,27 +634,29 @@ void Result<T>::print_html(std::ostream* p_html, const std::string& dir, const s
 
   html << indent(1) << "</table>" << std::endl;
 
-  auto generate_morphism_description = [&] (const EndomorphismSLP<int>& e, const std::string& name, const std::string& description) {
-    std::stringstream s;
-    s << aux_filename_prefix << "_" << name << "_" << exp_index;
-    std::string filename = s.str();
-    std::string description_filename(filename + ".gv");
-    std::string image_filename(filename + ".gif");
+  if (is_generating_images == generate_images) {
+    auto generate_morphism_description = [&] (const EndomorphismSLP<int>& e, const std::string& name, const std::string& description) {
+      std::stringstream s;
+      s << aux_filename_prefix << "_" << name << "_" << exp_index;
+      std::string filename = s.str();
+      std::string description_filename(filename + ".gv");
+      std::string image_filename(filename + ".gif");
 
-    html << indent(1) << "<p>" << description << "</p>";
-    html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+      html << indent(1) << "<p>" << description << "</p>";
+      html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
 
-    std::ofstream description_file(dir + description_filename);
-    e.save_graphviz(&description_file, name);
-    s.str("");
-    s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
-    std::system(s.str().c_str());
-  };
+      std::ofstream description_file(dir + description_filename);
+      e.save_graphviz(&description_file, name);
+      s.str("");
+      s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
+      std::system(s.str().c_str());
+    };
 
-  generate_morphism_description(morphism_, "morphism", "Original morphism.");
-  generate_morphism_description(conjugation_, "conjugation", "Conjugation.");
-  generate_morphism_description(values_.minimized_morphism, "min_morphism", "Minimized morphism");
-  generate_morphism_description(values_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
+    generate_morphism_description(morphism_, "morphism", "Original morphism.");
+    generate_morphism_description(conjugation_, "conjugation", "Conjugation.");
+    generate_morphism_description(values_.minimized_morphism, "min_morphism", "Minimized morphism");
+    generate_morphism_description(values_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
+  }
 }
 
 std::istream& operator>>(std::istream& in, LongInteger& n) {
@@ -749,21 +753,21 @@ std::ostream& operator<<(std::ostream& out, const TargetValues<T>& values) {
 
 
 
-void conjugation_length_based_attack_statistics() {
-  std::ofstream out("lba_based_on_total_length_result.txt");
+void conjugation_length_based_attack_statistics(const std::string& filename) {
+  std::ofstream out(filename);
   write_comment(&out, "Legnth-base attack to Conjugation Search Problem for Automorphisms of Free Group");
   write_comment(&out, "minimization value name");
-  out << "total image legnth" << std::endl;
+  out << "total image length" << std::endl;
 
   typedef unsigned int uint;
   for (auto rank : {3}) {
     std::cout << "rank=" << rank << std::endl;
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {5}) {
+    for (auto size : {10}) {
       std::cout << "num of composed automorphisms=" << size << std::endl;
       for (auto conj_num: {size}) {
         std::cout << "num of conjugators=" << conj_num << std::endl;
-        const uint iterations_num = 1;
+        const uint iterations_num = 50;
 
         auto start_time = our_clock::now();
         for (int i = 0; i < iterations_num; ++i) {
@@ -776,7 +780,7 @@ void conjugation_length_based_attack_statistics() {
 
           result.values_ = conjugation_function_minimization_attack(rank, result.morphism_, result.conjugation_,
             &slp_vertices_num<int>,//&total_images_length,//set the function which value we minimize when use conjugation attack
-            true);
+            false);
           result.save(&out);
           auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
           write_comment(&out, "time");
@@ -793,8 +797,8 @@ void conjugation_length_based_attack_statistics() {
 }
 
 
-void lba_success_precentage() {
-  std::ofstream out("lba_success_precentage_2.txt");
+void lba_success_precentage(const std::string& filename) {
+  std::ofstream out(filename);
   write_comment(&out, "Legnth-base attack to Conjugation Search Problem for Automorphisms of Free Group");
   write_comment(&out, "minimization value name");
   out << "total image legnth" << std::endl;
@@ -877,20 +881,20 @@ Results<T> read_results(const std::string& filename) {
 }
 
 template<typename T>
-void print_all_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
-  print_html(dir, filenames_prefix, results, [] (const Result<T>& r) {return true;});
+void print_all_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, GenerateImages is_generating_images) {
+  print_html(dir, filenames_prefix, results, is_generating_images, [] (const Result<T>& r) {return true;});
 }
 
 template<typename T>
-void print_not_successful_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results) {
-  print_html(dir, filenames_prefix, results, [] (const Result<LongInteger>& r) {
+void print_not_successful_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, GenerateImages is_generating_images) {
+  print_html(dir, filenames_prefix, results, is_generating_images, [] (const Result<LongInteger>& r) {
     return r.values_.minimized_morphism_value != r.values_.minimized_conjugation_value ||
         r.values_.minimized_morphism != r.values_.minimized_conjugation;
   });
 }
 
 template<typename T, typename Filter>
-void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, Filter filter = [] (const Result<T>& r) {return true;}) {
+void print_html(const std::string& dir, const std::string& filenames_prefix, const Results<T>& results, GenerateImages is_generating_images, Filter filter = [] (const Result<T>& r) {return true;}) {
   std::string stylesheet_filename = "stylesheet.css";
 
   std::ofstream style(dir + stylesheet_filename);
@@ -919,12 +923,34 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
   html << "</head>" << std::endl;
 
   html << "<body>" << std::endl;
+
+  Statistic<double> conj_to_morph_ratio;
+  Statistic<double> min_to_morph_ratio;
+  Statistic<double> conj_to_min_ratio;
+
+  for (const Result<T>& result: results.exp_results) {
+    double morph = result.values_.minimized_morphism_value.get_d();
+    double min = result.values_.minimized_conjugation_value.get_d();
+    double conj = result.values_.conjugation_value.get_d();
+    conj_to_morph_ratio.operator ()(conj / morph);
+    min_to_morph_ratio.operator ()(min / morph);
+    conj_to_min_ratio.operator ()(conj / min);
+  }
+
+  html << "<p>Targe value ratios</p>" << std::endl;
+  html << "<ul>" << std::endl;
+  html << "<li>conj / morph value:" << conj_to_morph_ratio << "</li>" << std::endl;
+  html << "<li>min / morph value:" << min_to_morph_ratio << "</li>" << std::endl;
+  html << "<li>conj / min value:" << conj_to_min_ratio << "</li>" << std::endl;
+  html << "</ul>" << std::endl;
+
   int n = 0;
   for (const Result<T>& result: results.exp_results) {
     if (filter(result)) {
-      result.print_html(&html, dir, filenames_prefix, n++);
+      result.print_html(&html, dir, filenames_prefix, n++, is_generating_images);
     }
   }
+
   html << "</body>" << std::endl;
 
   html << "</html>" << std::endl;
@@ -933,10 +959,13 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
 
 
 int main() {
+  std::string filename("lba_fast_reduce.txt");
+  std::string csv_filename("lba_fast_reduce.csv");
   //  composition_statistics();
-//  conjugation_length_based_attack_statistics();
-  lba_success_precentage();
-  std::string filename("lba_success_precentage_2.txt");
+  conjugation_length_based_attack_statistics(filename);
+//  lba_success_precentage(filename);
   auto results = read_results<LongInteger>(filename);
-  print_not_successful_html("result/", "result", results);
+
+  print_all_html("result/", "lbafr", results, not_generate_images);
+  print_values_csv(filename);
 }
