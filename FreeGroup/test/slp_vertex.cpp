@@ -10,7 +10,7 @@
 #include <utility>
 
 #include "gtest/gtest.h"
-#include "slp.h"
+#include "slp_vertex.h"
 
 namespace crag {
 namespace slp {

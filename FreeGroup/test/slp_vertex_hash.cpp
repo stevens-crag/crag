@@ -13,7 +13,7 @@
 
 #include "Permutation.h"
 #include "gtest/gtest.h"
-#include "slp.h"
+#include "slp_vertex_hash.h"
 #include "EndomorphismSLP.h"
 
 namespace crag {
