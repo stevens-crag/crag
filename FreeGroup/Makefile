@@ -32,13 +32,13 @@ LOCAL_LIBS = -L/lib/ -Wl,-Bstatic -lgmpxx -lgmp -Wl,-Bdynamic -ltcmalloc_minimal
 
 # 
 # SRC: lists all source files
-SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_operators StraightLineProgramWord_truncate StraightLineProgramWord_split slp
+SRC = WhiteheadGraph FreeGroup StraightLineProgramWord StraightLineProgramWord_operators StraightLineProgramWord_truncate StraightLineProgramWord_split slp slp_recompression
 
 
 # 
 # MAIN lists all source files with main function:
 
-MAIN = test_cs profile_matching_new profile_reduce hash_reduce
+MAIN = test_cs profile_matching_new profile_reduce hash_reduce profile_normal_form
 
 
 ## All the compiler and linker stuff here:                           
