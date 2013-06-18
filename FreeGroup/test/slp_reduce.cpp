@@ -16,7 +16,7 @@
 #include <sstream>
 
 #include "gtest/gtest.h"
-#include "slp.h"
+#include "slp_reduce.h"
 #include "EndomorphismSLP.h"
 #include <iostream>
 

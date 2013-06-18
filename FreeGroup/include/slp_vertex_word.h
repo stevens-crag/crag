@@ -201,7 +201,7 @@ class VertexWord {
 
    //TODO: define swap
 
-    bool operator==(const VertexWord& other) {
+    bool operator==(const VertexWord& other) const {
       MatchingTable table;
       return is_equal_to(other, &table);
     }
@@ -210,7 +210,7 @@ class VertexWord {
        return !(*this == other);
     }
 
-    bool is_equal_to(const VertexWord& other, MatchingTable* matching_table) {
+    bool is_equal_to(const VertexWord& other, MatchingTable* matching_table) const {
       if (this->root_.length() != other.root_.length()) {
         return false;
       }
