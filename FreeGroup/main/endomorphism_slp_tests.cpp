@@ -186,7 +186,7 @@ MinimizationResult minimize_morphisms(unsigned int rank,
     std::transform(result.min_morphisms.cbegin(), result.min_morphisms.cend(),
                    std::back_inserter(trial),
                    [&e] (const Aut& aut) {
-                     return (e * aut * e.inverse()).free_reduction();
+                      return (e.inverse() * aut * e).free_reduction();
                    });
 
     auto value = f(trial);
@@ -330,6 +330,7 @@ struct Result {
   MinimizationResult min_conjugations_;
 
   std::vector<Aut> conjugation_parts_;
+  //conjugator = prod of conjugation parts
 
 
   template<typename Generator, typename TargetFunc, typename MinEnumerator>
@@ -518,6 +519,18 @@ void Result::save(std::ostream* p_out) const {
   min_conjugations_.save(p_out);
 }
 
+void print_explicit_images(std::ostream* p_out, const Aut& aut) {
+  std::ostream& out = *p_out;
+  aut.for_each_non_trivial_image([&out] (const Aut::symbol_image_pair_type& pair) {
+    out << "<div>" << std::endl;
+    out << pair.first << " -> ";
+    slp::VertexWord<int> image(pair.second);
+    std::for_each(image.begin(), image.end(), [&out] (int symbol) {out << symbol;});
+    out << std::endl;
+    out << "</div>" << std::endl;
+  });
+}
+
 //template<typename T>
 //void Result<T>::print(std::ostream* p_out) const {
 //  std::ostream& out = *p_out;
@@ -637,7 +650,7 @@ void Result::print_html(std::ostream* p_html, const std::string& dir, const std:
 
   html << indent(2) << "<tbody>" << std::endl;
   auto conj_iterator = conjugation_parts_.cbegin();
-  auto min_conj_iterator = min_conjugations_.minimizing_sequence.crbegin();
+  auto min_conj_iterator = min_conjugations_.minimizing_sequence.cbegin();
 
   while (true) {
     bool all_done = true;
@@ -652,7 +665,7 @@ void Result::print_html(std::ostream* p_html, const std::string& dir, const std:
       html << "<td></td>" << std::endl;
     }
 
-    if(min_conj_iterator != min_conjugations_.minimizing_sequence.crend()) {
+    if(min_conj_iterator != min_conjugations_.minimizing_sequence.cend()) {
       all_done = false;
       html << indent(4) << "<td>";
       print_basic_morphism(p_html, *min_conj_iterator);
@@ -671,29 +684,44 @@ void Result::print_html(std::ostream* p_html, const std::string& dir, const std:
 
   html << indent(1) << "</table>" << std::endl;
 
-  if (is_generating_images == generate_images) {
-    auto generate_morphism_description = [&] (const Aut& e, const std::string& name, const std::string& description) {
-      std::stringstream s;
-      s << aux_filename_prefix << "_" << name << "_" << exp_index;
-      std::string filename = s.str();
-      std::string description_filename(filename + ".gv");
-      std::string image_filename(filename + ".gif");
 
-      html << indent(1) << "<p>" << description << "</p>";
-      html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+//  html << indent(1) << "<p>Conjugation morphism: " << std::endl;
 
-      std::ofstream description_file(dir + description_filename);
-      e.save_graphviz(&description_file, name);
-      s.str("");
-      s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
-      std::system(s.str().c_str());
-    };
+//  Aut conjugation = Aut::composition(conjugation_parts_.cbegin(), conjugation_parts_.cend());
+//  print_explicit_images(p_html, conjugation);
 
-//    generate_morphism_description(morphisms_, "morphism", "Original morphism.");
-//    generate_morphism_description(conjugations_, "conjugation", "Conjugation.");
-//    generate_morphism_description(min_result_.morphism, "min_morphism", "Minimized morphism");
-//    generate_morphism_description(min_result_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
-  }
+//  html << indent(1) << "</p>" << std::endl;
+
+//  html << indent(1) << "<p>Minimization morphism inverse: " << std::endl;
+
+//  Aut minimizator = Aut::composition(min_conjugations_.minimizing_sequence.cbegin(), min_conjugations_.minimizing_sequence.cend());
+//  print_explicit_images(p_html, minimizator);
+
+//  html << indent(1) << "</p>" << std::endl;
+
+//  if (is_generating_images == generate_images) {
+//    auto generate_morphism_description = [&] (const Aut& e, const std::string& name, const std::string& description) {
+//      std::stringstream s;
+//      s << aux_filename_prefix << "_" << name << "_" << exp_index;
+//      std::string filename = s.str();
+//      std::string description_filename(filename + ".gv");
+//      std::string image_filename(filename + ".gif");
+
+//      html << indent(1) << "<p>" << description << "</p>";
+//      html << indent(1) << "<img src=\"" << image_filename << "\"/>" << std::endl;
+
+//      std::ofstream description_file(dir + description_filename);
+//      e.save_graphviz(&description_file, name);
+//      s.str("");
+//      s << "dot -Tgif " << dir << description_filename << " -o " << dir << image_filename;
+//      std::system(s.str().c_str());
+//    };
+
+////    generate_morphism_description(morphisms_, "morphism", "Original morphism.");
+////    generate_morphism_description(conjugations_, "conjugation", "Conjugation.");
+////    generate_morphism_description(min_result_.morphism, "min_morphism", "Minimized morphism");
+////    generate_morphism_description(min_result_.minimized_conjugation, "min_conjugation", "Minimized conjugation.");
+//  }
 }
 
 std::istream& operator>>(std::istream& in, LongInteger& n) {
@@ -958,26 +986,6 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
 
   html << "<body>" << std::endl;
 
-  Statistic<double> conj_to_morph_ratio;
-  Statistic<double> min_to_morph_ratio;
-  Statistic<double> conj_to_min_ratio;
-
-//  for (const Result& result: results.exp_results) {
-//    double morph = result.min_result_.minimized_morphism_value.get_d();
-//    double min = result.min_result_.minimized_conjugation_value.get_d();
-//    double conj = result.min_result_.conjugation_value.get_d();
-//    conj_to_morph_ratio.operator ()(conj / morph);
-//    min_to_morph_ratio.operator ()(min / morph);
-//    conj_to_min_ratio.operator ()(conj / min);
-//  }
-
-  html << "<p>Targe value ratios</p>" << std::endl;
-  html << "<ul>" << std::endl;
-  html << "<li>conj / morph value:" << conj_to_morph_ratio << "</li>" << std::endl;
-  html << "<li>min / morph value:" << min_to_morph_ratio << "</li>" << std::endl;
-  html << "<li>conj / min value:" << conj_to_min_ratio << "</li>" << std::endl;
-  html << "</ul>" << std::endl;
-
   int n = 0;
   for (const Result& result: results.exp_results) {
     if (filter(result)) {
@@ -1008,9 +1016,9 @@ int main() {
   typedef unsigned int uint;
   const uint aut_num = 1;
   const uint rank = 3;
-  const uint comp_num = 3;
-  const uint conj_num = 5;
-  const uint iterations_num = 1000;
+  const uint comp_num = 50;
+  const uint conj_num = 50;
+  const uint iterations_num = 100;
 
   //filenames and dirs
   auto myuid = getuid();
@@ -1026,7 +1034,7 @@ int main() {
   std::string html_dir = dir + name + "/";
 
   //work
-  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
+//  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
 //  lba_success_precentage(filename);
   auto results = read_results(filename);
 
