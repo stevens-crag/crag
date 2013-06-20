@@ -13,7 +13,7 @@
 
 #include "gtest/gtest.h"
 
-#include "slp.h"
+#include "slp_inspector.h"
 
 namespace crag {
 namespace slp {

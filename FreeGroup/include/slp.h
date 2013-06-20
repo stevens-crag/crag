@@ -18,5 +18,6 @@
 #include "slp_reduce.h"
 #include "slp_vertex_hash.h"
 #include "permutation16.h"
+#include "slp_recompression.h"
 
 #endif /* CRAG_FREEGROUP_SLP_H_ */

@@ -13,7 +13,9 @@
 #include <algorithm>
 
 #include "gtest/gtest.h"
-#include "slp.h"
+#include "slp_common_prefix.h"
+#include "slp_reduce.h"
+#include "slp_vertex_word.h"
 
 namespace crag {
 namespace slp {

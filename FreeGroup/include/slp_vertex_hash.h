@@ -284,6 +284,10 @@ class PermutationHash {
 
 };
 
+template <typename TPermutation>
+constexpr std::hash<TPermutation>
+PermutationHash<TPermutation>::permutation_hasher_;
+
 
 } //namespace hashers
 

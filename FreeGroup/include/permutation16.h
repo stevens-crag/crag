@@ -122,7 +122,7 @@ class Permutation16 {
 
     template <class RandomEngine>
     static Permutation16 random(size_t max_element, RandomEngine& engine) {
-      assert(max_element < 16);
+      assert(max_element <= 16);
       Permutation16 result;
 
       for(size_t i = 0; i < max_element; ++i) {

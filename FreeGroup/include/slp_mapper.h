@@ -12,6 +12,7 @@
 #include <unordered_map>
 #include <functional>
 #include "slp_vertex.h"
+#include "slp_inspector.h"
 
 namespace crag {
 namespace slp {

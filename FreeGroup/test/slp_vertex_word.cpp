@@ -12,7 +12,7 @@
 #include <string>
 
 #include "gtest/gtest.h"
-#include "slp.h"
+#include "slp_vertex_word.h"
 
 namespace crag {
 namespace slp {

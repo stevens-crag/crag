@@ -13,6 +13,7 @@
 
 #include "slp_vertex.h"
 #include "slp_inspector.h"
+#include "slp_pattern_matching.h"
 
 typedef mpz_class LongInteger;
 
