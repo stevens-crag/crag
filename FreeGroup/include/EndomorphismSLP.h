@@ -1016,7 +1016,6 @@ namespace internal {
     public:
       static slp::Vertex pack_slps_into_one(const std::vector<slp::Vertex>& v) {
         std::size_t num = v.size();
-//        std::cout << "num " << num << std::endl;
         if (num == 1) {
           return v[0];
         }
@@ -1059,7 +1058,6 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::jez_normal_form
     vertices.push_back(v);
   });
 
-//  std::cout << "positions" << std::endl;
 
   slp::Vertex slp = internal::Packer::pack_slps_into_one(vertices);
   auto nf = slp::recompression::normal_form(slp);
@@ -1068,14 +1066,11 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::jez_normal_form
   EndomorphismSLP result;
   LongInteger begin(0);
   for (auto key_pos_pair: end_positions) {
-//    std::cout << "[" << key_pos_pair.first << ", " <<
-//                 key_pos_pair.second << "] " << std::endl;
     auto end = key_pos_pair.second;
     auto sub_slp = slp::get_sub_slp(nf, begin, end);
     result.images_.insert(std::make_pair(key_pos_pair.first, sub_slp));
     begin = end;
   }
-//  result.images_.insert(std::make_pair(6, slp));
 
   return result;
 }
