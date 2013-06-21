@@ -794,10 +794,23 @@ TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
 TEST_F(EndomorphismSLPTest, JezNomralFormTest) {
   for (auto rank : {3, 5, 10}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {50}) {
+    for (auto size : {30}) {
       for (int i = 0; i < 10; ++i) {
         auto e = EMorphism::composition(size, rnd);
         auto normal_form = e.normal_form(EMorphism::NormalFormType::Jez);
+        EXPECT_EQ(e, normal_form) << "e" << e << "\nnf" << normal_form;
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, DisjointJezNomralFormTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {30}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto normal_form = e.normal_form(EMorphism::NormalFormType::DisjointJez);
         EXPECT_EQ(e, normal_form) << "e" << e << "\nnf" << normal_form;
       }
     }
