@@ -207,6 +207,25 @@ public:
     return result;
   }
 
+  //! Normal form type selector
+  enum NormalFormType {
+    Jez,
+    DisjointJez
+  };
+
+  //! Returns the automorphism with its representaiton in normal form.
+  EndomorphismSLP normal_form(NormalFormType type) const {
+    assert(!is_identity());
+    switch(type) {
+      case Jez:
+        return jez_normal_form();
+      case DisjointJez:
+        return disjoint_jez_normal_form();
+      default:
+        throw std::out_of_range("such normal form is not implemented");
+    }
+  }
+
   //! Returns the image of the terminal.
   slp::VertexWord<TerminalSymbol> image_word(const TerminalSymbol& t) const {
     bool is_positive = is_positive_terminal_symbol(t);
@@ -322,6 +341,10 @@ private:
    * It assumes that if #vertex is non-terminal, then #images contains its children images
    */
   slp::Vertex map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const;
+
+  EndomorphismSLP jez_normal_form() const;
+
+  EndomorphismSLP disjoint_jez_normal_form() const;
 
   EndomorphismSLP(const TerminalSymbol& inverted) {
     images_.insert(std::make_pair(inverted,
@@ -985,6 +1008,88 @@ void EndomorphismSLP<TerminalSymbol>::print(std::ostream *p_out) const {
     }
     out << std::endl;
   }
+}
+
+
+namespace internal {
+  class Packer {//todo remove class
+    public:
+      static slp::Vertex pack_slps_into_one(const std::vector<slp::Vertex>& v) {
+        std::size_t num = v.size();
+//        std::cout << "num " << num << std::endl;
+        if (num == 1) {
+          return v[0];
+        }
+        std::vector<slp::Vertex> packed_v;
+        unsigned int packed_num = (num / 2) + (num % 2);
+        packed_v.reserve(packed_num);
+        for (std::size_t i = 0; i < num - 1; i += 2) {
+          packed_v.push_back(slp::NonterminalVertex(v[i], v[i + 1]));
+        }
+        if (num % 2 == 1) {
+          packed_v.push_back(v.back());
+        }
+        return pack_slps_into_one(packed_v);
+      }
+  };
+}
+
+template <typename TerminalSymbol>
+EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::jez_normal_form() const {
+  //we rewrite all vertices into a single SLP then find normal form
+  //and then split into pieces according to original vertices lengths
+
+  //end positions in the unifying SLP
+  std::vector<std::pair<TerminalSymbol, LongInteger> > end_positions;
+
+  //vertices to combine into SLP
+  std::vector<slp::Vertex> vertices;
+  vertices.reserve(non_trivial_images_num());
+
+  LongInteger length_accumulator(0);
+  for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+    const TerminalSymbol& k = pair.first;
+    const slp::Vertex& v = pair.second;
+
+    //fill positions
+    length_accumulator += v.length();
+    end_positions.push_back(std::make_pair(k, length_accumulator));
+
+    //adding vertices to process
+    vertices.push_back(v);
+  });
+
+//  std::cout << "positions" << std::endl;
+
+  slp::Vertex slp = internal::Packer::pack_slps_into_one(vertices);
+  auto nf = slp::recompression::normal_form(slp);
+
+  //extracting slps
+  EndomorphismSLP result;
+  LongInteger begin(0);
+  for (auto key_pos_pair: end_positions) {
+//    std::cout << "[" << key_pos_pair.first << ", " <<
+//                 key_pos_pair.second << "] " << std::endl;
+    auto end = key_pos_pair.second;
+    auto sub_slp = slp::get_sub_slp(nf, begin, end);
+    result.images_.insert(std::make_pair(key_pos_pair.first, sub_slp));
+    begin = end;
+  }
+//  result.images_.insert(std::make_pair(6, slp));
+
+  return result;
+}
+
+template <typename TerminalSymbol>
+EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::disjoint_jez_normal_form() const {
+  EndomorphismSLP result;
+  for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+    auto nf = slp::recompression::normal_form(pair.second);
+    //insert if it is not an identity map
+    if (nf.height() != 1 || TerminalVertex(nf) != pair.first)
+      result.images_.insert(std::make_pair(pair.first, nf));
+  });
+  return result;
 }
 
 //-------------------------------------------------------------------------

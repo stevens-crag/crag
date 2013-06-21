@@ -770,7 +770,7 @@ TEST_F(EndomorphismSLPTest, MakeCommutatorTest) {
 }
 
 TEST_F(EndomorphismSLPTest, FreeReductionTest) {
-  for (auto rank : {3, 5, 10}) {
+  for (auto rank : {3, 5}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
     for (auto size : {50}) {
       for (int i = 0; i < 10; ++i) {
@@ -786,6 +786,19 @@ TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
     for (auto size : {50}) {
       for (int i = 0; i < 10; ++i) {
         auto e = EMorphism::composition(size, rnd).free_reduction_precise();
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, JezNomralFormTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {50}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto normal_form = e.normal_form(EMorphism::NormalFormType::Jez);
+        EXPECT_EQ(e, normal_form) << "e" << e << "\nnf" << normal_form;
       }
     }
   }
