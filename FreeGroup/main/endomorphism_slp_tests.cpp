@@ -119,6 +119,34 @@ void print_stats(std::ostream* out, const Aut& e) {
        << ", image lengths=(" << get_endomorphism_images_lengths_stat(e) << ")";
 }
 
+template<typename In>
+void print_stats(std::ostream* out, In begin, In end) {
+  *out << "{" << std::endl;
+  std::for_each(begin, end, [&] (const Aut& aut) {
+    print_stats(out, aut);
+    *out << std::endl;
+  });
+  *out << "}" << std::endl;
+}
+
+
+const char COMMENT_LINE_START = '#';
+const char* EXPERIMENT_DELIMITER = "#-------------------------";
+const char* MORPHISMS_DELIMITER = "***";
+
+template<typename T>
+void write_comment(std::ostream* out, const T& msg) {
+  *out << COMMENT_LINE_START << msg << std::endl;
+}
+
+void skip_comments(std::istream* in) {
+  while (in->peek() == COMMENT_LINE_START ||
+         in->peek() == '\n') {
+    in->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
+  }
+}
+
+
 
 // Minimization
 
@@ -159,11 +187,27 @@ Statistic<LongInteger> get_statistic(In begin, In end, Func f) {
 
 
 template<typename Func, typename MinEnum>
-MinimizationResult minimize_morphisms(unsigned int rank,
+MinimizationResult minimize_morphisms(std::ostream* p_log, unsigned int rank,
                                         const std::vector<Aut>& morphisms,
                                         Func f,
                                         MinEnum minimizators_enumerator,
                                         bool logging = false) {
+  std::stringstream log_buffer;
+  auto comment = [&] (const LongInteger& value, const std::vector<Aut>& morphs) {
+    log_buffer << "val=" << value << ",";
+    unsigned int max_height = 0;
+    unsigned long total_vertices_num = 0;
+    std::for_each(morphs.cbegin(), morphs.cend(), [&] (const Aut& aut) {
+      auto h = height(aut);
+      auto v_num = slp_vertices_num(aut);
+      max_height = h > max_height ? h : max_height;
+      total_vertices_num += v_num;
+    });
+    log_buffer << "max_height=" << max_height << ", total vert num=" << total_vertices_num;
+    write_comment(p_log, log_buffer.str());
+    log_buffer.str(std::string());
+  };
+
   std::size_t num = morphisms.size();
   assert(num > 0);
   MinimizationResult result;
@@ -172,9 +216,8 @@ MinimizationResult minimize_morphisms(unsigned int rank,
 
   auto min_value = result.min_value = f(result.min_morphisms);
   if (logging) {
-    std::cout << "start value = " << result.min_value << ", ";
-//    print_stats(&std::cout, morphism);
-    std::cout << std::endl;
+    log_buffer << "start ";
+    comment(result.min_value, result.min_morphisms);
   }
 
   std::vector<Aut> min_trial;
@@ -198,17 +241,30 @@ MinimizationResult minimize_morphisms(unsigned int rank,
   };
 
   while(true) {
+    std::vector<Aut> normal_forms;
+    normal_forms.reserve(num);
+    std::transform(result.min_morphisms.cbegin(), result.min_morphisms.cend(),
+                   std::back_inserter(normal_forms),
+                   [&] (const Aut& aut) {
+                      return aut.normal_form(Aut::NormalFormType::Jez);
+                   });
+    result.min_morphisms = normal_forms;
+    if (logging) {
+      log_buffer << "normal forms ";
+      comment(result.min_value, result.min_morphisms);
+    }
+
     minimizators_enumerator(minimizer);
 
     if (result.min_value <= min_value) {
-      if (logging)
-        std::cout << "Could not decrease target value. Finishing procedure." << std::endl;
+      if (logging) {
+        write_comment(p_log, "Could not minimize more. Finishing.");
+      }
       break;
     }
     if (logging) {
-      std::cout << "Success: value=" << min_value << ", ";
-//      print_stats(&std::cout, min_trial);
-      std::cout << std::endl;
+      log_buffer << "minimization step ";
+      comment(min_value, min_trial);
     }
     result.min_morphisms = min_trial;
     result.min_value = min_value;
@@ -311,6 +367,72 @@ void composition_statistics() {
   }
 }
 
+void normal_form_statistics(const std::string& filename) {
+  std::ofstream out(filename);
+  typedef unsigned int uint;
+  out << "rank;|e|;vertices_num;height;free_red_vn;free_red_h;jez_nf_vn;jez_ht;jez_of_fr_vn;jez_of_fr_h;fr_of_jez_vn;fr_of_jez_h;" << std::endl;
+
+  auto print_stats = [&out] (const Aut& aut) {
+    auto h = height(aut);
+    auto vertices_num = slp_vertices_num(aut);
+    out << vertices_num << ";" << h << ";";
+  };
+
+  for (auto rank : {3, 5}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {640, 1280}) {
+      const uint iterations_num = 10;
+
+      our_clock::duration comp_time;
+      our_clock::duration free_red_time;
+      our_clock::duration jez_nf_time;
+      our_clock::duration jez_of_free_red_time;
+      our_clock::duration free_red_of_jez_time;
+      for (int i = 0; i < iterations_num; ++i) {
+        auto start_time = our_clock::now();
+        auto e = Aut::composition(size, rnd);
+        comp_time += our_clock::now() - start_time;
+
+        start_time = our_clock::now();
+        auto free_red = e.free_reduction();
+        free_red_time += our_clock::now() - start_time;
+
+        start_time = our_clock::now();
+        auto nf = e.normal_form(Aut::NormalFormType::Jez);
+        jez_nf_time += our_clock::now() - start_time;
+
+        start_time = our_clock::now();
+        auto nf_of_free_red = Aut();//free_red.normal_form(Aut::NormalFormType::Jez);
+        jez_of_free_red_time += our_clock::now() - start_time;
+
+        start_time = our_clock::now();
+        auto free_red_of_jez = Aut();//nf.free_reduction();
+        free_red_of_jez_time += our_clock::now() - start_time;
+
+        out << rank << ";" << size << ";";
+        print_stats(e);
+        print_stats(free_red);
+        print_stats(nf);
+        print_stats(nf_of_free_red);
+        print_stats(free_red_of_jez);
+        out << std::endl;
+      }
+      auto comp_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(comp_time);
+      auto free_red_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(free_red_time);
+      auto jez_nf_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(jez_nf_time);
+      auto jez_of_free_red_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(jez_of_free_red_time);
+      auto free_red_of_jez_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(free_red_of_jez_time);
+
+      std::cout << "(rank=" << rank << ", iterations=" << iterations_num << ", |e|=" << size << std::endl;
+      std::cout << ", comp_time=" << comp_time_in_ms.count() << "ms, " <<
+                   "free_red_time=" << free_red_time_in_ms.count() << "ms, " <<
+                   "jez_nf_time=" << jez_nf_time_in_ms.count() << "ms, " <<
+                   "jez_of_free_red_time=" << jez_of_free_red_time_in_ms.count() << "ms, " <<
+                   "free_red_of_jez_time=" << free_red_of_jez_time_in_ms.count() << "ms, " << std::endl;
+    }
+  }
+}
+
 
 enum GenerateImages {
   generate_images,
@@ -334,7 +456,7 @@ struct Result {
 
 
   template<typename Generator, typename TargetFunc, typename MinEnumerator>
-  Result(unsigned int aut_num, unsigned int rank, unsigned int comp_num, unsigned int conj_num, Generator& generator, TargetFunc target_func, MinEnumerator minimizators_enumerator)
+  Result(unsigned int aut_num, unsigned int rank, unsigned int comp_num, unsigned int conj_num, Generator& generator, TargetFunc target_func, MinEnumerator minimizators_enumerator, std::ostream* p_log)
     : aut_num_(aut_num),
       rank_(rank),
       comp_num_(comp_num),
@@ -354,10 +476,11 @@ struct Result {
       AutDecomposition<Aut> comp(comp_num, generator);
       morphisms_.push_back(comp);
       v.push_back(comp.aut);
-      minimized_morphisms_ = minimize_morphisms(rank,
+      minimized_morphisms_ = minimize_morphisms(p_log,
+                                                rank,
                                                v,
                                                target_func,
-                                               minimizators_enumerator);
+                                               minimizators_enumerator, false);
     }
 
 
@@ -369,10 +492,11 @@ struct Result {
 
     conjugation_value_ = target_func(conjugations_);
 
-    min_conjugations_ = minimize_morphisms(rank,
+    min_conjugations_ = minimize_morphisms(p_log,
+                                           rank,
                                     conjugations_,
                                     target_func,
-                                    minimizators_enumerator);
+                                    minimizators_enumerator, true);
 
   }
 
@@ -408,22 +532,6 @@ void print_basic_morphism(std::ostream* p_out, const Aut& e) {
   });
 }
 
-
-const char COMMENT_LINE_START = '#';
-const char* EXPERIMENT_DELIMITER = "#-------------------------";
-const char* MORPHISMS_DELIMITER = "***";
-
-template<typename T>
-void write_comment(std::ostream* out, const T& msg) {
-  *out << COMMENT_LINE_START << msg << std::endl;
-}
-
-void skip_comments(std::istream* in) {
-  while (in->peek() == COMMENT_LINE_START ||
-         in->peek() == '\n') {
-    in->ignore(std::numeric_limits<std::streamsize>::max(),'\n');
-  }
-}
 
 
 MinimizationResult::MinimizationResult(std::istream* p_in) {
@@ -818,44 +926,48 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
 
     auto iteration_start_time = our_clock::now();
 
-    Result result(aut_num, rank, comp_num, conj_num, rnd, target_func, enumerator);
+    Result result(aut_num, rank, comp_num, conj_num, rnd, target_func, enumerator, &out);
 
     result.save(&out);
 
-//    std::cout << "original = {";
-    std::for_each(result.minimized_morphisms_.min_morphisms.cbegin(), result.minimized_morphisms_.min_morphisms.cend(),
-                  [] (const Aut& aut) {
-//      std::cout << total_images_length(aut) << ", ";
-    });
-//    std::cout << "}" << std::endl;
+////    std::cout << "original = {";
+//    std::for_each(result.minimized_morphisms_.min_morphisms.cbegin(), result.minimized_morphisms_.min_morphisms.cend(),
+//                  [] (const Aut& aut) {
+////      std::cout << total_images_length(aut) << ", ";
+//    });
+////    std::cout << "}" << std::endl;
 
-//    std::cout << "min = {";
-    std::for_each(result.min_conjugations_.min_morphisms.cbegin(), result.min_conjugations_.min_morphisms.cend(),
-                  [] (const Aut& a) {
-//      std::cout << total_images_length(a) << ", ";
-    });
-//    std::cout << "}" << std::endl;
+////    std::cout << "min = {";
+//    std::for_each(result.min_conjugations_.min_morphisms.cbegin(), result.min_conjugations_.min_morphisms.cend(),
+//                  [] (const Aut& a) {
+////      std::cout << total_images_length(a) << ", ";
+//    });
+////    std::cout << "}" << std::endl;
 
-    int succ_num = 0;
-    for (int i = 0; i < aut_num; ++i) {
-      if (result.minimized_morphisms_.min_morphisms[i] == result.min_conjugations_.min_morphisms[i]) {
-        ++succ_num;
-      }
-    }
-//    std::cout << "success num " << succ_num << std::endl;
-    if (succ_num == aut_num) {
-      eq_num++;
-    }
+//    int succ_num = 0;
+//    for (int i = 0; i < aut_num; ++i) {
+//      if (result.minimized_morphisms_.min_morphisms[i] == result.min_conjugations_.min_morphisms[i]) {
+//        ++succ_num;
+//      }
+//    }
+////    std::cout << "success num " << succ_num << std::endl;
+//    if (succ_num == aut_num) {
+//      eq_num++;
+//    }
 
     auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
     write_comment(&out, "time");
     out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
   }
   auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
-  std::cout << "(iterations num=" << iterations_num << ",comp num =" << comp_num << ",conj num =" << conj_num << ",rank=" << rank << "): "
-            << time_in_ms.count() << "ms, "
-            << time_in_ms.count() / iterations_num << "ms per iteration, "
-            << std::endl;
+  std::stringstream s;
+  s << "(iterations num=" << iterations_num << ",comp num =" << comp_num << ",conj num =" << conj_num << ",rank=" << rank << "): "
+    << time_in_ms.count() << "ms, "
+    << time_in_ms.count() / iterations_num << "ms per iteration, "
+    << std::endl;
+  std::string str = s.str();
+  std::cout << str;
+  write_comment(&out, str);
 
   std::cout << "eq num " << eq_num << " out of " << iterations_num << std::endl;
 }
@@ -1011,10 +1123,10 @@ void print_not_successful_html(const std::string& dir, const std::string& filena
 }
 
 
-int main() {
+void process_length_base_attack() {
   //parameters
   typedef unsigned int uint;
-  const uint aut_num = 1;
+  const uint aut_num = 5;
   const uint rank = 3;
   const uint comp_num = 50;
   const uint conj_num = 50;
@@ -1024,7 +1136,7 @@ int main() {
   auto myuid = getuid();
   auto mypasswd = getpwuid(myuid);
   std::string dir(mypasswd->pw_dir);
-  dir += "/Documents/exp_results/";
+  dir += "/Documents/new_exp_results/";
 
   std::stringstream s;
   s << "lba_total_sum_a" << aut_num << "comp" << comp_num << "conj" << conj_num << "it" << iterations_num;
@@ -1034,7 +1146,7 @@ int main() {
   std::string html_dir = dir + name + "/";
 
   //work
-//  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
+  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
 //  lba_success_precentage(filename);
   auto results = read_results(filename);
 
@@ -1047,4 +1159,14 @@ int main() {
 
   print_all_html(html_dir, "lba", results, not_generate_images);
   print_values_to_csv_file(csv_filename, results);
+}
+
+int main() {
+  process_length_base_attack();
+//  auto myuid = getuid();
+//  auto mypasswd = getpwuid(myuid);
+//  std::string dir(mypasswd->pw_dir);
+//  dir += "/Documents/exp_results/";
+
+//  normal_form_statistics(dir + "normal_form_stat_large.csv");
 }
