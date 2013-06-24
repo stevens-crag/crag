@@ -44,6 +44,17 @@ namespace fga_crypto {
 
   typedef AutomorphismDescription<EndomorphismSLP<int> > AutomorphismDescription;
 
+
+
+  void print_stats(const AutomorphismDescription& aut_d) {
+    auto a = aut_d();
+    std::cout << "vertices num (a=" << slp_vertices_num(a);
+    auto fr = a.free_reduction();
+    std::cout << ", fr=" << slp_vertices_num(fr);
+    auto nf = fr.normal_form();
+    std::cout << ", nf=" << slp_vertices_num(nf) << ")" << std::endl;
+  }
+
   //! Set of commutators for a given pair of automorphisms. We use it only because we can not find inverses efficiently.
   class CommutatorSet {
     public:
@@ -216,7 +227,8 @@ namespace fga_crypto {
 
         if (debug) {
           std::cout << "priv key base" << " n=" << priv_key_base_.composed_num() <<   std::endl;
-          priv_key_base_().print(&std::cout);
+//          priv_key_base_().print(&std::cout);
+          print_stats(priv_key_base_);
         }
 
         //generating keys
@@ -224,11 +236,22 @@ namespace fga_crypto {
 
         if (debug) {
           std::cout << "priv key" << " n=" << priv_key_.composed_num() <<  std::endl;
-          priv_key_().print(&std::cout);
+//          priv_key_().print(&std::cout);
+          print_stats(priv_key_);
         }
 
         pub_keys_.s = conjugate_all(s_, c_);
         pub_keys_.r = conjugate_all(r_, c_);
+
+//        std::cout << "pub key" << std::endl;
+//        std::cout << "s" << std::endl;
+//        for (auto& ad: pub_keys_.s) {
+//          print_stats(ad);
+//        }
+//        std::cout << "r" << std::endl;
+//        for (auto& cs: pub_keys_.r) {
+//          print_stats(cs.get(false, false));
+//        }
       }
 
       const PublicKeys& public_keys() const {
@@ -241,8 +264,18 @@ namespace fga_crypto {
 
       //! Processes public keys provided by other party to send them back
       PublicKeys process_incoming_public_keys(const PublicKeys& incoming_public_keys) {
-        return PublicKeys(conjugate_all(incoming_public_keys.s, priv_key_),
-                          conjugate_all(incoming_public_keys.r, priv_key_));
+        PublicKeys result(conjugate_all(incoming_public_keys.s, priv_key_),
+                            conjugate_all(incoming_public_keys.r, priv_key_));
+//        std::cout << "processed pub key" << std::endl;
+//        std::cout << "s" << std::endl;
+//        for (auto& ad: result.s) {
+//          print_stats(ad);
+//        }
+//        std::cout << "r" << std::endl;
+//        for (auto& cs: result.r) {
+//          print_stats(cs.get(false, false));
+//        }
+        return result;
       }
 
       //! Make shared keys with the given public keys of another party
@@ -277,7 +310,9 @@ namespace fga_crypto {
           if (cached_ad != line_cache.end()) {
             line = cached_ad->second;
           } else {
+            std::cout << "start line" << std::endl;
             line = calculate_private_key_line(row_index, processed_public_keys);
+            std::cout << "line finished" << std::endl;
             line_cache.insert(std::make_pair(row_index, line));
           }
           key = line * key;
@@ -285,18 +320,26 @@ namespace fga_crypto {
             const int conj_index = v_[i - 1];
             key = key.conjugate_with(processed_public_keys.get_s(conj_index));
           }
+          std::cout << "key vert num (val=" << slp_vertices_num(key()) <<
+                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+          key = key.free_reduction().normal_form();
+          std::cout << "nf key item vert num (val=" << slp_vertices_num(key()) <<
+                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
         }
-
-//        std::cout << "key" << std::endl;
 
         if (order) {
           key = priv_key_ * key.inverse_description();//Alice: a * (bab^-1)^-1
         } else {
           key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
         }
-        std::cout << "reducing key" << std::endl;
+        std::cout << "almost final key vert num (val=" << slp_vertices_num(key()) <<
+                     ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+        key = key.free_reduction().normal_form();
+        std::cout << "result key item vert num (val=" << slp_vertices_num(key()) <<
+                     ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+
         if (debug) {
-          key().print(&std::cout);
+//          key().print(&std::cout);
         }
         return key;
       }
@@ -337,7 +380,6 @@ namespace fga_crypto {
 
       AutomorphismDescription calculate_private_key_line(int row_index, const PublicKeys& public_key) {
         AutomorphismDescription value;
-        AutomorphismDescription conjugator;
 //        for (int col_index: u_) {
 ////          std::cout << "column " << col_index << std::endl;
 //          auto beta_conj = public_key.get_r(col_index, row_index);
@@ -352,6 +394,11 @@ namespace fga_crypto {
           if (i > 0) {
             value = value.conjugate_with(public_key.get_s(conj_index));
           }
+          std::cout << "item before red vert num (val=" << slp_vertices_num(value()) <<
+                      ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+          value = value.free_reduction().normal_form();//reducing the size
+          std::cout << "item vert num (val=" << slp_vertices_num(value()) <<
+                       ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
         }
         return value;
       }

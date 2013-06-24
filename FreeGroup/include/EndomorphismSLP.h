@@ -207,24 +207,8 @@ public:
     return result;
   }
 
-  //! Normal form type selector
-  enum NormalFormType {
-    Jez,
-    DisjointJez
-  };
-
   //! Returns the automorphism with its representaiton in normal form.
-  EndomorphismSLP normal_form(NormalFormType type) const {
-    assert(!is_identity());
-    switch(type) {
-      case Jez:
-        return jez_normal_form();
-      case DisjointJez:
-        return disjoint_jez_normal_form();
-      default:
-        throw std::out_of_range("such normal form is not implemented");
-    }
-  }
+  EndomorphismSLP normal_form() const;
 
   //! Returns the image of the terminal.
   slp::VertexWord<TerminalSymbol> image_word(const TerminalSymbol& t) const {
@@ -341,10 +325,6 @@ private:
    * It assumes that if #vertex is non-terminal, then #images contains its children images
    */
   slp::Vertex map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const;
-
-  EndomorphismSLP jez_normal_form() const;
-
-  EndomorphismSLP disjoint_jez_normal_form() const;
 
   EndomorphismSLP(const TerminalSymbol& inverted) {
     images_.insert(std::make_pair(inverted,
@@ -589,6 +569,10 @@ class AutomorphismDescription {
 
     AutomorphismDescription free_reduction() const {
       return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction(), num_);
+    }
+
+    AutomorphismDescription normal_form() const {
+      return AutomorphismDescription(a_.normal_form(), a_inv_.normal_form(), num_);
     }
 
     //! Number of composed morphisms consituting the given one.
@@ -1034,7 +1018,7 @@ namespace internal {
 }
 
 template <typename TerminalSymbol>
-EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::jez_normal_form() const {
+EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::normal_form() const {
   //we rewrite all vertices into a single SLP then find normal form
   //and then split into pieces according to original vertices lengths
 
@@ -1072,18 +1056,6 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::jez_normal_form
     begin = end;
   }
 
-  return result;
-}
-
-template <typename TerminalSymbol>
-EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::disjoint_jez_normal_form() const {
-  EndomorphismSLP result;
-  for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
-    auto nf = slp::recompression::normal_form(pair.second);
-    //insert if it is not an identity map
-    if (nf.height() != 1 || TerminalVertex(nf) != pair.first)
-      result.images_.insert(std::make_pair(pair.first, nf));
-  });
   return result;
 }
 
