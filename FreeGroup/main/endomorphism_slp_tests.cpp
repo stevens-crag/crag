@@ -246,7 +246,7 @@ MinimizationResult minimize_morphisms(std::ostream* p_log, unsigned int rank,
     std::transform(result.min_morphisms.cbegin(), result.min_morphisms.cend(),
                    std::back_inserter(normal_forms),
                    [&] (const Aut& aut) {
-                      return aut.normal_form(Aut::NormalFormType::Jez);
+                      return aut.normal_form();
                    });
     result.min_morphisms = normal_forms;
     if (logging) {
@@ -398,11 +398,11 @@ void normal_form_statistics(const std::string& filename) {
         free_red_time += our_clock::now() - start_time;
 
         start_time = our_clock::now();
-        auto nf = e.normal_form(Aut::NormalFormType::Jez);
+        auto nf = e.normal_form();
         jez_nf_time += our_clock::now() - start_time;
 
         start_time = our_clock::now();
-        auto nf_of_free_red = Aut();//free_red.normal_form(Aut::NormalFormType::Jez);
+        auto nf_of_free_red = Aut();//free_red.normal_form();
         jez_of_free_red_time += our_clock::now() - start_time;
 
         start_time = our_clock::now();
@@ -1126,10 +1126,10 @@ void print_not_successful_html(const std::string& dir, const std::string& filena
 void process_length_base_attack() {
   //parameters
   typedef unsigned int uint;
-  const uint aut_num = 5;
+  const uint aut_num = 1;
   const uint rank = 3;
-  const uint comp_num = 50;
-  const uint conj_num = 50;
+  const uint comp_num = 30;
+  const uint conj_num = 30;
   const uint iterations_num = 100;
 
   //filenames and dirs
@@ -1146,7 +1146,7 @@ void process_length_base_attack() {
   std::string html_dir = dir + name + "/";
 
   //work
-  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
+//  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
 //  lba_success_precentage(filename);
   auto results = read_results(filename);
 
