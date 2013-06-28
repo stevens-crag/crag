@@ -19,6 +19,23 @@
 
 namespace crag {
 
+
+
+namespace endomorphism_default_parameters {
+  //! Default hash algorithms used for free reduction.
+  typedef crag::slp::TVertexHashAlgorithms<
+    crag::slp::hashers::SinglePowerHash,
+    crag::slp::hashers::PermutationHash<crag::Permutation16>
+  > WeakReducedVertexHashAlgorithms;
+
+  //! Default hash algorithms used for duplicates removal.
+  typedef crag::slp::TVertexHashAlgorithms<
+    crag::slp::hashers::ImageLengthHash,
+    crag::slp::hashers::SinglePowerHash,
+    crag::slp::hashers::PermutationHash<crag::Permutation16>
+  > WeakVertexHashAlgorithms;
+}
+
 /**
  * Represents a free group endomorphism using straight-line programs.
  * @tparam TerminalSymbol terminal symbols class
@@ -31,6 +48,7 @@ public:
   typedef typename std::map<TerminalSymbol, slp::Vertex>::iterator iterator;
   typedef typename std::map<TerminalSymbol, slp::Vertex>::const_iterator const_iterator;
   typedef typename std::map<TerminalSymbol, slp::Vertex>::value_type symbol_image_pair_type;
+
 
   //! Creates an identity automorphism.
   EndomorphismSLP() {}
@@ -79,6 +97,21 @@ public:
     return tmp;
   }
 
+  //! Returns the automorphism mapping #multiplied to its product with #multiplier. Flag #is_left_multiplication sets the order.
+  static EndomorphismSLP multiplication(const TerminalSymbol& multiplied, const TerminalSymbol& multiplier, bool is_left_multiplication) {
+    assert(multiplied != multiplier);
+    assert(multiplied != -multiplier);
+    EndomorphismSLP tmp;
+    if (is_left_multiplication) {
+      tmp.images_.insert(std::make_pair(multiplied,
+        slp::NonterminalVertex(TerminalVertex(multiplier), TerminalVertex(multiplied))));
+    } else {
+      tmp.images_.insert(std::make_pair(multiplied,
+        slp::NonterminalVertex(TerminalVertex(multiplied), TerminalVertex(multiplier))));
+    }
+    return tmp;
+  }
+
   //! Applies provided function to each inverter, left and right multiplier for the given rank
   /**
    * Enumerates all inverters, left and right miltiplier morphisms for the given rank and apply
@@ -87,6 +120,10 @@ public:
    */
   template<typename Func>
   static void for_each_basic_morphism(int rank, Func f);
+
+  //! Applies provided function to each multiplication that can be obtained for the given rank.
+  template<typename Func>
+  static void for_each_multiplication(int rank, Func f);
 
   //! Returns the composition of endomorphisms specified by the range
   template<typename Iterator>
@@ -172,20 +209,15 @@ public:
    */
   EndomorphismSLP inverse() const;
 
-  //! Returns the automorphisms with freely reduced images. Might make mistakes but much faster precise verstion.
+  //! Returns the automorphisms with freely reduced images. Might make mistakes but much faster than precise version.
+  template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakReducedVertexHashAlgorithms>
   EndomorphismSLP free_reduction() const {
-    typedef crag::slp::TVertexHashAlgorithms<
-        crag::slp::hashers::SinglePowerHash,
-        crag::slp::hashers::PermutationHash<crag::Permutation16>
-    > WeakVertexHashAlgorithms;
-
-    WeakVertexHashAlgorithms::Cache vertex_hashes;
-
+    typename VertexHashAlgorithms::Cache vertex_hashes;
     EndomorphismSLP result;
-    slp::MatchingTable mt;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
-    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
-      auto reduced = WeakVertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
+
+    for_each_non_trivial_image([&result, &vertex_hashes, &reduced_vertices] (const symbol_image_pair_type& pair) {
+      auto reduced = VertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
         result.images_.insert(std::make_pair(pair.first, reduced));
@@ -198,11 +230,27 @@ public:
     EndomorphismSLP result;
     slp::MatchingTable mt;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
-    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+    for_each_non_trivial_image([&result, &mt, &reduced_vertices] (const symbol_image_pair_type& pair) {
       auto reduced = slp::reduce(pair.second, &mt, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
         result.images_.insert(std::make_pair(pair.first, reduced));
+    });
+    return result;
+  }
+
+  //! Returns the automorphisms, which contains no vertices with the same hash given by template parameter.
+  template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakVertexHashAlgorithms>
+  EndomorphismSLP remove_duplicate_vertices() const {
+    typename VertexHashAlgorithms::Cache vertex_hashes;
+    typename VertexHashAlgorithms::HashRepresentativesCache hash_representatives;
+    EndomorphismSLP result;
+
+    for_each_non_trivial_image([&result, &vertex_hashes, &hash_representatives] (const symbol_image_pair_type& pair) {
+      auto rd_vertex = VertexHashAlgorithms::remove_duplicates(pair.second, &vertex_hashes, &hash_representatives);
+      //insert if it is not an identity map
+      if (rd_vertex.height() != 1 || TerminalVertex(rd_vertex) != pair.first)
+        result.images_.insert(std::make_pair(pair.first, rd_vertex));
     });
     return result;
   }
@@ -364,6 +412,10 @@ unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_unique_images_num(const EndomorphismSLP<TerminalSymbol>& e);
+
+//! Returns the map contatining the lengths of non-trivial images (actually some of the images might be trivial).
+template<typename TerminalSymbol>
+std::map<TerminalSymbol, LongInteger> images_length(const EndomorphismSLP<TerminalSymbol>& e);
 
 
 //! Automorphisms generator
@@ -574,6 +626,10 @@ class AutomorphismDescription {
       return AutomorphismDescription(a_.normal_form(), a_inv_.normal_form(), num_);
     }
 
+    AutomorphismDescription remove_duplicate_vertices() const {
+      return AutomorphismDescription(a_.remove_duplicate_vertices(), a_inv_.remove_duplicate_vertices(), num_);
+    }
+
     //! Number of composed morphisms consituting the given one.
     unsigned int composed_num() const {
       return num_;
@@ -629,6 +685,25 @@ void EndomorphismSLP<TerminalSymbol>::for_each_basic_morphism(int rank, Func f) 
         f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
         f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
       }
+}
+
+template<typename TerminalSymbol>
+template<typename Func>
+void EndomorphismSLP<TerminalSymbol>::for_each_multiplication(int rank, Func f) {
+  assert(rank > 0);
+  const int lower_bound = -static_cast<int>(rank);
+  for (int i = lower_bound; i <= rank; ++i) {
+    if (i == 0) {
+      continue;
+    }
+    for (int j = lower_bound; j <= rank; ++j) {
+      if (j == 0 || j == i || j == -i) {
+        continue;
+      }
+      f(EndomorphismSLP<TerminalSymbol>::multiplication(i, j, true));
+      f(EndomorphismSLP<TerminalSymbol>::multiplication(i, j, false));
+    }
+  }
 }
 
 
@@ -1059,6 +1134,7 @@ namespace internal {
     public:
       static slp::Vertex pack_slps_into_one(const std::vector<slp::Vertex>& v) {
         std::size_t num = v.size();
+        assert (num > 0);
         if (num == 1) {
           return v[0];
         }
@@ -1078,6 +1154,8 @@ namespace internal {
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::normal_form() const {
+  if (non_trivial_images_num() == 0)
+    return EndomorphismSLP();
   //we rewrite all vertices into a single SLP then find normal form
   //and then split into pieces according to original vertices lengths
 
@@ -1100,7 +1178,6 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::normal_form() c
     //adding vertices to process
     vertices.push_back(v);
   });
-
 
   slp::Vertex slp = internal::Packer::pack_slps_into_one(vertices);
   auto nf = slp::recompression::normal_form(slp);
@@ -1156,7 +1233,6 @@ unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
   return visited_vertices.size();
 }
 
-
 template<typename TerminalSymbol>
 unsigned int slp_unique_images_length_num(const EndomorphismSLP<TerminalSymbol>& e) {
   std::set<LongInteger> visited_vertices;//map sum images length -> vertex
@@ -1175,6 +1251,19 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP<TerminalSymbol>&
 
   e.for_each_non_trivial_image(inspect_root);
   return visited_vertices.size();
+}
+
+
+template<typename TerminalSymbol>
+std::map<TerminalSymbol, LongInteger> images_length(const EndomorphismSLP<TerminalSymbol>& e) {
+  std::map<TerminalSymbol, LongInteger> key_to_lengths;
+  auto add_length = [&key_to_lengths] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& pair) {
+   auto key = pair.first;
+   slp::Vertex v = pair.second;
+   key_to_lengths.insert(std::make_pair(key, v.length()));
+  };
+  e.for_each_non_trivial_image(add_length);
+  return key_to_lengths;
 }
 
 } /* namespace crag */

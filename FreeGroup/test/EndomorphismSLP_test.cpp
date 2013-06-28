@@ -429,6 +429,43 @@ TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
       }
 }
 
+TEST_F(EndomorphismSLPTest, ImagesLengthTest) {
+  auto e = EMorphism::right_multiplier(1, 2);
+  auto lengths = images_length(e);
+  EXPECT_EQ(1, lengths.size());
+  EXPECT_EQ(2, lengths[1]);
+  e *= EMorphism::right_multiplier(1, 2);
+  lengths = images_length(e);
+  EXPECT_EQ(1, lengths.size());
+  EXPECT_EQ(3, lengths[1]);
+
+  e *= EMorphism::inverter(3);
+  lengths = images_length(e);
+  EXPECT_EQ(2, lengths.size());
+  EXPECT_EQ(3, lengths[1]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::left_multiplier(3, 1);
+  lengths = images_length(e);
+  EXPECT_EQ(2, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::left_multiplier(1, 2);
+  lengths = images_length(e);
+  EXPECT_EQ(3, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(5, lengths[2]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::inverter(2);
+  lengths = images_length(e);
+  EXPECT_EQ(3, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(5, lengths[2]);
+  EXPECT_EQ(1, lengths[3]);
+}
+
 
 TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
   EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::identity(), EMorphism::identity().inverse()));
@@ -630,6 +667,22 @@ TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, ForEachMultiplication) {
+  int n = 0;
+  auto counter = [&] (const EMorphism& e) {
+    ++n;
+    EXPECT_EQ(1, e.non_trivial_images_num()) << e;
+    EXPECT_EQ(2, height(e)) << e;
+    EXPECT_EQ(3, slp_vertices_num(e)) << e;
+  };
+  //checking counts
+  for (int rank = 1; rank < 10; ++rank) {
+    n = 0;
+    EMorphism::for_each_multiplication(rank, counter);
+    EXPECT_EQ(2 * rank * 2 * (rank - 1) * 2, n);
+  }
+}
+
 TEST_F(EndomorphismSLPTest, SaveAndLoad) {
   auto check_save_load = [] (const EMorphism& e) {
     std::stringstream s;
@@ -789,7 +842,7 @@ TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
   }
 }
 
-TEST_F(EndomorphismSLPTest, NomralFormTest) {
+TEST_F(EndomorphismSLPTest, NormalFormTest) {
   for (auto rank : {3, 5, 10}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
     for (auto size : {30}) {
@@ -797,6 +850,19 @@ TEST_F(EndomorphismSLPTest, NomralFormTest) {
         auto e = EMorphism::composition(size, rnd);
         auto normal_form = e.normal_form();
         EXPECT_EQ(e, normal_form) << "e" << e << "\nnf" << normal_form;
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, RemoveDuplicatesTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {30}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto rd_e = e.remove_duplicate_vertices();
+        EXPECT_EQ(e, rd_e) << "e" << e << "\nrd" << rd_e;
       }
     }
   }
