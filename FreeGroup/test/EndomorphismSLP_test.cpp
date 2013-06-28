@@ -445,6 +445,43 @@ TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, ImagesLengthTest) {
+  auto e = EMorphism::right_multiplier(1, 2);
+  auto lengths = images_length(e);
+  EXPECT_EQ(1, lengths.size());
+  EXPECT_EQ(2, lengths[1]);
+  e *= EMorphism::right_multiplier(1, 2);
+  lengths = images_length(e);
+  EXPECT_EQ(1, lengths.size());
+  EXPECT_EQ(3, lengths[1]);
+
+  e *= EMorphism::inverter(3);
+  lengths = images_length(e);
+  EXPECT_EQ(2, lengths.size());
+  EXPECT_EQ(3, lengths[1]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::left_multiplier(3, 1);
+  lengths = images_length(e);
+  EXPECT_EQ(2, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::left_multiplier(1, 2);
+  lengths = images_length(e);
+  EXPECT_EQ(3, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(5, lengths[2]);
+  EXPECT_EQ(1, lengths[3]);
+
+  e *= EMorphism::inverter(2);
+  lengths = images_length(e);
+  EXPECT_EQ(3, lengths.size());
+  EXPECT_EQ(4, lengths[1]);
+  EXPECT_EQ(5, lengths[2]);
+  EXPECT_EQ(1, lengths[3]);
+}
+
 
 TEST_F(EndomorphismSLPTest, SimpleAutomorphismsInvertionTest) {
   EXPECT_TRUE(compare_endomorphisms_directly(EMorphism::identity(), EMorphism::identity().inverse()));

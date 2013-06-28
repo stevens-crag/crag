@@ -365,6 +365,10 @@ unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 template<typename TerminalSymbol>
 unsigned int slp_unique_images_num(const EndomorphismSLP<TerminalSymbol>& e);
 
+//! Returns the map contatining the lengths of non-trivial images (actually some of the images might be trivial).
+template<typename TerminalSymbol>
+std::map<TerminalSymbol, LongInteger> images_length(const EndomorphismSLP<TerminalSymbol>& e);
+
 
 
 //! Automorphisms generator
@@ -1000,6 +1004,7 @@ namespace internal {
     public:
       static slp::Vertex pack_slps_into_one(const std::vector<slp::Vertex>& v) {
         std::size_t num = v.size();
+        assert (num > 0);
         if (num == 1) {
           return v[0];
         }
@@ -1019,6 +1024,8 @@ namespace internal {
 
 template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::normal_form() const {
+  if (non_trivial_images_num() == 0)
+    return EndomorphismSLP();
   //we rewrite all vertices into a single SLP then find normal form
   //and then split into pieces according to original vertices lengths
 
@@ -1041,7 +1048,6 @@ EndomorphismSLP<TerminalSymbol> EndomorphismSLP<TerminalSymbol>::normal_form() c
     //adding vertices to process
     vertices.push_back(v);
   });
-
 
   slp::Vertex slp = internal::Packer::pack_slps_into_one(vertices);
   auto nf = slp::recompression::normal_form(slp);
@@ -1114,6 +1120,19 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP<TerminalSymbol>&
 
   e.for_each_non_trivial_image(inspect_root);
   return visited_vertices.size();
+}
+
+
+template<typename TerminalSymbol>
+std::map<TerminalSymbol, LongInteger> images_length(const EndomorphismSLP<TerminalSymbol>& e) {
+  std::map<TerminalSymbol, LongInteger> key_to_lengths;
+  auto add_length = [&key_to_lengths] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& pair) {
+   auto key = pair.first;
+   slp::Vertex v = pair.second;
+   key_to_lengths.insert(std::make_pair(key, v.length()));
+  };
+  e.for_each_non_trivial_image(add_length);
+  return key_to_lengths;
 }
 
 } /* namespace crag */
