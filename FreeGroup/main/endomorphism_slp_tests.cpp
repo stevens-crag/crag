@@ -83,11 +83,10 @@ typedef EndomorphismSLP<int> Aut;
 
 Statistic<LongInteger> get_endomorphism_images_lengths_stat(const Aut& e) {
   Statistic<LongInteger> length_stat;
-  auto length_calculator = [&] (const Aut::symbol_image_pair_type& pair) {
-    slp::Vertex v = pair.second;
-    length_stat(v.length());
-  };
-  e.for_each_non_trivial_image(length_calculator);
+  std::map<int, LongInteger> lengths = images_length(e);
+  for (const auto& pair: lengths) {
+    length_stat(pair.second);
+  }
   return length_stat;
 }
 
@@ -97,6 +96,45 @@ LongInteger total_images_length(const Aut& em) {
 
 LongInteger max_images_length(const Aut& em) {
   return get_endomorphism_images_lengths_stat(em).max();
+}
+
+LongInteger sqrt_of_sq_of_img_lengths_sum(const Aut& aut) {
+  LongInteger sum(0);
+  std::map<int, LongInteger> lengths = images_length(aut);
+  for (const auto& pair: lengths) {
+    sum += pair.second * pair.second;
+  }
+  return sqrt(sum);
+}
+
+LongInteger sqrt_of_sq_dif_of_lengths(const Aut& aut, const Aut& aut1) {
+  LongInteger sum(0);
+  std::map<int, LongInteger> lengths = images_length(aut);
+  std::map<int, LongInteger> lengths1 = images_length(aut1);
+  std::set<int> parsed_keys;
+  for (const auto& pair: lengths) {
+    auto key = pair.first;
+    auto val = pair.second;
+    auto k_v = lengths1.find(key);
+    if (k_v != lengths1.end()) {
+      auto val1 = k_v->second;
+      auto d = val - val1;
+      sum += d * d;
+    } else {
+      sum + val * val;
+    }
+    parsed_keys.insert(key);
+  }
+
+  for (const auto& pair: lengths1) {
+    if (parsed_keys.find(pair.first) != parsed_keys.end()) {
+      continue;
+    }
+    auto val = pair.second;
+    sum + val * val;
+  }
+
+  return sqrt(sum);
 }
 
 //! returns statistics on the absoulute value of distances of length of images
@@ -553,7 +591,6 @@ MinimizationResult::MinimizationResult(std::istream* p_in) {
   minimizing_sequence.reserve(num);
   for (unsigned int i = 0; i < num; ++i) {
     minimizing_sequence.push_back(Aut::load_from(p_in));
-    skip_comments(p_in);
   }
 }
 
@@ -793,19 +830,19 @@ void Result::print_html(std::ostream* p_html, const std::string& dir, const std:
   html << indent(1) << "</table>" << std::endl;
 
 
-//  html << indent(1) << "<p>Conjugation morphism: " << std::endl;
+  html << indent(1) << "<p>Conjugation morphism: " << std::endl;
 
-//  Aut conjugation = Aut::composition(conjugation_parts_.cbegin(), conjugation_parts_.cend());
-//  print_explicit_images(p_html, conjugation);
+  Aut conjugation = Aut::composition(conjugation_parts_.cbegin(), conjugation_parts_.cend());
+  print_explicit_images(p_html, conjugation);
 
-//  html << indent(1) << "</p>" << std::endl;
+  html << indent(1) << "</p>" << std::endl;
 
-//  html << indent(1) << "<p>Minimization morphism inverse: " << std::endl;
+  html << indent(1) << "<p>Minimization morphism inverse: " << std::endl;
 
-//  Aut minimizator = Aut::composition(min_conjugations_.minimizing_sequence.cbegin(), min_conjugations_.minimizing_sequence.cend());
-//  print_explicit_images(p_html, minimizator);
+  Aut minimizator = Aut::composition(min_conjugations_.minimizing_sequence.cbegin(), min_conjugations_.minimizing_sequence.cend());
+  print_explicit_images(p_html, minimizator);
 
-//  html << indent(1) << "</p>" << std::endl;
+  html << indent(1) << "</p>" << std::endl;
 
 //  if (is_generating_images == generate_images) {
 //    auto generate_morphism_description = [&] (const Aut& e, const std::string& name, const std::string& description) {
@@ -1067,8 +1104,24 @@ Results read_results(const std::string& filename) {
 }
 
 
+template<typename In, typename In1>
+std::size_t num_of_equal_morphisms(In begin, In end, In1 begin1) {
+  std::size_t n(0);
+  std::for_each(begin, end, [&] (const Aut& aut) {
+    auto aut1 = *begin1;
+    ++begin1;
+    if (aut == aut1) {
+      ++n;
+    }
+  });
+  return n;
+}
+
+
+
 template<typename Filter>
 void print_html(const std::string& dir, const std::string& filenames_prefix, const Results& results, GenerateImages is_generating_images, Filter filter = [] (const Result& r) {return true;}) {
+  assert (results.exp_results.size() > 0);
   std::string stylesheet_filename = "stylesheet.css";
 
   std::ofstream style(dir + stylesheet_filename);
@@ -1097,6 +1150,30 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
   html << "</head>" << std::endl;
 
   html << "<body>" << std::endl;
+  std::cout << results.exp_results.size() << std::endl;
+
+  const std::size_t tuple_size = results.exp_results.front().aut_num_;
+
+  std::vector<unsigned int> eq_nums(tuple_size + 1, 0);
+
+  //preliminary statistics
+  for (const Result& result: results.exp_results) {
+    if (filter(result)) {
+      const auto& morphs = result.minimized_morphisms_.min_morphisms;
+      const auto& mins = result.min_conjugations_.min_morphisms;
+      auto n = num_of_equal_morphisms(morphs.cbegin(), morphs.cend(), mins.cbegin());
+      assert (n >=0 && n <= tuple_size);
+      eq_nums[n]++;
+    }
+  }
+
+  html << "<h3>Number of equal morphisms</h3>" << std::endl;
+  html << "<ul>" << std::endl;
+  for (std::size_t i = 0; i < eq_nums.size(); ++i) {
+    html << indent(1) << "<li>" << i << ": " << eq_nums[i] << "</li>" << std::endl;
+  }
+  html << "</ul>" << std::endl;
+
 
   int n = 0;
   for (const Result& result: results.exp_results) {
@@ -1128,15 +1205,15 @@ void process_length_base_attack() {
   typedef unsigned int uint;
   const uint aut_num = 1;
   const uint rank = 3;
-  const uint comp_num = 30;
-  const uint conj_num = 30;
-  const uint iterations_num = 100;
+  const uint comp_num = 5;
+  const uint conj_num = 5;
+  const uint iterations_num = 1;
 
   //filenames and dirs
   auto myuid = getuid();
   auto mypasswd = getpwuid(myuid);
   std::string dir(mypasswd->pw_dir);
-  dir += "/Documents/new_exp_results/";
+  dir += "/Documents/exp_res1/";
 
   std::stringstream s;
   s << "lba_total_sum_a" << aut_num << "comp" << comp_num << "conj" << conj_num << "it" << iterations_num;
@@ -1146,7 +1223,7 @@ void process_length_base_attack() {
   std::string html_dir = dir + name + "/";
 
   //work
-//  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
+  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
 //  lba_success_precentage(filename);
   auto results = read_results(filename);
 
