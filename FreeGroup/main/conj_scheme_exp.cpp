@@ -96,11 +96,10 @@ class Experiment {
 
 int main() {
   int iterations = 10;
-  std::ofstream out("conj_scheme.csv");
+  std::ofstream out("conj_scheme3.csv");
   Experiment e(&out);
-  for (int base = 1; base < 5; ++base) {
-    e.evaluate_scheme_time(SchemeParameters(3, base, base, base), iterations);
-    for (int i = base + 1; i < base + 6 && i < 9; ++i) {
+  { int base = 3;
+    for (int i = 1; i <= 10; ++i) {
       e.evaluate_scheme_time(SchemeParameters(3, i, base, base), iterations);
       e.evaluate_scheme_time(SchemeParameters(3, base, i, base), iterations);
       e.evaluate_scheme_time(SchemeParameters(3, base, base, i), iterations);
