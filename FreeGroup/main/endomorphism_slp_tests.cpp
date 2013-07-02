@@ -579,17 +579,17 @@ MinimizationResult::MinimizationResult(std::istream* p_in) {
   skip_comments(p_in);
   int num;
   in >> num;
-  skip_comments(p_in);
   min_morphisms.reserve(num);
   for (unsigned int i = 0; i < num; ++i) {
-    min_morphisms.push_back(Aut::load_from(p_in));
     skip_comments(p_in);
+    min_morphisms.push_back(Aut::load_from(p_in));
   }
-
-  in >> num;
   skip_comments(p_in);
+  in >> num;
+
   minimizing_sequence.reserve(num);
   for (unsigned int i = 0; i < num; ++i) {
+    skip_comments(p_in);
     minimizing_sequence.push_back(Aut::load_from(p_in));
   }
 }
@@ -889,7 +889,6 @@ Result::Result(std::istream* p_in) {
   skip_comments(p_in);
   in >> conjugation_value_;
 
-  skip_comments(p_in);
   morphisms_.reserve(aut_num_);
   for (unsigned int i = 0; i < aut_num_; ++i) {
     morphisms_.push_back(AutDecomposition<Aut>(p_in));
@@ -899,16 +898,15 @@ Result::Result(std::istream* p_in) {
 
   conjugation_parts_.reserve(conj_num_);
   for (unsigned int i = 0; i < conj_num_; ++i) {
-    conjugation_parts_.push_back(Aut::load_from(p_in));
     skip_comments(p_in);
+    conjugation_parts_.push_back(Aut::load_from(p_in));
   }
 
   conjugations_.reserve(aut_num_);
   for (unsigned int i = 0; i < aut_num_; ++i) {
-    conjugations_.push_back(Aut::load_from(p_in));
     skip_comments(p_in);
+    conjugations_.push_back(Aut::load_from(p_in));
   }
-
   min_conjugations_ = MinimizationResult(p_in);
 }
 
@@ -934,15 +932,14 @@ class AllNielsenGeneratorsEnumerator {
 
 
 
-template<unsigned int aut_num = 1>
-void conjugation_length_based_attack_statistics(const std::string& filename, unsigned int rank, unsigned int comp_num, unsigned int conj_num, unsigned int iterations_num) {
+void conjugation_length_based_attack_statistics(const std::string& filename, unsigned int aut_num, unsigned int rank, unsigned int comp_num, unsigned int conj_num, unsigned int iterations_num) {
   std::ofstream out(filename);
   write_comment(&out, "Legnth-base attack to Conjugation Search Problem for Automorphisms of Free Group");
   write_comment(&out, "minimization value name");
   out << "sum of total images length" << std::endl;
 
   auto target_func = [] (const std::vector<Aut>& morphs) {
-    return get_statistic(morphs.cbegin(), morphs.cend(), &total_images_length).sum();
+    return get_statistic(morphs.cbegin(), morphs.cend(), total_images_length).sum();
   };
 
 
@@ -966,31 +963,6 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
     Result result(aut_num, rank, comp_num, conj_num, rnd, target_func, enumerator, &out);
 
     result.save(&out);
-
-////    std::cout << "original = {";
-//    std::for_each(result.minimized_morphisms_.min_morphisms.cbegin(), result.minimized_morphisms_.min_morphisms.cend(),
-//                  [] (const Aut& aut) {
-////      std::cout << total_images_length(aut) << ", ";
-//    });
-////    std::cout << "}" << std::endl;
-
-////    std::cout << "min = {";
-//    std::for_each(result.min_conjugations_.min_morphisms.cbegin(), result.min_conjugations_.min_morphisms.cend(),
-//                  [] (const Aut& a) {
-////      std::cout << total_images_length(a) << ", ";
-//    });
-////    std::cout << "}" << std::endl;
-
-//    int succ_num = 0;
-//    for (int i = 0; i < aut_num; ++i) {
-//      if (result.minimized_morphisms_.min_morphisms[i] == result.min_conjugations_.min_morphisms[i]) {
-//        ++succ_num;
-//      }
-//    }
-////    std::cout << "success num " << succ_num << std::endl;
-//    if (succ_num == aut_num) {
-//      eq_num++;
-//    }
 
     auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
     write_comment(&out, "time");
@@ -1094,11 +1066,14 @@ Results read_results(const std::string& filename) {
 
 
   try {
-  while (in && !in.eof())
+    while (in && !in.eof()) {
       results.exp_results.push_back(Result(&in));
+    }
   } catch(std::ifstream::failure e) {
-    //finished reading
+    //when we can not read anymore we fall off here.
   }
+
+  std::cout << results.exp_results.size() << " of experiments read." << std::endl;
 
   return results;
 }
@@ -1150,7 +1125,6 @@ void print_html(const std::string& dir, const std::string& filenames_prefix, con
   html << "</head>" << std::endl;
 
   html << "<body>" << std::endl;
-  std::cout << results.exp_results.size() << std::endl;
 
   const std::size_t tuple_size = results.exp_results.front().aut_num_;
 
@@ -1207,7 +1181,7 @@ void process_length_base_attack() {
   const uint rank = 3;
   const uint comp_num = 5;
   const uint conj_num = 5;
-  const uint iterations_num = 1;
+  const uint iterations_num = 5;
 
   //filenames and dirs
   auto myuid = getuid();
@@ -1223,13 +1197,12 @@ void process_length_base_attack() {
   std::string html_dir = dir + name + "/";
 
   //work
-  conjugation_length_based_attack_statistics<aut_num>(filename, rank, comp_num, conj_num, iterations_num);
-//  lba_success_precentage(filename);
+  conjugation_length_based_attack_statistics(filename, aut_num, rank, comp_num, conj_num, iterations_num);
   auto results = read_results(filename);
 
   mode_t process_mask = umask(0);
   int result_code = mkdir(html_dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-  if (!result_code) {
+  if (!result_code && errno == EEXIST) {
     std::cerr << "can not create dir!" << std::endl;
   }
   umask(process_mask);
