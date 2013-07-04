@@ -742,6 +742,7 @@ void print_explicit_images(std::ostream* p_out, const Aut& aut) {
 //  }
 //}
 
+
 struct indent {
     unsigned int level;
 
@@ -758,7 +759,7 @@ struct indent {
 void Result::print_html(std::ostream* p_html, const std::string& dir, const std::string& aux_filename_prefix, unsigned int exp_index, GenerateImages is_generating_images) const {
   std::ostream& html = *p_html;
 
-  html << indent(1) << "<h3>" << "Experiment</h3>" << std::endl;
+  html << indent(1) << "<h3>" << "Experiment " << exp_index << "</h3>" << std::endl;
 
   html << indent(1) << "<p>" << "Parameters:" << "</p>" << std::endl;
   html << indent(1) << "<ul>" << std::endl;
@@ -979,6 +980,239 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
   write_comment(&out, str);
 
   std::cout << "eq num " << eq_num << " out of " << iterations_num << std::endl;
+}
+
+
+// Kicking minimization result out of local minima to get better result.
+
+
+struct KickResult {
+  unsigned int aut_num_;
+  unsigned int conj_num_;
+  unsigned int rank_;
+  std::vector<Aut> conjugations_;
+  MinimizationResult min_conjugations_;
+
+  std::vector<Aut> conjugation_parts_;
+  //conjugator = prod of conjugation parts
+
+
+  template<typename Generator, typename TargetFunc, typename MinEnumerator>
+  KickResult(const std::vector<Aut>& morphisms, unsigned int rank,  unsigned int conj_num, Generator& generator, TargetFunc target_func, MinEnumerator minimizators_enumerator, std::ostream* p_log)
+    : aut_num_(morphisms.size()),
+      conj_num_(conj_num),
+      rank_(rank)
+  {
+    conjugation_parts_.reserve(conj_num);
+    for (unsigned int i = 0; i < conj_num; ++i) {
+      conjugation_parts_.push_back(generator());
+    }
+
+    std::for_each(morphisms.begin(), morphisms.end(), [&] (const Aut& aut) {
+      conjugations_.push_back(aut.conjugate_with(conjugation_parts_.begin(), conjugation_parts_.end()));
+    });
+
+    min_conjugations_ = minimize_morphisms(p_log,
+                                           rank,
+                                    conjugations_,
+                                    target_func,
+                                    minimizators_enumerator, true);
+
+  }
+
+  //! Load from file
+  KickResult(std::istream* in);
+
+  //! Saves to stream so it can be recovered later with load
+  void save(std::ostream* out) const;
+  /**
+   * Prints html representation.
+   */
+  void print_html(std::ostream* p_html) const;
+};
+
+void KickResult::save(std::ostream* p_out) const {
+  std::ostream& out = *p_out;
+
+  out << EXPERIMENT_DELIMITER << std::endl;
+
+  write_comment(p_out, "num of automorphisms");
+  out << aut_num_ << std::endl;
+
+  write_comment(p_out, "num of conjugation morphisms");
+  out << conj_num_ << std::endl;
+
+  write_comment(p_out, "rank");
+  out << rank_ << std::endl;
+
+  write_comment(p_out, "conjugation morphisms");
+  for (const auto& morphism: conjugation_parts_) {
+    morphism.save_to(p_out);
+    write_comment(p_out, "");
+  }
+
+  write_comment(p_out, "conjugations");
+  for (const auto& morphism: conjugations_) {
+    morphism.save_to(p_out);
+    write_comment(p_out, "");
+  }
+
+  write_comment(p_out, "minimized conjugations");
+  min_conjugations_.save(p_out);
+}
+
+
+void KickResult::print_html(std::ostream* p_html) const {
+  std::ostream& html = *p_html;
+
+  html << indent(1) << "<h3>" << "Kick attempt</h3>" << std::endl;
+
+  html << indent(1) << "<p>" << "Parameters:" << "</p>" << std::endl;
+  html << indent(1) << "<ul>" << std::endl;
+  html << indent(2) << "<li>tuple size =" << aut_num_ << "</li>" << std::endl;
+  html << indent(2) << "<li>|conjugator| =" << conj_num_ << "</li>" << std::endl;
+  html << indent(2) << "<li>|minimizing conjugator| = " << min_conjugations_.minimizing_sequence.size() << "</li>" << std::endl;
+  html << indent(1) << "</ul>" << std::endl;
+
+  html << indent(1) << "<p>minimized value = " << min_conjugations_.min_value << "</p>" << std::endl;
+
+  html << indent(1) << "<table>" << std::endl;
+
+  html << indent(2) << "<thead>" << std::endl;
+
+//  html << indent(3) << "<tr>" << std::endl;
+//  html << indent(4) << "<th class=\"left\" colspan=\"2\">Sample genrating data</th>" << std::endl;
+//  html << indent(4) << "<th colspan=\"2\">Minimizing conjugators</th>" << std::endl;
+//  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(3) << "<tr>" << std::endl;
+  html << indent(4) << "<th>Kick conjugators</th>" << std::endl;
+  html << indent(4) << "<th>Minimizing conjugators</th>" << std::endl;
+  html << indent(3) << "</tr>" << std::endl;
+
+  html << indent(2) << "</thead>" << std::endl;
+
+  html << indent(2) << "<tbody>" << std::endl;
+  auto conj_iterator = conjugation_parts_.cbegin();
+  auto min_conj_iterator = min_conjugations_.minimizing_sequence.cbegin();
+
+  while (true) {
+    bool all_done = true;
+
+    if(conj_iterator != conjugation_parts_.cend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *conj_iterator);
+      html << "</td>" << std::endl;
+      ++conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    if(min_conj_iterator != min_conjugations_.minimizing_sequence.cend()) {
+      all_done = false;
+      html << indent(4) << "<td>";
+      print_basic_morphism(p_html, *min_conj_iterator);
+      html << "</td>" << std::endl;
+      ++min_conj_iterator;
+    } else {
+      html << "<td></td>" << std::endl;
+    }
+
+    html << indent(3) << "</tr>" << std::endl;
+    if (all_done)
+      break;
+  }
+
+  html << indent(2) << "</tbody>" << std::endl;
+
+  html << indent(1) << "</table>" << std::endl;
+
+
+//  html << indent(1) << "<p>Conjugation morphism: " << std::endl;
+
+//  Aut conjugation = Aut::composition(conjugation_parts_.cbegin(), conjugation_parts_.cend());
+//  print_explicit_images(p_html, conjugation);
+
+//  html << indent(1) << "</p>" << std::endl;
+
+//  html << indent(1) << "<p>Minimization morphism inverse: " << std::endl;
+
+//  Aut minimizator = Aut::composition(min_conjugations_.minimizing_sequence.cbegin(), min_conjugations_.minimizing_sequence.cend());
+//  print_explicit_images(p_html, minimizator);
+
+//  html << indent(1) << "</p>" << std::endl;
+
+}
+
+
+KickResult::KickResult(std::istream* p_in) {
+  std::istream& in = *p_in;
+
+  skip_comments(p_in);
+  in >> aut_num_;
+  skip_comments(p_in);
+  in >> conj_num_;
+  skip_comments(p_in);
+  in >> rank_;
+
+  conjugation_parts_.reserve(conj_num_);
+  for (unsigned int i = 0; i < conj_num_; ++i) {
+    skip_comments(p_in);
+    conjugation_parts_.push_back(Aut::load_from(p_in));
+  }
+
+  conjugations_.reserve(aut_num_);
+  for (unsigned int i = 0; i < aut_num_; ++i) {
+    skip_comments(p_in);
+    conjugations_.push_back(Aut::load_from(p_in));
+  }
+  min_conjugations_ = MinimizationResult(p_in);
+}
+
+
+
+void conjugation_lba_kick_attempt(const std::string& filename, const Result& result, unsigned int conj_num, unsigned int iterations_num) {
+  std::ofstream out(filename);
+  write_comment(&out, "Attempt to kick out of local minima");
+  write_comment(&out, "original result");
+  result.save(&out);
+
+  auto target_func = [] (const std::vector<Aut>& morphs) {
+    return get_statistic(morphs.cbegin(), morphs.cend(), total_images_length).sum();
+  };
+
+  auto rank = result.rank_;
+  auto min_conjs_ = result.min_conjugations_.min_morphisms;
+
+  AllNielsenGeneratorsEnumerator enumerator(rank);
+  UniformAutomorphismSLPGenerator<int> rnd(rank);
+
+  auto start_time = our_clock::now();
+  for (int i = 0; i < iterations_num; ++i) {
+    std::cout << "iteration " << i << std::endl;
+
+    auto iteration_start_time = our_clock::now();
+
+
+
+    KickResult k_res(min_conjs_, rank, conj_num, rnd, target_func, enumerator, &out);
+
+    k_res.save(&out);
+
+    auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
+    write_comment(&out, "time");
+    out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
+  }
+  auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
+  std::stringstream s;
+  s << "(iterations num=" << iterations_num << ",conj num =" << conj_num << ",rank=" << rank << "): "
+    << time_in_ms.count() << "ms, "
+    << time_in_ms.count() / iterations_num << "ms per iteration, "
+    << std::endl;
+  std::string str = s.str();
+  std::cout << str;
+  write_comment(&out, str);
 }
 
 
@@ -1211,8 +1445,139 @@ void process_length_base_attack() {
   print_values_to_csv_file(csv_filename, results);
 }
 
+std::pair<Result, std::vector<KickResult> > read_kick_results(const std::string& filename) {
+  std::ifstream in(filename);
+  in.exceptions (std::ios::eofbit | std::ios::failbit |
+                 std::ios::badbit);
+  skip_comments(&in);
+
+  auto pair = std::make_pair(Result(&in), std::vector<KickResult>());
+
+  try {
+    while (in && !in.eof()) {
+      pair.second.push_back(KickResult(&in));
+    }
+  } catch(std::ifstream::failure e) {
+    //when we can not read anymore we fall off here.
+  }
+
+  std::cout << pair.second.size() << " of experiments read." << std::endl;
+
+  return pair;
+}
+
+void print_kick_results_to_html(const std::string& dir, const std::string& filenames_prefix, const Result& result, const std::vector<KickResult>& kick_results) {
+  assert (results.exp_results.size() > 0);
+  std::string stylesheet_filename = "stylesheet.css";
+
+  std::ofstream style(dir + stylesheet_filename);
+
+  style << "th {" << std::endl;
+  style << indent(1) << "padding: 5px;" << std::endl;
+  style << indent(1) << "border-left: 1px solid black;" << std::endl;
+  style << indent(1) << "border-bottom: 1px solid black;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "th.left {" << std::endl;
+  style << indent(1) << "border-left: none;" << std::endl;
+  style << "}" << std::endl;
+
+  style << "td {" << std::endl;
+  style << indent(1) << "text-align: center;" << std::endl;
+  style << "}" << std::endl;
+
+
+  std::ofstream html(dir + "index.html");
+  html << "<!DOCTYPE html>" << std::endl;
+  html << "<html>" << std::endl;
+  html << "<head>" << std::endl;
+  html << "<link type=\"text/css\" rel=\"stylesheet\" href=\"" << stylesheet_filename << "\" />" << std::endl;
+  html << "  <title>" << "Kick results " << "</title>" << std::endl;
+  html << "</head>" << std::endl;
+
+  html << "<body>" << std::endl;
+
+  const std::size_t tuple_size = result.aut_num_;
+
+  std::vector<unsigned int> eq_nums(tuple_size + 1, 0);
+
+//  //preliminary statistics
+//  for (const Result& result: results.exp_results) {
+//    if (filter(result)) {
+//      const auto& morphs = result.minimized_morphisms_.min_morphisms;
+//      const auto& mins = result.min_conjugations_.min_morphisms;
+//      auto n = num_of_equal_morphisms(morphs.cbegin(), morphs.cend(), mins.cbegin());
+//      assert (n >=0 && n <= tuple_size);
+//      eq_nums[n]++;
+//    }
+//  }
+
+//  html << "<h3>Number of equal morphisms</h3>" << std::endl;
+//  html << "<ul>" << std::endl;
+//  for (std::size_t i = 0; i < eq_nums.size(); ++i) {
+//    html << indent(1) << "<li>" << i << ": " << eq_nums[i] << "</li>" << std::endl;
+//  }
+//  html << "</ul>" << std::endl;
+
+  result.print_html(&html, dir, filenames_prefix, 0, GenerateImages::not_generate_images);
+
+
+  int n = 0;
+  for (const KickResult& res: kick_results) {
+    res.print_html(&html);
+  }
+
+  html << "</body>" << std::endl;
+
+  html << "</html>" << std::endl;
+
+}
+
+void kick_attempt() {
+  const uint conj_num = 10;
+  const uint iterations_num = 10;
+
+  std::cout << "Starting kick attempt..." << std::endl;
+
+  std::ifstream in("kick_sample.txt");
+  Result res(&in);
+  std::cout << "Initial sample read." << std::endl;
+
+
+  //filenames and dirs
+  auto myuid = getuid();
+  auto mypasswd = getpwuid(myuid);
+  std::string dir(mypasswd->pw_dir);
+  dir += "/Documents/exp_res1/";
+
+  std::stringstream s;
+  s << "kick_attempt_total_sum_conj" << conj_num << "it" << iterations_num;
+  std::string name(s.str());
+  std::string filename = dir + name + ".txt";
+  std::string html_dir = dir + name + "/";
+
+  //work
+  conjugation_lba_kick_attempt(filename, res, conj_num, iterations_num);
+
+  std::cout << "Finished attack." << std::endl;
+
+  auto results_pair = read_kick_results(filename);
+
+  std::cout << "Log file read." << std::endl;
+
+  mode_t process_mask = umask(0);
+  int result_code = mkdir(html_dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+  if (!result_code && errno == EEXIST) {
+    std::cerr << "can not create dir!" << std::endl;
+  }
+  umask(process_mask);
+
+  print_kick_results_to_html(html_dir, "lba_kick", results_pair.first, results_pair.second);
+}
+
 int main() {
-  process_length_base_attack();
+  kick_attempt();
+//  process_length_base_attack();
 //  auto myuid = getuid();
 //  auto mypasswd = getpwuid(myuid);
 //  std::string dir(mypasswd->pw_dir);
