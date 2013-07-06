@@ -932,6 +932,41 @@ class AllNielsenGeneratorsEnumerator {
 };
 
 
+class MultiplicationsEnumerator {
+  public:
+    MultiplicationsEnumerator(unsigned int rank)
+      : rank_(rank) {
+    }
+
+    template<typename AutAcceptor>
+    void operator()(AutAcceptor& f) {
+      Aut::for_each_multiplication(rank_, f);
+    }
+
+  private:
+    unsigned int rank_;
+};
+
+class NielsenCompositionGeneratorsEnumerator {
+  public:
+    NielsenCompositionGeneratorsEnumerator(unsigned int rank)
+      : rank_(rank) {}
+
+    template<typename AutAcceptor>
+    void operator()(AutAcceptor& f) {
+      Aut::for_each_basic_morphism(rank_,
+                                   [&] (const Aut& aut) {
+        Aut::for_each_basic_morphism(rank_, [&] (const Aut& aut1) {
+          f(aut * aut1);
+        });
+      });
+    }
+
+  private:
+    unsigned int rank_;
+};
+
+
 
 void conjugation_length_based_attack_statistics(const std::string& filename, unsigned int aut_num, unsigned int rank, unsigned int comp_num, unsigned int conj_num, unsigned int iterations_num) {
   std::ofstream out(filename);
@@ -951,7 +986,7 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
             << std::endl;
 
 
-  AllNielsenGeneratorsEnumerator enumerator(rank);
+  MultiplicationsEnumerator enumerator(rank);
   UniformAutomorphismSLPGenerator<int> rnd(rank);
 
   int eq_num = 0;
