@@ -79,6 +79,21 @@ public:
     return tmp;
   }
 
+  //! Returns the automorphism mapping #multiplied to its product with #multiplier. Flag #is_left_multiplication sets the order.
+  static EndomorphismSLP multiplication(const TerminalSymbol& multiplied, const TerminalSymbol& multiplier, bool is_left_multiplication) {
+    assert(multiplied != multiplier);
+    assert(multiplied != -multiplier);
+    EndomorphismSLP tmp;
+    if (is_left_multiplication) {
+      tmp.images_.insert(std::make_pair(multiplied,
+        slp::NonterminalVertex(TerminalVertex(multiplier), TerminalVertex(multiplied))));
+    } else {
+      tmp.images_.insert(std::make_pair(multiplied,
+        slp::NonterminalVertex(TerminalVertex(multiplied), TerminalVertex(multiplier))));
+    }
+    return tmp;
+  }
+
   //! Applies provided function to each inverter, left and right multiplier for the given rank
   /**
    * Enumerates all inverters, left and right miltiplier morphisms for the given rank and apply
@@ -87,6 +102,10 @@ public:
    */
   template<typename Func>
   static void for_each_basic_morphism(int rank, Func f);
+
+  //! Applies provided function to each multiplication that can be obtained for the given rank.
+  template<typename Func>
+  static void for_each_multiplication(int rank, Func f);
 
   //! Returns the composition of endomorphisms specified by the range
   template<typename Iterator>
@@ -634,6 +653,25 @@ void EndomorphismSLP<TerminalSymbol>::for_each_basic_morphism(int rank, Func f) 
         f(EndomorphismSLP<TerminalSymbol>::left_multiplier(j, i));
         f(EndomorphismSLP<TerminalSymbol>::right_multiplier(i, j));
       }
+}
+
+template<typename TerminalSymbol>
+template<typename Func>
+void EndomorphismSLP<TerminalSymbol>::for_each_multiplication(int rank, Func f) {
+  assert(rank > 0);
+  const int lower_bound = -static_cast<int>(rank);
+  for (int i = lower_bound; i <= rank; ++i) {
+    if (i == 0) {
+      continue;
+    }
+    for (int j = lower_bound; j <= rank; ++j) {
+      if (j == 0 || j == i || j == -i) {
+        continue;
+      }
+      f(EndomorphismSLP<TerminalSymbol>::multiplication(i, j, true));
+      f(EndomorphismSLP<TerminalSymbol>::multiplication(i, j, false));
+    }
+  }
 }
 
 

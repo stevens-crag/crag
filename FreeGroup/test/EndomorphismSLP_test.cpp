@@ -683,6 +683,22 @@ TEST_F(EndomorphismSLPTest, ForEachBasicMorphism) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, ForEachMultiplication) {
+  int n = 0;
+  auto counter = [&] (const EMorphism& e) {
+    ++n;
+    EXPECT_EQ(1, e.non_trivial_images_num()) << e;
+    EXPECT_EQ(2, height(e)) << e;
+    EXPECT_EQ(3, slp_vertices_num(e)) << e;
+  };
+  //checking counts
+  for (int rank = 1; rank < 10; ++rank) {
+    n = 0;
+    EMorphism::for_each_multiplication(rank, counter);
+    EXPECT_EQ(2 * rank * 2 * (rank - 1) * 2, n);
+  }
+}
+
 TEST_F(EndomorphismSLPTest, SaveAndLoad) {
   auto check_save_load = [] (const EMorphism& e) {
     std::stringstream s;
