@@ -1,0 +1,202 @@
+/*
+ * AAGCrypto.h
+ *
+ *  Created on: July 10, 2013
+ *      Author: pmorar
+ */
+
+#ifndef CRAG_FREE_GROUPS_AAGCRYPTO_H
+#define CRAG_FREE_GROUPS_AAGCRYPTO_H
+
+#include "EndomorphismSLP.h"
+
+namespace crag {
+
+namespace aag_crypto {
+
+  struct SchemeParameters {
+      SchemeParameters(unsigned int rank,
+                       unsigned int alice_tuple_size, unsigned int bob_tuple_size,
+                       unsigned int lower_bound_pub_key_length, unsigned int upper_bound_pub_key_length,
+                       unsigned int key_length)
+        : RANK(rank), ALICE_TUPLE_SIZE(alice_tuple_size), BOB_TUPLE_SIZE(bob_tuple_size),
+          LOWER_BOUND_PUB_KEY_LENGTH(lower_bound_pub_key_length), UPPER_BOUND_PUB_KEY_LENGTH(upper_bound_pub_key_length),
+          KEY_LENGTH(key_length) {
+        assert (LOWER_BOUND_PUB_KEY_LENGTH < UPPER_BOUND_PUB_KEY_LENGTH);
+      }
+
+      const unsigned int RANK;
+      const unsigned int ALICE_TUPLE_SIZE;
+      const unsigned int BOB_TUPLE_SIZE;
+      const unsigned int LOWER_BOUND_PUB_KEY_LENGTH;
+      const unsigned int UPPER_BOUND_PUB_KEY_LENGTH;
+      const unsigned int KEY_LENGTH;
+  };
+
+  typedef EndomorphismSLP<int> Aut;
+  typedef AutomorphismDescription<Aut > AutDescription;
+
+  class PublicKey {
+    public:
+      PublicKey() = delete;
+
+      //! Create random keys according to the specified parameters and random generator.
+      template<typename RandomEngine, typename AutRandomGenerator>
+      PublicKey(unsigned int tuple_size, RandomEngine& aut_size_generator, AutRandomGenerator& aut_rnd) {
+        tuple_.reserve(tuple_size);
+        for (unsigned int i = 0; i < tuple_size; ++i) {
+          auto n = aut_size_generator();
+          tuple_.push_back(AutDescription(n, aut_rnd));
+        }
+      }
+
+      const AutDescription& operator[](std::size_t n) const {
+        assert(n < num());
+        return tuple_[n];
+      }
+
+      std::size_t num() const {
+        return tuple_.size();
+      }
+
+    private:
+      std::vector<AutDescription> tuple_;
+  };
+
+  class PrivateKey {
+    public:
+      PrivateKey() = delete;
+
+      //! Create random keys according to the specified parameters and random generator.
+      template<typename RandomEngine>
+      PrivateKey(const PublicKey& pub_key, unsigned int length, RandomEngine& rand)
+        : pub_key_(pub_key) {
+        std::uniform_int_distribution<unsigned int> binary_dist(0, 1);
+        std::uniform_int_distribution<std::size_t> pick_dist(0, pub_key.num() - 1);
+
+        indices_.reserve(length);
+        inverses_.reserve(length);
+
+        for (unsigned int i = 0; i < length; ++i) {
+          bool inverse = binary_dist(rand) == 1 ? true : false;
+          inverses_.push_back(inverse);
+          std::size_t n = pick_dist(rand);
+          indices_.push_back(n);
+          const auto& aut = pub_key[n];
+          k_ *= inverse ? aut.inverse_description() : aut;
+        }
+      }
+
+      const AutDescription& operator()() const {
+        return k_;
+      }
+
+    private:
+      const PublicKey& pub_key_;
+      AutDescription k_;
+      std::vector<std::size_t> indices_;
+      std::vector<bool> inverses_;
+      friend class KeysGenerator;
+  };
+
+  //! Provides blocks for ABA^{-1} and for BAB^{-1}
+  class TransmittedInfo {
+    public:
+      TransmittedInfo() = delete;
+
+      TransmittedInfo(const PublicKey& pub_key, const PrivateKey& pr_key) {
+        tuple_.reserve(pub_key.num());
+        for (std::size_t i = 0; i < pub_key.num(); ++i) {
+          tuple_.push_back(pub_key[i].conjugate_with(pr_key()));
+        }
+      }
+
+      const AutDescription& operator[](std::size_t n) const {
+        assert(n < num());
+        return tuple_[n];
+      }
+
+      std::size_t num() const {
+        return tuple_.size();
+      }
+
+    private:
+      std::vector<AutDescription> tuple_;
+  };
+
+  enum Mode {
+    Alice,
+    Bob
+  };
+
+  typedef std::default_random_engine RandomEngine;
+
+  //! Generates keys for the scheme.
+  class KeysGenerator {
+    public:
+
+      KeysGenerator() = delete;
+
+      //! Create random keys according to the specified parameters and random generator.
+      KeysGenerator(const SchemeParameters& params, RandomEngine* p_rand)
+        : params_(params),
+          p_rand_(p_rand),
+          length_distr_(params.LOWER_BOUND_PUB_KEY_LENGTH, params.UPPER_BOUND_PUB_KEY_LENGTH),
+          aut_generator_(params.RANK, p_rand) {}
+
+      PublicKey generate_public_key(Mode mode) {
+        int tuple_size = mode == Alice ? params_.ALICE_TUPLE_SIZE : params_.BOB_TUPLE_SIZE;
+        auto gen = std::bind(length_distr_, *p_rand_);
+        return PublicKey(tuple_size, gen, aut_generator_);
+      }
+
+      PrivateKey generate_private_key(const PublicKey& pub_key) {
+        return PrivateKey(pub_key, params_.KEY_LENGTH, *p_rand_);
+      }
+
+      Aut make_shared_key(const PrivateKey& priv_key, const TransmittedInfo& info, Mode mode) {
+        //the shared key is aba^{-1}b^{-1}
+        if (mode == Alice) {
+          Aut conj;
+          auto inv_iter = priv_key.inverses_.crbegin();
+          auto ind_iter = priv_key.indices_.crbegin();
+          for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
+            bool inverse = *inv_iter;
+            auto n = *ind_iter;
+            const auto& aut = info[n];
+            conj *= inverse ? aut() : aut.inverse();
+          }
+          return priv_key()() * conj;
+        } else {//Bob
+          Aut conj;
+          auto inv_iter = priv_key.inverses_.cbegin();
+          auto ind_iter = priv_key.indices_.cbegin();
+          for (; inv_iter != priv_key.inverses_.cend(); ++inv_iter, ++ind_iter) {
+            bool inverse = *inv_iter;
+            auto n = *ind_iter;
+            const auto& aut = info[n];
+            conj *= inverse ? aut.inverse() : aut();
+          }
+          return conj * priv_key().inverse();
+        }
+      }
+
+
+
+    private:
+      const SchemeParameters params_;
+      RandomEngine* p_rand_;
+      std::uniform_int_distribution<typename RandomEngine::result_type> length_distr_;
+      UniformAutomorphismSLPGenerator<int, RandomEngine> aut_generator_;
+
+  };
+
+  template<typename RandomEngine>
+  KeysGenerator make_keys_generator(const SchemeParameters& params, RandomEngine* p_rand) {
+    return KeysGenerator(params, p_rand);
+  }
+
+} // namespace aag_crypto
+} // namespace crag
+
+#endif // CRAG_FREE_GROUPS_AAGCRYPTO_H
