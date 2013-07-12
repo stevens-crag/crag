@@ -575,7 +575,7 @@ class AutomorphismDescription {
         a_inv_(std::move(a_.inverse())),
         num_(1u) {}
 
-    //! Generates a random autmorphism.l
+    //! Generates a random autmorphism.
     template<typename RandomAutomorphismGenerator>
     AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random)
       : num_(size) {
