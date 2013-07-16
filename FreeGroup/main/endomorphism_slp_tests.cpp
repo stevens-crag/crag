@@ -1466,7 +1466,7 @@ void process_length_base_attack() {
   std::string html_dir = dir + name + "/";
 
   //work
-  conjugation_length_based_attack_statistics(filename, aut_num, rank, comp_num, conj_num, iterations_num);
+//  conjugation_length_based_attack_statistics(filename, aut_num, rank, comp_num, conj_num, iterations_num);
   auto results = read_results(filename);
 
   mode_t process_mask = umask(0);
@@ -1478,6 +1478,17 @@ void process_length_base_attack() {
 
   print_all_html(html_dir, "lba", results, not_generate_images);
   print_values_to_csv_file(csv_filename, results);
+}
+
+
+void process_file_to_csv(const std::string& filename) {
+  std::cout << "Reading results from " << filename << std::endl;
+  auto results = read_results(filename);
+  std::size_t separator_position = filename.find_last_of('.');
+  auto csv_filename = filename.substr(0, separator_position) + ".csv";
+  std::cout << "Writing results to " << csv_filename << "... ";
+  print_values_to_csv_file(csv_filename, results);
+  std::cout << "Done." << std::endl;
 }
 
 std::pair<Result, std::vector<KickResult> > read_kick_results(const std::string& filename) {
@@ -1610,13 +1621,19 @@ void kick_attempt() {
   print_kick_results_to_html(html_dir, "lba_kick", results_pair.first, results_pair.second);
 }
 
-int main() {
-  kick_attempt();
-//  process_length_base_attack();
-//  auto myuid = getuid();
-//  auto mypasswd = getpwuid(myuid);
-//  std::string dir(mypasswd->pw_dir);
-//  dir += "/Documents/exp_results/";
 
-//  normal_form_statistics(dir + "normal_form_stat_large.csv");
+int main(int argc, char* argv[]) {
+  if (argc == 1) {
+    //  kick_attempt();
+    //  process_length_base_attack();
+    //  auto myuid = getuid();
+    //  auto mypasswd = getpwuid(myuid);
+    //  std::string dir(mypasswd->pw_dir);
+    //  dir += "/Documents/exp_results/";
+
+    //  normal_form_statistics(dir + "normal_form_stat_large.csv");
+  } else {
+    std::string filename(argv[1]);
+    process_file_to_csv(filename);
+  }
 }
