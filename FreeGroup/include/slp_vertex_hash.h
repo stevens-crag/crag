@@ -302,6 +302,11 @@ class TVertexHashAlgorithms {
      */
     typedef std::unordered_map<Vertex, VertexHash> Cache;
 
+    /**
+     * Type of cache of vertices representing given hashes. It is used to remove duplicates.
+     */
+    typedef std::unordered_map<VertexHash, Vertex> HashRepresentativesCache;
+
     //! Calculate the hash of the word produced by root, starting from begin to end.
     static VertexHash get_subvertex_hash(const Vertex& root, const LongInteger& begin, const LongInteger& end, Cache* cache) {
       assert(cache);
@@ -355,6 +360,11 @@ class TVertexHashAlgorithms {
     static VertexHash get_subvertex_hash(const Vertex& root, const LongInteger& begin, const LongInteger& end) {
       Cache cache;
       return get_subvertex_hash(root, begin, end, &cache);
+    }
+
+    //! Calculate the hash of the word produced by root.
+    static VertexHash get_vertex_hash(const Vertex& root, Cache* cache) {
+      return get_subvertex_hash(root, 0, root.length(), cache);
     }
 
     //! Get the longest common prefix using binary search and hashes
@@ -424,6 +434,52 @@ class TVertexHashAlgorithms {
       Cache cache;
       std::unordered_map<Vertex, Vertex> reduced_vertices;
       return reduce(vertex, &cache, &reduced_vertices);
+    }
+
+    //! Remove redundant vertices with the same hash value reducing the size of SLP in this way.
+    static Vertex remove_duplicates(const Vertex& root, Cache* p_cache, HashRepresentativesCache* p_hash_cache) {
+      assert(p_cache);
+      assert(p_hash_cache);
+
+      auto v_to_hash = [] (const Vertex& v, const Cache& cache) -> VertexHash {
+        return get_vertex_hash(v, &cache);
+      };
+
+      //adding all the hashes to cache
+      map_vertices(root, p_cache, v_to_hash);
+
+      auto map_vertex = [&] (const Vertex& v, const std::unordered_map<Vertex, Vertex>& new_vertices) {
+        auto hash = get_vertex_hash(v, &cache);
+        auto item = hash_cache.find(hash);
+        if (item != hash_cache.end()) {
+          return item->second;
+        } else {
+          if (v.height() == 1) {
+            hash_cache->insert(std::make_pair(hash, v));
+            return v;
+          } else {
+            auto left_hash = v_to_hash(v.left_child());//todo
+            auto right_hash = v_to_hash(v.right_child());
+
+            auto left_item = hash_cache->find(left_hash);
+            assert(left_item != hash_cache->end());
+            auto right_item = hash_cache->find(right_hash);
+            assert(right_item != hash_cache->end());
+            NonterminalVertex new_v(left_item->second, right_item->second);
+            hash_cache->insert(std::make_pair(hash, new_v));
+            return Vertex(new_v);
+          }
+        }
+      };
+
+
+      std::unordered_map<Vertex, Vertex> new_vertices;
+      //mapping vertices to new ones so there is a unqiue vertice for each appearing hash value
+      map_vertices(root, &new_vertices, map_vertex);
+
+      auto root_item = new_vertices.find(root);
+      assert(root_item != new_vertices.end());
+      return root_item->second;
     }
 };
 

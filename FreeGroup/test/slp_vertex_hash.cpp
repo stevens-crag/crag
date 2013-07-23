@@ -161,6 +161,31 @@ TEST(HashedReduce, StressTest) {
   }
 }
 
+
+TEST(HashedReduce, RemoveDuplicatesTest) {
+  const size_t REPEAT = 10000;
+  constexpr size_t RANK = 3;
+  const size_t ENDOMORPHISMS_NUMBER = 5;
+
+  typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
+  size_t seed = 0;
+  while (++seed <= REPEAT) {
+    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+
+    VertexHashAlgorithms::Cache cache;
+    VertexHashAlgorithms::HashRepresentativesCache hash_cache;
+    Vertex rd_mage = VertexHashAlgorithms::remove_duplicates(image, &cache, &hash_cache);
+
+    ASSERT_EQ(image.length(), rd_mage.length());
+
+    slp::MatchingTable mt;
+    VertexWord<int> image_word(image);
+    VertexWord<int> rd_word(rd_mage);
+    ASSERT_TRUE(image_word.is_equal_to(rd_word, &mt));
+  }
+}
+
 } //anonymous namespace
 } //slp
 } //crag
