@@ -444,3 +444,5 @@ constexpr std::hash<mp_limb_t*> std::hash<LongInteger>::limb_hasher_;
 constexpr std::hash<uint64_t> crag::Permutation16::uint_hasher_;
 
 constexpr std::hash<int64_t> crag::slp::hashers::SinglePowerHash::int64_t_hasher_;
+
+constexpr std::hash<LongInteger> crag::slp::hashers::ImageLengthHash::long_integer_hasher_;

@@ -54,7 +54,7 @@ template <class... Hashers> class TVertexHash {
     size_t get_std_hash() const;
 };
 
-//Here are details of realisation, no documentation
+//Here are details of implementation, no documentation
 template <class TFirstHasher, class... TOtherHashers>
 class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public TVertexHash<TOtherHashers...> {
     typedef TFirstHasher FirstHasher;
@@ -105,6 +105,7 @@ class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public 
 
     size_t get_std_hash() const {
       size_t first_hash_value = FirstHasher::get_std_hash();
+      std::cout << "first hash value " << first_hash_value << " other " << OtherHasher::get_std_hash() << std::endl;
       return OtherHasher::get_std_hash() + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
     }
 
@@ -202,7 +203,7 @@ class SinglePowerHash {
     {}
     SinglePowerHash(Vertex::VertexSignedId terminal_id)
       : terminals_power_(terminal_id > 0 ? 1 : (terminal_id < 0 ? -1 : 0))
-    { }
+    {std::cout << "sp hash "<< terminals_power_ <<std::endl; }
 
     SinglePowerHash(const SinglePowerHash& other) {
       terminals_power_ = other.terminals_power_;
@@ -289,6 +290,39 @@ constexpr std::hash<TPermutation>
 PermutationHash<TPermutation>::permutation_hasher_;
 
 
+class ImageLengthHash {
+  private:
+    LongInteger length_;
+    constexpr static std::hash<LongInteger> long_integer_hasher_ = std::hash<LongInteger>();
+  public:
+    ImageLengthHash()
+      : length_(0)
+    {}
+    ImageLengthHash(Vertex::VertexSignedId terminal_id)
+      : length_(terminal_id != 0 ? 1 : 0)
+    {std::cout << "length hash "<< length_ <<std::endl;}
+
+    ImageLengthHash(const ImageLengthHash& other)
+      : length_(other.length_)
+    {}
+
+    void concatenate_with(const ImageLengthHash& other) {
+      length_ += other.length_;
+    }
+
+    void inverse_inplace()
+    {}
+
+    bool is_equal_to(const ImageLengthHash& other) const {
+      return length_ == other.length_;
+    }
+
+    size_t get_std_hash() const {
+      std::cout << "image hash length " << length_ << " val " << long_integer_hasher_(length_) << std::endl;
+      return long_integer_hasher_(length_);
+    }
+};
+
 } //namespace hashers
 
 //! Here some algorithms which use hashed are implemented. Made for the convenience when using templates.
@@ -307,7 +341,7 @@ class TVertexHashAlgorithms {
      */
     typedef std::unordered_map<VertexHash, Vertex> HashRepresentativesCache;
 
-    //! Calculate the hash of the word produced by root, starting from begin to end.
+    //! Calculate the hash of the word produced by root, starting from begin to end, filling hash cache for all the subvertices.
     static VertexHash get_subvertex_hash(const Vertex& root, const LongInteger& begin, const LongInteger& end, Cache* cache) {
       assert(cache);
       assert(begin >= 0 && end <= root.length());
@@ -317,6 +351,7 @@ class TVertexHashAlgorithms {
         return Null;
       }
       if (root.height() == 1) {
+        std::cout << "terminal " << root.vertex_id() << " hash " << VertexHash(root.vertex_id()).get_std_hash() <<  std::endl;
         return cache->insert(
             std::make_pair(
                 root,
@@ -362,9 +397,14 @@ class TVertexHashAlgorithms {
       return get_subvertex_hash(root, begin, end, &cache);
     }
 
-    //! Calculate the hash of the word produced by root.
+    //! Calculate the hash of the word produced by root, filling hash cache for all the subvertices
     static VertexHash get_vertex_hash(const Vertex& root, Cache* cache) {
       return get_subvertex_hash(root, 0, root.length(), cache);
+    }
+
+    //! Calculate the hash of the word produced by root using temporary cache.
+    static VertexHash get_vertex_hash(const Vertex& root) {
+      return get_subvertex_hash(root, 0, root.length());
     }
 
     //! Get the longest common prefix using binary search and hashes
@@ -441,32 +481,49 @@ class TVertexHashAlgorithms {
       assert(p_cache);
       assert(p_hash_cache);
 
-      auto v_to_hash = [] (const Vertex& v, const Cache& cache) -> VertexHash {
-        return get_vertex_hash(v, &cache);
-      };
-
-      //adding all the hashes to cache
-      map_vertices(root, p_cache, v_to_hash);
-
+      std::cout << "start doin it" << std::endl;
+      //returning the canonical vertex corresponding to the vertex hash
       auto map_vertex = [&] (const Vertex& v, const std::unordered_map<Vertex, Vertex>& new_vertices) {
-        auto hash = get_vertex_hash(v, &cache);
-        auto item = hash_cache.find(hash);
-        if (item != hash_cache.end()) {
+        std::cout << "starting for " << v.vertex_id() << std::endl;
+        //side effect of this call is the cache filling for all the subvertices
+        auto hash = get_vertex_hash(v, p_cache);
+        std::cout << "found hash " << hash.get_std_hash() << std::endl;
+        auto item = p_hash_cache->find(hash);
+        if (item != p_hash_cache->end()) {
+          std::cout << "found item" << std::endl;
           return item->second;
         } else {
+          std::cout << "item is null" << std::endl;
           if (v.height() == 1) {
-            hash_cache->insert(std::make_pair(hash, v));
+            std::cout << "terminal" << std::endl;
+            p_hash_cache->insert(std::make_pair(hash, v));
             return v;
           } else {
-            auto left_hash = v_to_hash(v.left_child());//todo
-            auto right_hash = v_to_hash(v.right_child());
+            std::cout << "non_terminal" << std::endl;
+            std::cout << "left id " << v.left_child().vertex_id()
+                         << "right id " << v.right_child().vertex_id() << std::endl;
 
-            auto left_item = hash_cache->find(left_hash);
-            assert(left_item != hash_cache->end());
-            auto right_item = hash_cache->find(right_hash);
-            assert(right_item != hash_cache->end());
+            auto left_hash = get_vertex_hash(v.left_child(), p_cache);
+            auto right_hash = get_vertex_hash(v.right_child(), p_cache);
+            std::cout << "found left right hashes " << left_hash.get_std_hash()
+                      << " " << right_hash.get_std_hash() << std::endl;
+
+            auto left_item = p_hash_cache->find(left_hash);
+            auto right_item = p_hash_cache->find(right_hash);
+            std::cout << "found left right items" << std::endl;
+            std::cout << (left_item != p_hash_cache->end()) << std::endl;
+            std::cout << (right_item != p_hash_cache->end()) << std::endl;
+            assert(left_item != p_hash_cache->end());
+            assert(right_item != p_hash_cache->end());
+            std::cout << "checked left right items" << std::endl;
+            std::cout << "left id " << left_item->second.vertex_id()
+                         << "right id " << right_item->second.vertex_id() << std::endl;
+
             NonterminalVertex new_v(left_item->second, right_item->second);
-            hash_cache->insert(std::make_pair(hash, new_v));
+            std::cout << "inserting new vertex" << std::endl;
+            p_hash_cache->insert(std::make_pair(hash, new_v));
+
+            std::cout << "returning " << std::endl;
             return Vertex(new_v);
           }
         }
