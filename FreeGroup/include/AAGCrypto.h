@@ -163,16 +163,48 @@ namespace aag_crypto {
         return PrivateKey(pub_key, params_.KEY_LENGTH, *p_rand_);
       }
 
-
+      template<typename Func>
+      auto process_with_logging(Func f) -> decltype(f()) {
+        auto start_time = std::chrono::high_resolution_clock::now();
+        auto result = f();
+        auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+              std::chrono::high_resolution_clock::now() - start_time
+              );
+        std::cout << "|" << slp_vertices_num(result)
+          << "| " << duration_in_ms.count() << "ms";
+        return result;
+      }
 
       Aut make_shared_key(const PrivateKey& priv_key, const TransmittedInfo& info, Mode mode, CalculationType calc_type) {
         //the shared key is aba^{-1}b^{-1}
-        auto time = [] () {
-            return std::chrono::high_resolution_clock::now();
-          };
-        auto start_time = time();
-        auto duration = [&start_time, &time] () {
-          return std::chrono::duration_cast<std::chrono::milliseconds>(time() - start_time);
+//        auto time = [] () {
+//            return std::chrono::high_resolution_clock::now();
+//          };
+//        auto start_time = time();
+//        auto duration = [&start_time, &time] () {
+//          return std::chrono::duration_cast<std::chrono::milliseconds>(time() - start_time);
+//        };
+//        auto duration_in_ms = duration();
+
+
+        auto transform = [&] (const Aut& aut) {
+          std::cout << " |" << slp_vertices_num(aut) << "|";
+
+          std::cout << " rd ";
+          auto rd = process_with_logging([&]() {return aut.remove_duplicate_vertices();});
+
+          std::cout << " fr ";
+          auto fr = process_with_logging([&]() {return rd.free_reduction();});
+
+          std::cout << " fr_rd ";
+          auto fr_rd = process_with_logging([&]() {return fr.remove_duplicate_vertices();});
+
+          std::cout << " nf ";
+          auto nf = process_with_logging([&]() {return fr_rd.normal_form();});
+
+          std::cout << std::endl;
+
+          return nf;
         };
 
         if (mode == Alice) {
@@ -194,34 +226,16 @@ namespace aag_crypto {
                 block *= inverse ? aut() : aut.inverse();
               }
 
-              std::cout << "block size " << slp_vertices_num(block);
+              std::cout << "block ";
 
-              start_time = time();
-              auto fr_block = block.free_reduction();
-              std::cout << " fr_block size " << slp_vertices_num(fr_block)
-                << " fr_block duration " << duration().count() << "ms";
-
-              start_time = time();
-              auto nf_block = fr_block.normal_form();
-              std::cout << " nf_block size " << slp_vertices_num(nf_block)
-                << " nf_block duration " << duration().count() << "ms" << std::endl;
-
-              blocks.push_back(nf_block);
+              blocks.push_back(transform(block));
             }
 
             std::cout << "building key" << std::endl;
             for (const auto& block: blocks) {
               auto prod = conj * block;
-              std::cout << " size " << slp_vertices_num(prod);
-              start_time = time();
-              auto fr = prod.free_reduction();
-              std::cout << " fr size " << slp_vertices_num(fr)
-                << " fr duration " << duration().count() << "ms";
-              start_time = time();
-              auto nf = fr.normal_form();
-              std::cout << " nf size " << slp_vertices_num(nf)
-                << " nf duration " << duration().count() << "ms" << std::endl;
-              conj = nf;
+              std::cout << "key part";
+              conj = transform(prod);
             }
           } else if (calc_type == IterativeFrNf) {
             std::cout << "building key" << std::endl;
@@ -229,18 +243,10 @@ namespace aag_crypto {
               bool inverse = *inv_iter;
               auto n = *ind_iter;
               const auto& aut = info[n];
-              std::cout << "aut size " << slp_vertices_num(aut());
               auto prod = conj * (inverse ? aut() : aut.inverse());
-              start_time = time();
-              auto fr = prod.free_reduction();
-              std::cout << " fr size " << slp_vertices_num(fr)
-                << " fr duration " << duration().count() << "ms";
-              start_time = time();
-              auto nf = fr.normal_form();
-              std::cout << " nf size " << slp_vertices_num(nf)
-                << " nf duration " << duration().count() << "ms" << std::endl;
-              conj = nf;
-            }  
+              std::cout << "key part";
+              conj = transform(prod);
+            }
           } else {//SingleFrNf
             std::cout << "building key" << std::endl;
             for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
@@ -249,23 +255,12 @@ namespace aag_crypto {
               const auto& aut = info[n];
               conj *= inverse ? aut() : aut.inverse();
             }
-          }     
-          
+          }
+
           auto key = priv_key()() * conj;
 
-          std::cout << "size " << slp_vertices_num(key);
-
-          start_time = time();  
-
-          auto fr_key = key.free_reduction();
-          std::cout << " fr size " << slp_vertices_num(fr_key)
-            << " fr duration " << duration().count() << "ms";
-
-          start_time = time();
-          auto nf_key = fr_key.normal_form();
-          std::cout << " nf size " << slp_vertices_num(nf_key)
-            << " nf duration " << duration().count() << "ms" << std::endl;
-          return nf_key;
+          std::cout << "key ";
+          return transform(key);
         } else {//Bob
           Aut conj;
           auto inv_iter = priv_key.inverses_.cbegin();
