@@ -35,6 +35,7 @@ class HasherTest : public ::testing::Test {
     virtual ~HasherTest() {}
 };
 
+
 TYPED_TEST_CASE_P(HasherTest);
 
 TYPED_TEST_P(HasherTest, InterfaceImplementation) {
@@ -159,6 +160,41 @@ TEST(HashedReduce, StressTest) {
       ++correct_symbol;
     }
   }
+}
+
+
+
+TEST(HashedReduce, RemoveDuplicatesStressTest) {
+  const size_t REPEAT = 1000;
+  constexpr size_t RANK = 3;
+  const size_t ENDOMORPHISMS_NUMBER = 20;
+
+  typedef TVertexHashAlgorithms<hashers::ImageLengthHash,
+      hashers::SinglePowerHash,
+      hashers::PermutationHash<Permutation16>
+      > VertexHashAlgorithms;
+  size_t seed = 0;
+  size_t n_errors = 0;
+  while (++seed <= REPEAT) {
+    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+
+    ASSERT_EQ(VertexHashAlgorithms::get_vertex_hash(image), VertexHashAlgorithms::get_vertex_hash(image));
+
+    VertexHashAlgorithms::Cache cache;
+    VertexHashAlgorithms::HashRepresentativesCache hash_cache;
+    Vertex rd_mage = VertexHashAlgorithms::remove_duplicates(image, &cache, &hash_cache);
+
+    ASSERT_EQ(image.length(), rd_mage.length());
+
+    slp::MatchingTable mt;
+    VertexWord<int> image_word(image);
+    VertexWord<int> rd_word(rd_mage);
+    if(!image_word.is_equal_to(rd_word, &mt)) {
+      ++n_errors;
+    }
+  }
+  ASSERT_EQ(0, n_errors);
 }
 
 } //anonymous namespace
