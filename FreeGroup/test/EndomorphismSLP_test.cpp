@@ -844,7 +844,7 @@ TEST_F(EndomorphismSLPTest, FreeReductionPreciseTest) {
   }
 }
 
-TEST_F(EndomorphismSLPTest, NomralFormTest) {
+TEST_F(EndomorphismSLPTest, NormalFormTest) {
   for (auto rank : {3, 5, 10}) {
     UniformAutomorphismSLPGenerator<int> rnd(rank);
     for (auto size : {30}) {
@@ -852,6 +852,19 @@ TEST_F(EndomorphismSLPTest, NomralFormTest) {
         auto e = EMorphism::composition(size, rnd);
         auto normal_form = e.normal_form();
         EXPECT_EQ(e, normal_form) << "e" << e << "\nnf" << normal_form;
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, RemoveDuplicatesTest) {
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {30}) {
+      for (int i = 0; i < 10; ++i) {
+        auto e = EMorphism::composition(size, rnd);
+        auto rd_e = e.remove_duplicate_vertices();
+        EXPECT_EQ(e, rd_e) << "e" << e << "\nrd" << rd_e;
       }
     }
   }

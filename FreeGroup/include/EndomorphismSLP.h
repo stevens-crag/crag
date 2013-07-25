@@ -22,8 +22,15 @@ namespace crag {
 
 
 namespace endomorphism_default_parameters {
-  //! Default hash algorithm used for free reduction.
+  //! Default hash algorithms used for free reduction.
   typedef crag::slp::TVertexHashAlgorithms<
+    crag::slp::hashers::SinglePowerHash,
+    crag::slp::hashers::PermutationHash<crag::Permutation16>
+  > WeakReducedVertexHashAlgorithms;
+
+  //! Default hash algorithms used for duplicates removal.
+  typedef crag::slp::TVertexHashAlgorithms<
+    crag::slp::hashers::ImageLengthHash,
     crag::slp::hashers::SinglePowerHash,
     crag::slp::hashers::PermutationHash<crag::Permutation16>
   > WeakVertexHashAlgorithms;
@@ -203,13 +210,13 @@ public:
   EndomorphismSLP inverse() const;
 
   //! Returns the automorphisms with freely reduced images. Might make mistakes but much faster than precise version.
-  template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakVertexHashAlgorithms>
+  template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakReducedVertexHashAlgorithms>
   EndomorphismSLP free_reduction() const {
     typename VertexHashAlgorithms::Cache vertex_hashes;
     EndomorphismSLP result;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
 
-    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+    for_each_non_trivial_image([&result, &vertex_hashes, &reduced_vertices] (const symbol_image_pair_type& pair) {
       auto reduced = VertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
@@ -223,7 +230,7 @@ public:
     EndomorphismSLP result;
     slp::MatchingTable mt;
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
-    for_each_non_trivial_image([&] (const symbol_image_pair_type& pair) {
+    for_each_non_trivial_image([&result, &mt, &reduced_vertices] (const symbol_image_pair_type& pair) {
       auto reduced = slp::reduce(pair.second, &mt, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
@@ -233,9 +240,19 @@ public:
   }
 
   //! Returns the automorphisms, which contains no vertices with the same hash given by template parameter.
-  template<typename VertexHash = endomorphism_default_parameters::WeakVertexHashAlgorithms>
+  template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakVertexHashAlgorithms>
   EndomorphismSLP remove_duplicate_vertices() const {
-    return *this;//TODO
+    typename VertexHashAlgorithms::Cache vertex_hashes;
+    typename VertexHashAlgorithms::HashRepresentativesCache hash_representatives;
+    EndomorphismSLP result;
+
+    for_each_non_trivial_image([&result, &vertex_hashes, &hash_representatives] (const symbol_image_pair_type& pair) {
+      auto rd_vertex = VertexHashAlgorithms::remove_duplicates(pair.second, &vertex_hashes, &hash_representatives);
+      //insert if it is not an identity map
+      if (rd_vertex.height() != 1 || TerminalVertex(rd_vertex) != pair.first)
+        result.images_.insert(std::make_pair(pair.first, rd_vertex));
+    });
+    return result;
   }
 
   //! Returns the automorphism with its representaiton in normal form.
