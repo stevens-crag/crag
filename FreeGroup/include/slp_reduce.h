@@ -23,10 +23,10 @@ namespace std {
 template<>
 struct hash<LongInteger> {
   private:
-    constexpr static hash<mp_limb_t*> limb_hasher_ = hash<mp_limb_t*>();
+    constexpr static hash<mp_limb_t> limb_hasher_ = hash<mp_limb_t>();
   public:
     size_t operator()(const LongInteger& obj) const {
-      return limb_hasher_(obj.get_mpz_t()->_mp_d);
+      return limb_hasher_(*obj.get_mpz_t()->_mp_d);
     }
 };
 

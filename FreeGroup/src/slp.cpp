@@ -439,7 +439,7 @@ Vertex get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteg
 } //namespace slp
 } //namespace crag
 
-constexpr std::hash<mp_limb_t*> std::hash<LongInteger>::limb_hasher_;
+constexpr std::hash<mp_limb_t> std::hash<LongInteger>::limb_hasher_;
 
 constexpr std::hash<uint64_t> crag::Permutation16::uint_hasher_;
 
