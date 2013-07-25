@@ -113,8 +113,8 @@ class RuleLetter {
   private:
     friend class Rule;
 
-    inline std::shared_ptr<TerminalId> first_terminal_shared();
-    inline std::shared_ptr<TerminalId> last_terminal_shared();
+    inline TerminalId* first_terminal_shared();
+    inline TerminalId* last_terminal_shared();
 
   private:
     TerminalId terminal_id_;
@@ -244,8 +244,8 @@ class Rule {
     void copy_first_terminal();
     void copy_last_terminal();
 
-    void set_first_terminal(const std::shared_ptr<TerminalId>&);
-    void set_last_terminal(const std::shared_ptr<TerminalId>&);
+    void set_first_terminal(TerminalId*);
+    void set_last_terminal(TerminalId*);
 
     void pop_right_from_letter(
         RuleLetter::IterRef letter_position,
@@ -264,8 +264,8 @@ class Rule {
     friend class RuleLetter;
 
     std::list<RuleLetter> letters_;
-    std::shared_ptr<Vertex::VertexSignedId> first_terminal_letter_;
-    std::shared_ptr<Vertex::VertexSignedId> last_terminal_letter_;
+    TerminalId* first_terminal_letter_;
+    TerminalId* last_terminal_letter_;
     std::vector<LetterPosition> nonterminal_index_;
 };
 
@@ -300,16 +300,16 @@ TerminalId RuleLetter::last_terminal_letter_id() const {
       terminal_id_;
 }
 
-std::shared_ptr<TerminalId> RuleLetter::first_terminal_shared() {
+TerminalId* RuleLetter::first_terminal_shared() {
   return nonterminal_rule_ ?
       nonterminal_rule_->first_terminal_letter_ :
-      std::make_shared<TerminalId>(terminal_id_);
+      new TerminalId(terminal_id_);
 }
 
-std::shared_ptr<TerminalId> RuleLetter::last_terminal_shared() {
+TerminalId* RuleLetter::last_terminal_shared() {
   return nonterminal_rule_ ?
       nonterminal_rule_->last_terminal_letter_ :
-      std::make_shared<TerminalId>(terminal_id_);
+      new TerminalId(terminal_id_);
 }
 
 inline bool RuleLetter::is_empty_nonterminal() const {

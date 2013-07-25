@@ -243,7 +243,7 @@ void Rule::compress_pair(
 }
 
 void Rule::set_first_terminal(
-    const std::shared_ptr<TerminalId>& first_terminal_shared
+    TerminalId* first_terminal_shared
 ) {
   for (auto& occurence : nonterminal_index_) {
     if (occurence.rule_->first_nonempty() == occurence.letter_) {
@@ -254,7 +254,7 @@ void Rule::set_first_terminal(
 }
 
 void Rule::set_last_terminal(
-    const std::shared_ptr<TerminalId>& last_terminal_shared
+    TerminalId* last_terminal_shared
 ) {
   for (auto& occurence : nonterminal_index_) {
     if (occurence.rule_->last_nonempty() == occurence.letter_) {
@@ -265,7 +265,7 @@ void Rule::set_last_terminal(
 }
 
 void Rule::copy_first_terminal() {
-  auto first_terminal_shared = std::make_shared<TerminalId>(
+  auto first_terminal_shared = new TerminalId(
       *first_terminal_letter_
   );
 
@@ -276,7 +276,7 @@ void Rule::copy_first_terminal() {
 }
 
 void Rule::copy_last_terminal() {
-  auto last_terminal_shared = std::make_shared<TerminalId>(
+  auto last_terminal_shared = new TerminalId(
       *last_terminal_letter_
   );
 
