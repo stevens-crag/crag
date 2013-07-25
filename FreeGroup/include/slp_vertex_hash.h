@@ -105,7 +105,6 @@ class TVertexHash<TFirstHasher, TOtherHashers...> : public TFirstHasher, public 
 
     size_t get_std_hash() const {
       size_t first_hash_value = FirstHasher::get_std_hash();
-      std::cout << "first hash value " << first_hash_value << " other " << OtherHasher::get_std_hash() << std::endl;
       return OtherHasher::get_std_hash() + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
     }
 
@@ -203,7 +202,7 @@ class SinglePowerHash {
     {}
     SinglePowerHash(Vertex::VertexSignedId terminal_id)
       : terminals_power_(terminal_id > 0 ? 1 : (terminal_id < 0 ? -1 : 0))
-    {std::cout << "sp hash "<< terminals_power_ <<std::endl; }
+    {}
 
     SinglePowerHash(const SinglePowerHash& other) {
       terminals_power_ = other.terminals_power_;
@@ -300,7 +299,7 @@ class ImageLengthHash {
     {}
     ImageLengthHash(Vertex::VertexSignedId terminal_id)
       : length_(terminal_id != 0 ? 1 : 0)
-    {std::cout << "length hash "<< length_ <<std::endl;}
+    {}
 
     ImageLengthHash(const ImageLengthHash& other)
       : length_(other.length_)
@@ -318,7 +317,6 @@ class ImageLengthHash {
     }
 
     size_t get_std_hash() const {
-      std::cout << "image hash length " << length_ << " val " << long_integer_hasher_(length_) << std::endl;
       return long_integer_hasher_(length_);
     }
 };
@@ -351,7 +349,6 @@ class TVertexHashAlgorithms {
         return Null;
       }
       if (root.height() == 1) {
-        std::cout << "terminal " << root.vertex_id() << " hash " << VertexHash(root.vertex_id()).get_std_hash() <<  std::endl;
         return cache->insert(
             std::make_pair(
                 root,
@@ -481,49 +478,30 @@ class TVertexHashAlgorithms {
       assert(p_cache);
       assert(p_hash_cache);
 
-      std::cout << "start doin it" << std::endl;
       //returning the canonical vertex corresponding to the vertex hash
       auto map_vertex = [&] (const Vertex& v, const std::unordered_map<Vertex, Vertex>& new_vertices) {
-        std::cout << "starting for " << v.vertex_id() << std::endl;
         //side effect of this call is the cache filling for all the subvertices
         auto hash = get_vertex_hash(v, p_cache);
-        std::cout << "found hash " << hash.get_std_hash() << std::endl;
         auto item = p_hash_cache->find(hash);
         if (item != p_hash_cache->end()) {
-          std::cout << "found item" << std::endl;
           return item->second;
         } else {
-          std::cout << "item is null" << std::endl;
           if (v.height() == 1) {
-            std::cout << "terminal" << std::endl;
             p_hash_cache->insert(std::make_pair(hash, v));
             return v;
           } else {
-            std::cout << "non_terminal" << std::endl;
-            std::cout << "left id " << v.left_child().vertex_id()
-                         << "right id " << v.right_child().vertex_id() << std::endl;
 
             auto left_hash = get_vertex_hash(v.left_child(), p_cache);
             auto right_hash = get_vertex_hash(v.right_child(), p_cache);
-            std::cout << "found left right hashes " << left_hash.get_std_hash()
-                      << " " << right_hash.get_std_hash() << std::endl;
 
             auto left_item = p_hash_cache->find(left_hash);
             auto right_item = p_hash_cache->find(right_hash);
-            std::cout << "found left right items" << std::endl;
-            std::cout << (left_item != p_hash_cache->end()) << std::endl;
-            std::cout << (right_item != p_hash_cache->end()) << std::endl;
             assert(left_item != p_hash_cache->end());
             assert(right_item != p_hash_cache->end());
-            std::cout << "checked left right items" << std::endl;
-            std::cout << "left id " << left_item->second.vertex_id()
-                         << "right id " << right_item->second.vertex_id() << std::endl;
 
             NonterminalVertex new_v(left_item->second, right_item->second);
-            std::cout << "inserting new vertex" << std::endl;
             p_hash_cache->insert(std::make_pair(hash, new_v));
 
-            std::cout << "returning " << std::endl;
             return Vertex(new_v);
           }
         }
