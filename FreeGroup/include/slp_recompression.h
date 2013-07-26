@@ -113,8 +113,8 @@ class RuleLetter {
   private:
     friend class Rule;
 
-    inline TerminalId* first_terminal_shared();
-    inline TerminalId* last_terminal_shared();
+    inline TerminalId* first_terminal_ptr();
+    inline TerminalId* last_terminal_ptr();
 
   private:
     TerminalId terminal_id_;
@@ -241,9 +241,6 @@ class Rule {
   private:
     inline void register_inclusion(Rule* rule, RuleLetter::IterRef letter);
 
-    void copy_first_terminal();
-    void copy_last_terminal();
-
     void set_first_terminal(TerminalId*);
     void set_last_terminal(TerminalId*);
 
@@ -300,16 +297,16 @@ TerminalId RuleLetter::last_terminal_letter_id() const {
       terminal_id_;
 }
 
-TerminalId* RuleLetter::first_terminal_shared() {
+TerminalId* RuleLetter::first_terminal_ptr() {
   return nonterminal_rule_ ?
       nonterminal_rule_->first_terminal_letter_ :
-      new TerminalId(terminal_id_);
+      &terminal_id_;
 }
 
-TerminalId* RuleLetter::last_terminal_shared() {
+TerminalId* RuleLetter::last_terminal_ptr() {
   return nonterminal_rule_ ?
       nonterminal_rule_->last_terminal_letter_ :
-      new TerminalId(terminal_id_);
+      &terminal_id_;
 }
 
 inline bool RuleLetter::is_empty_nonterminal() const {

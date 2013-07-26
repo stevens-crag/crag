@@ -947,6 +947,19 @@ TEST(Recompression, NormalFormEx17) {
   normalization_steps_check(v18);
 }
 
+TEST(Recompression, NormalFormEx18) {
+  TerminalVertex a(1);
+  TerminalVertex b(2);
+  TerminalVertex c(3);
+  NonterminalVertex v0(a, c); //
+  NonterminalVertex v1(b, v0); //
+  NonterminalVertex v2(a, v1); //
+  NonterminalVertex v3(v1, v0); //
+  NonterminalVertex v4(v2, v3); //
+
+  normalization_steps_check(v4);
+}
+
 
 
 std::string print_rules(const Vertex& slp) {
@@ -1024,7 +1037,7 @@ TEST(Recompression, StressNormalForm) {
 
   while (--REPEAT >= 0) {
     Vertex slp = get_random_slp_on_n_letters(WORD_SIZE, ALPHABET_SIZE);
-    std::cout << print_rules(slp) << std::endl;
+    //std::cout << print_rules(slp) << std::endl;
     Vertex normal_slp = normal_form(slp);
 
     ASSERT_EQ(
@@ -1084,8 +1097,8 @@ TEST(Recompression, StressNormalForm) {
 
 TEST(Recompression, StressEndomorphismNormal) {
   constexpr size_t RANK = 3;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 150;
-  int REPEAT = 1000;
+  constexpr size_t ENDOMORPHISMS_NUMBER = 30;
+  int REPEAT = 300;
   size_t seed = 112233;
   srand(seed);
   UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
@@ -1098,7 +1111,7 @@ TEST(Recompression, StressEndomorphismNormal) {
 
   while (--REPEAT >= 0) {
     Vertex slp = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
-    std::cout << print_rules(slp) << std::endl;
+    //std::cout << print_rules(slp) << std::endl;
     Vertex normal_slp = normal_form(slp);
 
     ASSERT_EQ(
