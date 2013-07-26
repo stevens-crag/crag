@@ -80,18 +80,6 @@ class RuleLetter {
 
     inline TerminalId last_terminal_letter_id() const;
 
-    static TerminalId fresh_terminal_id_;
-
-    static TerminalId next_fresh_terminal() {
-      ++fresh_terminal_id_;
-      assert(fresh_terminal_id_ > 0);
-      return fresh_terminal_id_;
-    }
-
-    static TerminalId last_terminal() {
-      return fresh_terminal_id_;
-    }
-
     explicit RuleLetter(Rule* vertex_rule)
       : terminal_id_(0)
       , terminal_power_()
@@ -113,8 +101,8 @@ class RuleLetter {
   private:
     friend class Rule;
 
-    inline std::shared_ptr<TerminalId> first_terminal_shared();
-    inline std::shared_ptr<TerminalId> last_terminal_shared();
+    inline TerminalId* first_terminal_ptr();
+    inline TerminalId* last_terminal_ptr();
 
   private:
     TerminalId terminal_id_;
@@ -241,11 +229,8 @@ class Rule {
   private:
     inline void register_inclusion(Rule* rule, RuleLetter::IterRef letter);
 
-    void copy_first_terminal();
-    void copy_last_terminal();
-
-    void set_first_terminal(const std::shared_ptr<TerminalId>&);
-    void set_last_terminal(const std::shared_ptr<TerminalId>&);
+    void set_first_terminal(TerminalId*);
+    void set_last_terminal(TerminalId*);
 
     void pop_right_from_letter(
         RuleLetter::IterRef letter_position,
@@ -264,8 +249,8 @@ class Rule {
     friend class RuleLetter;
 
     std::list<RuleLetter> letters_;
-    std::shared_ptr<Vertex::VertexSignedId> first_terminal_letter_;
-    std::shared_ptr<Vertex::VertexSignedId> last_terminal_letter_;
+    TerminalId* first_terminal_letter_;
+    TerminalId* last_terminal_letter_;
     std::vector<LetterPosition> nonterminal_index_;
 };
 
@@ -300,16 +285,16 @@ TerminalId RuleLetter::last_terminal_letter_id() const {
       terminal_id_;
 }
 
-std::shared_ptr<TerminalId> RuleLetter::first_terminal_shared() {
+TerminalId* RuleLetter::first_terminal_ptr() {
   return nonterminal_rule_ ?
       nonterminal_rule_->first_terminal_letter_ :
-      std::make_shared<TerminalId>(terminal_id_);
+      &terminal_id_;
 }
 
-std::shared_ptr<TerminalId> RuleLetter::last_terminal_shared() {
+TerminalId* RuleLetter::last_terminal_ptr() {
   return nonterminal_rule_ ?
       nonterminal_rule_->last_terminal_letter_ :
-      std::make_shared<TerminalId>(terminal_id_);
+      &terminal_id_;
 }
 
 inline bool RuleLetter::is_empty_nonterminal() const {
@@ -337,7 +322,19 @@ struct JezRules {
 
     void debug_print(std::ostream* os) const;
 
+    TerminalId next_fresh_terminal() {
+      ++fresh_terminal_id_;
+      assert(fresh_terminal_id_ > 0);
+      return fresh_terminal_id_;
+    }
+
+    TerminalId last_terminal() const {
+      return fresh_terminal_id_;
+    }
+
   private:
+    TerminalId fresh_terminal_id_;
+
     RuleLetter get_letter(const Vertex& vertex) {
       if (vertex.height() > 1) {
         assert(vertex_rules_.count(vertex));
@@ -347,8 +344,8 @@ struct JezRules {
       auto rules_terminal = vertex_terminals_.insert(std::make_pair(vertex, 0));
 
       if (rules_terminal.second) {
-        (rules_terminal.first->second) = RuleLetter::next_fresh_terminal();
-        terminal_vertices_[RuleLetter::last_terminal()] = vertex;
+        (rules_terminal.first->second) = next_fresh_terminal();
+        terminal_vertices_[rules_terminal.first->second] = vertex;
       }
 
       return RuleLetter(rules_terminal.first->second, 1);

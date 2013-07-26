@@ -40,19 +40,19 @@ int main() {
   auto begin = std::chrono::system_clock::now();
   int count = REPEAT;
 
-  typedef crag::slp::TVertexHashAlgorithms<
-      crag::slp::hashers::SinglePowerHash,
-      crag::slp::hashers::PermutationHash<crag::Permutation16>
-  > VertexHashAlgorithms;
+//  typedef crag::slp::TVertexHashAlgorithms<
+//      crag::slp::hashers::SinglePowerHash,
+//      crag::slp::hashers::PermutationHash<crag::Permutation16>
+//  > VertexHashAlgorithms;
 
   auto normal_form_duration = begin - begin;
 
   while (--count >= 0) {
     auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
-    std::unordered_map<Vertex, Vertex> reduced_vertices;
-    VertexHashAlgorithms::Cache vertex_hashes;
-    Vertex reduced = VertexHashAlgorithms::reduce(image, &vertex_hashes, &reduced_vertices);
+//    std::unordered_map<Vertex, Vertex> reduced_vertices;
+//    VertexHashAlgorithms::Cache vertex_hashes;
+//    Vertex reduced = VertexHashAlgorithms::reduce(image, &vertex_hashes, &reduced_vertices);
 
     auto normal_form_start = std::chrono::system_clock::now();
     Vertex normal_form = crag::slp::recompression::normal_form(image);

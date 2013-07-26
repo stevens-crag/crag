@@ -5,8 +5,6 @@ namespace crag {
 namespace slp {
 namespace recompression {
 
-TerminalId RuleLetter::fresh_terminal_id_ = 0;
-
 Rule::Rule(std::initializer_list<RuleLetter> letters)
   : debug_id(0)
 {
@@ -28,8 +26,8 @@ Rule::Rule(std::initializer_list<RuleLetter> letters)
   }
 
   if (!letters_.empty()) {
-    first_terminal_letter_ = letters_.front().first_terminal_shared();
-    last_terminal_letter_ = letters_.back().last_terminal_shared();
+    first_terminal_letter_ = letters_.front().first_terminal_ptr();
+    last_terminal_letter_ = letters_.back().last_terminal_ptr();
   }
 
   assert(first_terminal_letter_ && last_terminal_letter_);
@@ -74,7 +72,7 @@ void Rule::pop_first() {
 
   auto front = first_nonempty();
   if (front != letters_.end()) {
-    first_terminal_letter_ = front->first_terminal_shared();
+    first_terminal_letter_ = front->first_terminal_ptr();
   } else {
     first_terminal_letter_ = nullptr;
     last_terminal_letter_ = nullptr;
@@ -108,7 +106,7 @@ void Rule::pop_last() {
   delete_letter(std::prev(letters_.end()));
   auto back = last_nonempty();
   if (back != letters_.end()) {
-    last_terminal_letter_ = back->last_terminal_shared();
+    last_terminal_letter_ = back->last_terminal_ptr();
   } else {
     first_terminal_letter_ = nullptr;
     last_terminal_letter_ = nullptr;
@@ -142,6 +140,9 @@ RuleLetter::IterRef Rule::remove_empty_letter(RuleLetter::IterRef position) {
       position_after->is_power_of(position_before->terminal_id())) {
     position_before->terminal_power_ += position_after->terminal_power_;
     delete_letter(position_after);
+    if (position_before == last_nonempty()) {
+      set_last_terminal(position_before->last_terminal_ptr());
+    }
     return std::next(position_before);
   }
 
@@ -169,7 +170,7 @@ void Rule::compress_power(RuleLetter::IterRef position, TerminalId new_terminal)
 
   if (position == nonempty_begin) {
     assert(*first_terminal_letter_ == position->terminal_id());
-    *first_terminal_letter_ = new_terminal;
+    assert(first_terminal_letter_ == position->first_terminal_ptr());
   }
 
   auto nonempty_end = --letters_.end();
@@ -178,10 +179,9 @@ void Rule::compress_power(RuleLetter::IterRef position, TerminalId new_terminal)
     --nonempty_end;
   }
 
-
   if (position == nonempty_end) {
     assert(*last_terminal_letter_ == position->terminal_id());
-    *last_terminal_letter_ = new_terminal;
+    assert(last_terminal_letter_ == position->last_terminal_ptr());
   }
 
   position->terminal_id_ = new_terminal;
@@ -205,7 +205,7 @@ void Rule::compress_pair(
 
   if (first == nonempty_begin) {
     assert(*first_terminal_letter_ == first->terminal_id());
-    *first_terminal_letter_ = new_terminal;
+    assert(first_terminal_letter_ == first->first_terminal_ptr());
   }
 
   auto nonempty_end = --letters_.end();
@@ -216,7 +216,7 @@ void Rule::compress_pair(
 
   if (second == nonempty_end) {
     assert(*last_terminal_letter_ == second->terminal_id());
-    *last_terminal_letter_ = new_terminal;
+    set_last_terminal(first->last_terminal_ptr());
   }
 
   delete_letter(second);
@@ -230,12 +230,16 @@ void Rule::compress_pair(
       prev->is_power_of(new_terminal)) {
     prev->terminal_power_ += 1;
     delete_letter(first);
+    if (prev == last_nonempty()) {
+      set_last_terminal(prev->last_terminal_ptr());
+    }
   }
 
   auto next = std::next(first);
 
   if (next != letters_.end() &&
       next->is_power_of(new_terminal)) {
+    assert(false);
     first->terminal_power_ += next->terminal_power();
     delete_letter(next);
   }
@@ -243,46 +247,25 @@ void Rule::compress_pair(
 }
 
 void Rule::set_first_terminal(
-    const std::shared_ptr<TerminalId>& first_terminal_shared
+    TerminalId* first_terminal_shared
 ) {
   for (auto& occurence : nonterminal_index_) {
     if (occurence.rule_->first_nonempty() == occurence.letter_) {
       occurence.rule_->set_first_terminal(first_terminal_shared);
-      occurence.rule_->first_terminal_letter_ = first_terminal_shared;
     }
   }
+  this->first_terminal_letter_ = first_terminal_shared;
 }
 
 void Rule::set_last_terminal(
-    const std::shared_ptr<TerminalId>& last_terminal_shared
+    TerminalId* last_terminal_shared
 ) {
   for (auto& occurence : nonterminal_index_) {
     if (occurence.rule_->last_nonempty() == occurence.letter_) {
       occurence.rule_->set_last_terminal(last_terminal_shared);
-      occurence.rule_->last_terminal_letter_ = last_terminal_shared;
     }
   }
-}
-
-void Rule::copy_first_terminal() {
-  auto first_terminal_shared = std::make_shared<TerminalId>(
-      *first_terminal_letter_
-  );
-
-  assert(first_terminal_shared);
-  set_first_terminal(first_terminal_shared);
-
-  first_terminal_letter_ = std::move(first_terminal_shared);
-}
-
-void Rule::copy_last_terminal() {
-  auto last_terminal_shared = std::make_shared<TerminalId>(
-      *last_terminal_letter_
-  );
-
-  set_last_terminal(last_terminal_shared);
-
-  last_terminal_letter_ = std::move(last_terminal_shared);
+  this->last_terminal_letter_ = last_terminal_shared;
 }
 
 void Rule::pop_right_from_letter(
@@ -297,19 +280,19 @@ void Rule::pop_right_from_letter(
       position_after->is_power_of(popped_letter.terminal_id())) {
     position_after->terminal_power_ += popped_letter.terminal_power_;
     if (position_after == first_nonempty()) {
-      copy_first_terminal();
+      set_first_terminal(position_after->first_terminal_ptr());
     }
     return;
   }
 
-  auto inserted = letters_.emplace(position_after, popped_letter);
+  iterator inserted = letters_.emplace(position_after, popped_letter);
 
   if (inserted == last_nonempty()) {
-    copy_last_terminal();
+    set_last_terminal(inserted->last_terminal_ptr());
   }
 
   if (inserted == first_nonempty()) {
-    copy_first_terminal();
+    set_first_terminal(inserted->first_terminal_ptr());
   }
 }
 
@@ -327,23 +310,25 @@ void Rule::pop_left_from_letter(
     position_before->terminal_power_ += popped_letter.terminal_power_;
 
     if (position_before == last_nonempty()) {
-      copy_last_terminal();
+      set_last_terminal(position_before->last_terminal_ptr());
     }
     return;
   }
 
-  auto inserted = letters_.emplace(letter_position, popped_letter);
+  iterator inserted = letters_.emplace(letter_position, popped_letter);
 
   if (inserted == last_nonempty()) {
-    copy_last_terminal();
+    set_last_terminal(inserted->last_terminal_ptr());
   }
 
   if (inserted == first_nonempty()) {
-    copy_first_terminal();
+    set_first_terminal(inserted->first_terminal_ptr());
   }
 }
 
-JezRules::JezRules(const Vertex& slp) {
+JezRules::JezRules(const Vertex& slp)
+  : fresh_terminal_id_(0)
+{
   auto acceptor = [this] (const inspector::InspectorTask& task) {
     return this->vertex_rules_.count(task.vertex) == 0;
     //true only if vertex is not visited yet
@@ -496,7 +481,7 @@ void JezRules::compress_blocks(const std::vector<LetterPosition>& blocks) {
       this->terminal_vertices_.insert(
         this->terminal_vertices_.end(),
         std::make_pair(
-          RuleLetter::next_fresh_terminal(),
+          next_fresh_terminal(),
           Vertex()
         )
       );
@@ -511,7 +496,7 @@ void JezRules::compress_blocks(const std::vector<LetterPosition>& blocks) {
 
     block->rule_->compress_power(
         block->letter_,
-        RuleLetter::last_terminal()
+        last_terminal()
     );
 
     ++block;
@@ -690,8 +675,8 @@ OneStepPairs::greedy_pairs() const {
   std::unordered_set<TerminalId> left_letters;
   std::unordered_set<TerminalId> right_letters;
 
-  left_letters.reserve(RuleLetter::last_terminal());
-  right_letters.reserve(RuleLetter::last_terminal());
+  left_letters.reserve(rules_->last_terminal());
+  right_letters.reserve(rules_->last_terminal());
 
   for (auto& letter_pairs : pairs_) {
     if (letter_pairs.right_letters_.empty() && letter_pairs.left_letters_.empty()) {
@@ -730,7 +715,7 @@ TerminalId OneStepPairs::compress_pair(
     TerminalId second,
     const std::vector<LetterPosition>& occurencies
 ) {
-  TerminalId pair_terminal_id = RuleLetter::next_fresh_terminal();
+  TerminalId pair_terminal_id = rules_->next_fresh_terminal();
 
   for (auto& occurence : occurencies) {
     auto first_letter = occurence.letter_;
