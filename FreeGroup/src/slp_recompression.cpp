@@ -5,8 +5,6 @@ namespace crag {
 namespace slp {
 namespace recompression {
 
-TerminalId RuleLetter::fresh_terminal_id_ = 0;
-
 Rule::Rule(std::initializer_list<RuleLetter> letters)
   : debug_id(0)
 {
@@ -328,7 +326,9 @@ void Rule::pop_left_from_letter(
   }
 }
 
-JezRules::JezRules(const Vertex& slp) {
+JezRules::JezRules(const Vertex& slp)
+  : fresh_terminal_id_(0)
+{
   auto acceptor = [this] (const inspector::InspectorTask& task) {
     return this->vertex_rules_.count(task.vertex) == 0;
     //true only if vertex is not visited yet
@@ -481,7 +481,7 @@ void JezRules::compress_blocks(const std::vector<LetterPosition>& blocks) {
       this->terminal_vertices_.insert(
         this->terminal_vertices_.end(),
         std::make_pair(
-          RuleLetter::next_fresh_terminal(),
+          next_fresh_terminal(),
           Vertex()
         )
       );
@@ -496,7 +496,7 @@ void JezRules::compress_blocks(const std::vector<LetterPosition>& blocks) {
 
     block->rule_->compress_power(
         block->letter_,
-        RuleLetter::last_terminal()
+        last_terminal()
     );
 
     ++block;
@@ -675,8 +675,8 @@ OneStepPairs::greedy_pairs() const {
   std::unordered_set<TerminalId> left_letters;
   std::unordered_set<TerminalId> right_letters;
 
-  left_letters.reserve(RuleLetter::last_terminal());
-  right_letters.reserve(RuleLetter::last_terminal());
+  left_letters.reserve(rules_->last_terminal());
+  right_letters.reserve(rules_->last_terminal());
 
   for (auto& letter_pairs : pairs_) {
     if (letter_pairs.right_letters_.empty() && letter_pairs.left_letters_.empty()) {
@@ -715,7 +715,7 @@ TerminalId OneStepPairs::compress_pair(
     TerminalId second,
     const std::vector<LetterPosition>& occurencies
 ) {
-  TerminalId pair_terminal_id = RuleLetter::next_fresh_terminal();
+  TerminalId pair_terminal_id = rules_->next_fresh_terminal();
 
   for (auto& occurence : occurencies) {
     auto first_letter = occurence.letter_;

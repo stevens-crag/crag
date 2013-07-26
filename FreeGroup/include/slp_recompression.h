@@ -80,18 +80,6 @@ class RuleLetter {
 
     inline TerminalId last_terminal_letter_id() const;
 
-    static TerminalId fresh_terminal_id_;
-
-    static TerminalId next_fresh_terminal() {
-      ++fresh_terminal_id_;
-      assert(fresh_terminal_id_ > 0);
-      return fresh_terminal_id_;
-    }
-
-    static TerminalId last_terminal() {
-      return fresh_terminal_id_;
-    }
-
     explicit RuleLetter(Rule* vertex_rule)
       : terminal_id_(0)
       , terminal_power_()
@@ -334,7 +322,19 @@ struct JezRules {
 
     void debug_print(std::ostream* os) const;
 
+    TerminalId next_fresh_terminal() {
+      ++fresh_terminal_id_;
+      assert(fresh_terminal_id_ > 0);
+      return fresh_terminal_id_;
+    }
+
+    TerminalId last_terminal() const {
+      return fresh_terminal_id_;
+    }
+
   private:
+    TerminalId fresh_terminal_id_;
+
     RuleLetter get_letter(const Vertex& vertex) {
       if (vertex.height() > 1) {
         assert(vertex_rules_.count(vertex));
@@ -344,8 +344,8 @@ struct JezRules {
       auto rules_terminal = vertex_terminals_.insert(std::make_pair(vertex, 0));
 
       if (rules_terminal.second) {
-        (rules_terminal.first->second) = RuleLetter::next_fresh_terminal();
-        terminal_vertices_[RuleLetter::last_terminal()] = vertex;
+        (rules_terminal.first->second) = next_fresh_terminal();
+        terminal_vertices_[rules_terminal.first->second] = vertex;
       }
 
       return RuleLetter(rules_terminal.first->second, 1);

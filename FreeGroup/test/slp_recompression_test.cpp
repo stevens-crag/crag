@@ -104,10 +104,10 @@ TEST(Recompression, ConstructionFromSLP) {
   EXPECT_TRUE(node.is_power());
   EXPECT_EQ(2, node.terminal_power());
   EXPECT_TRUE(node.is_valid());
-  EXPECT_EQ(3, rule_power.first_terminal_id());
-  EXPECT_EQ(3, rule_power.last_terminal_id());
+  EXPECT_EQ(1, rule_power.first_terminal_id());
+  EXPECT_EQ(1, rule_power.last_terminal_id());
 
-  EXPECT_EQ(3, node.terminal_id());
+  EXPECT_EQ(1, node.terminal_id());
 }
 
 TEST(Recompression, NormalForm) {
@@ -507,7 +507,7 @@ void normalization_steps_check(const Vertex& root) {
     return;
   }
 
-  int naive_shift = RuleLetter::last_terminal();
+  int naive_shift = 0;
   JezRules rules(root);
 
   Rule& root_rule = *(rules.vertex_rules_[root]);
@@ -528,27 +528,27 @@ void normalization_steps_check(const Vertex& root) {
            )
         )) {
 
-    std::cout << "\n=================\n\nCurrent rules:" << std::endl;
-    rules.debug_print(&std::cout);
+    //std::cout << "\n=================\n\nCurrent rules:" << std::endl;
+//    rules.debug_print(&std::cout);
     OneStepPairs pairs(&rules);
 
     rules.remove_crossing_blocks();
 
-    std::cout << "Rules after RemCrBlocks: " << std::endl;
-    rules.debug_print(&std::cout);
+    //std::cout << "Rules after RemCrBlocks: " << std::endl;
+//    rules.debug_print(&std::cout);
 
     auto blocks = rules.list_blocks();
-    std::cout << "\nFound blocks: " << std::endl;
-    for (auto& block : blocks) {
-      std::cout << block.rule_->debug_id << ':';
-      block.letter_->debug_print(&std::cout);
-      std::cout << std::endl;
-    }
+//    std::cout << "\nFound blocks: " << std::endl;
+//    for (auto& block : blocks) {
+//      std::cout << block.rule_->debug_id << ':';
+//      block.letter_->debug_print(&std::cout);
+//      std::cout << std::endl;
+//    }
 
     rules.compress_blocks(blocks);
 
-    std::cout << "Rules after CompressBlocks: " << std::endl;
-    rules.debug_print(&std::cout);
+//    std::cout << "Rules after CompressBlocks: " << std::endl;
+//    rules.debug_print(&std::cout);
 
     ASSERT_GE(naive_word.size(), 2);
 
@@ -566,16 +566,16 @@ void normalization_steps_check(const Vertex& root) {
     std::unordered_set<TerminalId> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-    std::cout << "\nGreedyPairs:\nLeft: ";
+//    std::cout << "\nGreedyPairs:\nLeft: ";
 
-    for (auto& terminal : left_letters) {
-      std::cout << terminal << ',';
-    }
-    std::cout << "\nRight: ";
-    for (auto& terminal : right_letters) {
-      std::cout << terminal << ',';
-    }
-    std::cout << std::endl;
+//    for (auto& terminal : left_letters) {
+//      std::cout << terminal << ',';
+//    }
+//    std::cout << "\nRight: ";
+//    for (auto& terminal : right_letters) {
+//      std::cout << terminal << ',';
+//    }
+//    std::cout << std::endl;
 
     std::set<int> naive_left_letters;
     std::set<int> naive_right_letters;
@@ -603,8 +603,8 @@ void normalization_steps_check(const Vertex& root) {
 
       pairs.remove_crossing(left_letters, right_letters);
       pairs.compress_pairs_from_letter_lists(left_letters, right_letters);
-      std::cout << "Rules after first compression: " << std::endl;
-      rules.debug_print(&std::cout);
+//      std::cout << "Rules after first compression: " << std::endl;
+//      rules.debug_print(&std::cout);
 
       naive_word = naive_Jez::compress_pairs(
           std::move(naive_word),
@@ -619,8 +619,8 @@ void normalization_steps_check(const Vertex& root) {
 
       pairs.remove_crossing(right_letters, left_letters);
       pairs.compress_pairs_from_letter_lists(right_letters, left_letters);
-      std::cout << "Rules after second compression: " << std::endl;
-      rules.debug_print(&std::cout);
+//      std::cout << "Rules after second compression: " << std::endl;
+//      rules.debug_print(&std::cout);
 
       naive_word = naive_Jez::compress_pairs(
           std::move(naive_word),
@@ -635,22 +635,22 @@ void normalization_steps_check(const Vertex& root) {
 
 
       std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-      std::cout << "\nGreedyPairs:\nLeft: ";
-
-      for (auto& terminal : left_letters) {
-        std::cout << terminal << ',';
-      }
-      std::cout << "\nRight: ";
-      for (auto& terminal : right_letters) {
-        std::cout << terminal << ',';
-      }
-      std::cout << std::endl;
+//      std::cout << "\nGreedyPairs:\nLeft: ";
+//
+//      for (auto& terminal : left_letters) {
+//        std::cout << terminal << ',';
+//      }
+//      std::cout << "\nRight: ";
+//      for (auto& terminal : right_letters) {
+//        std::cout << terminal << ',';
+//      }
+//      std::cout << std::endl;
     }
 
     ASSERT_TRUE(naive_pairs.empty());
 
     rules.empty_cleanup();
-    //Rule::collect_garbage();
+    Rule::collect_garbage();
   }
 }
 
@@ -1097,8 +1097,8 @@ TEST(Recompression, StressNormalForm) {
 
 TEST(Recompression, StressEndomorphismNormal) {
   constexpr size_t RANK = 3;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 30;
-  int REPEAT = 300;
+  constexpr size_t ENDOMORPHISMS_NUMBER = 50;
+  int REPEAT = 1000;
   size_t seed = 112233;
   srand(seed);
   UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
