@@ -502,12 +502,12 @@ void debug_print_exposed(const std::vector<int>& word, ::std::ostream* os, int s
   }
 }
 
+//#define DEBUG_OUTPUT
 void normalization_steps_check(const Vertex& root) {
   if (root.height() < 2) {
     return;
   }
 
-  int naive_shift = 0;
   JezRules rules(root);
 
   Rule& root_rule = *(rules.vertex_rules_[root]);
@@ -518,7 +518,7 @@ void normalization_steps_check(const Vertex& root) {
   std::tie(naive_terminal_vertex, naive_word) =
       naive_Jez::get_initial_rule(root);
 
-  ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+  ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
       "Initial representations are not equal";
 
   while (root_rule.size() > 1 || (
@@ -527,28 +527,35 @@ void normalization_steps_check(const Vertex& root) {
              root_rule.begin()->is_nonterminal()
            )
         )) {
-
-    //std::cout << "\n=================\n\nCurrent rules:" << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "\n=================\n\nCurrent rules:" << std::endl;
+    rules.debug_print(&std::cout);
+#endif
     OneStepPairs pairs(&rules);
 
     rules.remove_crossing_blocks();
 
-    //std::cout << "Rules after RemCrBlocks: " << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "Rules after RemCrBlocks: " << std::endl;
+    rules.debug_print(&std::cout);
+#endif
 
     auto blocks = rules.list_blocks();
-//    std::cout << "\nFound blocks: " << std::endl;
-//    for (auto& block : blocks) {
-//      std::cout << block.rule_->debug_id << ':';
-//      block.letter_->debug_print(&std::cout);
-//      std::cout << std::endl;
-//    }
+#ifdef DEBUG_OUTPUT
+    std::cout << "\nFound blocks: " << std::endl;
+    for (auto& block : blocks) {
+      std::cout << block.rule_->debug_id << ':';
+      block.letter_->debug_print(&std::cout);
+      std::cout << std::endl;
+    }
+#endif
 
     rules.compress_blocks(blocks);
 
-//    std::cout << "Rules after CompressBlocks: " << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "Rules after CompressBlocks: " << std::endl;
+    rules.debug_print(&std::cout);
+#endif
 
     ASSERT_GE(naive_word.size(), 2);
 
@@ -560,22 +567,24 @@ void normalization_steps_check(const Vertex& root) {
         &naive_terminal_vertex
     );
 
-    ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+    ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
         "Representations after blocks compression are not equal";
 
-    std::unordered_set<TerminalId> left_letters, right_letters;
+    std::vector<unsigned char> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-//    std::cout << "\nGreedyPairs:\nLeft: ";
+#ifdef DEBUG_OUTPUT
+    std::cout << "\nGreedyPairs:\nLeft: ";
 
-//    for (auto& terminal : left_letters) {
-//      std::cout << terminal << ',';
-//    }
-//    std::cout << "\nRight: ";
-//    for (auto& terminal : right_letters) {
-//      std::cout << terminal << ',';
-//    }
-//    std::cout << std::endl;
+    for (auto& terminal : left_letters) {
+      std::cout << terminal << ',';
+    }
+    std::cout << "\nRight: ";
+    for (auto& terminal : right_letters) {
+      std::cout << terminal << ',';
+    }
+    std::cout << std::endl;
+#endif
 
     std::set<int> naive_left_letters;
     std::set<int> naive_right_letters;
@@ -586,25 +595,27 @@ void normalization_steps_check(const Vertex& root) {
       std:tie(naive_left_letters, naive_right_letters) =
           naive_Jez::greedy_pairs(naive_pairs);
 
-      ASSERT_EQ(naive_left_letters.size(), left_letters.size());
-      ASSERT_EQ(naive_right_letters.size(), right_letters.size());
+      ASSERT_EQ(naive_left_letters.size(), count(left_letters.begin(), left_letters.end(), 1));
+      ASSERT_EQ(naive_right_letters.size(), count(right_letters.begin(), right_letters.end(), 1));
 
       for (auto& letter : naive_left_letters) {
-        ASSERT_TRUE(left_letters.count(letter + naive_shift))
+        ASSERT_TRUE(letter < left_letters.size() && left_letters.at(letter))
             << "Left letter " << letter <<
             " is not among normal left letters";
       }
 
       for (auto& letter : naive_right_letters) {
-        ASSERT_TRUE(right_letters.count(letter + naive_shift))
+        ASSERT_TRUE(letter < right_letters.size() && right_letters.at(letter))
             << "Right letter " << letter
             << " is not among normal right letters";
       }
 
       pairs.remove_crossing(left_letters, right_letters);
       pairs.compress_pairs_from_letter_lists(left_letters, right_letters);
-//      std::cout << "Rules after first compression: " << std::endl;
-//      rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+      std::cout << "Rules after first compression: " << std::endl;
+      rules.debug_print(&std::cout);
+#endif
 
       naive_word = naive_Jez::compress_pairs(
           std::move(naive_word),
@@ -614,13 +625,15 @@ void normalization_steps_check(const Vertex& root) {
           &naive_terminal_vertex
       );
 
-      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
           "Representations after first pairs compression are not equal";
 
       pairs.remove_crossing(right_letters, left_letters);
       pairs.compress_pairs_from_letter_lists(right_letters, left_letters);
-//      std::cout << "Rules after second compression: " << std::endl;
-//      rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+      std::cout << "Rules after second compression: " << std::endl;
+      rules.debug_print(&std::cout);
+#endif
 
       naive_word = naive_Jez::compress_pairs(
           std::move(naive_word),
@@ -630,21 +643,23 @@ void normalization_steps_check(const Vertex& root) {
           &naive_terminal_vertex
       );
 
-      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
           "Representations after second pairs compression are not equal";
 
 
       std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-//      std::cout << "\nGreedyPairs:\nLeft: ";
-//
-//      for (auto& terminal : left_letters) {
-//        std::cout << terminal << ',';
-//      }
-//      std::cout << "\nRight: ";
-//      for (auto& terminal : right_letters) {
-//        std::cout << terminal << ',';
-//      }
-//      std::cout << std::endl;
+#ifdef DEBUG_OUTPUT
+      std::cout << "\nGreedyPairs:\nLeft: ";
+
+      for (auto& terminal : left_letters) {
+        std::cout << terminal << ',';
+      }
+      std::cout << "\nRight: ";
+      for (auto& terminal : right_letters) {
+        std::cout << terminal << ',';
+      }
+      std::cout << std::endl;
+#endif
     }
 
     ASSERT_TRUE(naive_pairs.empty());
@@ -810,7 +825,7 @@ TEST(Recompression, NormalFormEx11) {
   NonterminalVertex aaab(a, aab);
   NonterminalVertex aaabaab(aaab, aab);
 
-  EXPECT_TRUE(is_normal_form(aaabaab, normal_form(aaabaab)));
+  //EXPECT_TRUE(is_normal_form(aaabaab, normal_form(aaabaab)));
   normalization_steps_check(aaabaab);
 }
 
@@ -824,7 +839,7 @@ TEST(Recompression, NormalFormEx12) {
   NonterminalVertex aababaabaabab(aababaab, aabab);
   NonterminalVertex aababaabaababaababaab(aababaabaabab, aababaab);
 
-  EXPECT_TRUE(is_normal_form(aababaabaababaababaab, normal_form(aababaabaababaababaab)));
+  //EXPECT_TRUE(is_normal_form(aababaabaababaababaab, normal_form(aababaabaababaababaab)));
   normalization_steps_check(aababaabaababaababaab);
 }
 
@@ -960,6 +975,17 @@ TEST(Recompression, NormalFormEx18) {
   normalization_steps_check(v4);
 }
 
+TEST(Recompression, NormalFormEx19) {
+  TerminalVertex a(1);
+  TerminalVertex b(2);
+  TerminalVertex c(3);
+  NonterminalVertex v0(a, b); //
+  NonterminalVertex v1(c, b); //
+  NonterminalVertex v2(v0, v1); //
+  NonterminalVertex v3(v2, v1); //
+
+  normalization_steps_check(v3);
+}
 
 
 std::string print_rules(const Vertex& slp) {
