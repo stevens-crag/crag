@@ -116,9 +116,17 @@ class RuleLetter {
   private:
     friend class Rule;
 
-    inline TerminalId* first_terminal_ptr();
-    inline TerminalId* last_terminal_ptr();
+    inline const RuleLetter* first_terminal_ptr() const;
 
+    inline RuleLetter* first_terminal_ptr() {
+      return const_cast<RuleLetter*>(static_cast<const RuleLetter*>(this)->first_terminal_ptr());
+    }
+
+    inline const RuleLetter* last_terminal_ptr() const;
+
+    inline RuleLetter* last_terminal_ptr() {
+      return const_cast<RuleLetter*>(static_cast<const RuleLetter*>(this)->last_terminal_ptr());
+    }
   private:
     static const LetterPower& zero_power() {
       static LetterPower zero = 0;
@@ -166,21 +174,13 @@ class Rule {
     Rule(std::initializer_list<RuleLetter> letters);
 
     Rule(const Rule& other) = delete;
-    Rule(Rule&& other) = delete;
     //it is hard to move, since
     //we should change pointers in nonterminal_index_
-//      : letters_(std::move(other.letters_))
-//      , first_terminal_letter_(std::move(other.first_terminal_letter_))
-//      , last_terminal_letter_(std::move(other.last_terminal_letter_))
-//      , nonterminal_index_(std::move(other.nonterminal_index_))
-//      , debug_id(other.debug_id)
-//    { }
+    Rule(Rule&& other) = delete;
 
     bool empty() const {
       return letters_.empty();
     }
-
-//    void clear();
 
     size_t size() const {
       return letters_.size();
@@ -203,37 +203,32 @@ class Rule {
       return letters_.end();
     }
 
-//    iterator first_nonempty() {
-//      auto begin = letters_.begin();
-//      while (begin != letters_.end() && begin->is_empty_nonterminal()) {
-//        ++begin;
-//      }
-//
-//      return begin;
-//    }
-//
-//    iterator last_nonempty() {
-//      if (empty()) {
-//        return letters_.end();
-//      }
-//      auto last = --letters_.end();
-//      while (last != letters_.begin() && last->is_empty_nonterminal()) {
-//        --last;
-//      }
-//
-//      if (last->is_empty_nonterminal()) {
-//        return letters_.end();
-//      }
-//
-//      return last;
-//    }
-//
     inline TerminalId first_terminal_id() const {
-      return first_terminal_letter_ ? *first_terminal_letter_ : 0;
+      if (!first_terminal_letter_) {
+        return 0;
+      }
+
+      if (!first_terminal_letter_->is_valid()) {
+        first_terminal_letter_ = const_cast<RuleLetter*>(letters_.front().first_terminal_ptr());
+      }
+
+      assert(first_terminal_letter_->is_valid());
+
+      return first_terminal_letter_->terminal_id();
     }
 
     inline TerminalId last_terminal_id() const {
-      return last_terminal_letter_ ? *last_terminal_letter_ : 0;
+      if (!last_terminal_letter_) {
+        return 0;
+      }
+
+      if (!last_terminal_letter_->is_valid()) {
+        last_terminal_letter_ = const_cast<RuleLetter*>(letters_.back().last_terminal_ptr());
+      }
+
+      assert(last_terminal_letter_->is_valid());
+
+      return last_terminal_letter_->terminal_id();
     }
 
     static void collect_garbage() {
@@ -288,8 +283,8 @@ class Rule {
     friend class RuleLetter;
 
     std::list<RuleLetter> letters_;
-    TerminalId* first_terminal_letter_;
-    TerminalId* last_terminal_letter_;
+    mutable RuleLetter* first_terminal_letter_;
+    mutable RuleLetter* last_terminal_letter_;
     std::vector<LetterPosition> nonterminal_index_;
 };
 
@@ -309,32 +304,66 @@ struct LetterPosition {
 
 TerminalId RuleLetter::first_terminal_letter_id() const {
   assert(!is_nonterminal() || !nonterminal_rule_->empty());
-  return is_nonterminal() ?
-      (nonterminal_rule_->first_terminal_letter_ ?
-          *(nonterminal_rule_->first_terminal_letter_) :
-          0):
-      terminal_.id;
+
+  if (!is_nonterminal()) {
+    return terminal_.id;
+  }
+
+  if (nonterminal_rule_->first_terminal_letter_) {
+    return first_terminal_ptr()->terminal_id();
+  } else {
+    return 0;
+  }
 }
 
 TerminalId RuleLetter::last_terminal_letter_id() const {
   assert(!is_nonterminal() || !nonterminal_rule_->empty());
-  return is_nonterminal() ?
-      (nonterminal_rule_->last_terminal_letter_ ?
-          *(nonterminal_rule_->last_terminal_letter_) :
-          0):
-      terminal_.id;
+
+  if (!is_nonterminal()) {
+    return terminal_.id;
+  }
+
+  if (nonterminal_rule_->last_terminal_letter_) {
+    return last_terminal_ptr()->terminal_id();
+  } else {
+    return 0;
+  }
 }
 
-TerminalId* RuleLetter::first_terminal_ptr() {
-  return is_nonterminal() ?
-      nonterminal_rule_->first_terminal_letter_ :
-      &terminal_.id;
+const RuleLetter* RuleLetter::first_terminal_ptr() const {
+  if (!is_nonterminal()) {
+    return this;
+  }
+
+  if (!nonterminal_rule_->first_terminal_letter_) {
+    return nonterminal_rule_->first_terminal_letter_;
+  }
+
+  if (!nonterminal_rule_->first_terminal_letter_->is_valid()) {
+    nonterminal_rule_->first_terminal_letter_ = nonterminal_rule_->letters_.front().first_terminal_ptr();
+  }
+
+  assert(nonterminal_rule_->first_terminal_letter_->is_valid());
+
+  return nonterminal_rule_->first_terminal_letter_;
 }
 
-TerminalId* RuleLetter::last_terminal_ptr() {
-  return is_nonterminal() ?
-      nonterminal_rule_->last_terminal_letter_ :
-      &terminal_.id;
+const RuleLetter* RuleLetter::last_terminal_ptr() const {
+  if (!is_nonterminal()) {
+    return this;
+  }
+
+  if (!nonterminal_rule_->last_terminal_letter_) {
+    return nonterminal_rule_->last_terminal_letter_;
+  }
+
+  if (!nonterminal_rule_->last_terminal_letter_->is_valid()) {
+    nonterminal_rule_->last_terminal_letter_ = nonterminal_rule_->letters_.back().last_terminal_ptr();
+  }
+
+  assert(nonterminal_rule_->last_terminal_letter_->is_valid());
+
+  return nonterminal_rule_->last_terminal_letter_;
 }
 
 inline bool RuleLetter::is_empty_nonterminal() const {
@@ -455,9 +484,6 @@ struct bits_reverse {
     template <typename T>
     inline static T reverse_N_bits(T value) {
       auto res = ((static_cast<T>(reverse_bits_in_byte(value))) << (8 * (N-1))) | (bits_reverse<N-1>::reverse_N_bits(value >> 8));
-//      std::cout << static_cast<uint64_t>(value) << std::endl;
-//      std::cout << static_cast<uint64_t>(reverse_bits_in_byte(value)) << std::endl;
-//      std::cout << res << std::endl << std::endl;
       return res;
     }
 };
@@ -466,8 +492,6 @@ template <>
 struct bits_reverse<1> {
     template <typename T>
     inline static T reverse_N_bits(T value) {
-//      std::cout << static_cast<uint64_t>(value) << std::endl;
-//      std::cout << static_cast<uint64_t>(reverse_bits_in_byte(value)) << std::endl << std::endl;
       return reverse_bits_in_byte(value);
     }
 };

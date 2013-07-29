@@ -33,23 +33,6 @@ Rule::Rule(std::initializer_list<RuleLetter> letters)
   assert(first_terminal_letter_ && last_terminal_letter_);
 }
 
-//void Rule::clear() {
-//  letters_garbage().splice(letters_garbage().end(), letters_);
-//
-//  for (auto& occurence : nonterminal_index_) {
-//    if (occurence.rule_->first_terminal_letter_ == first_terminal_letter_) {
-//      occurence.rule_->copy_first_terminal();
-//    }
-//
-//    if (occurence.rule_->last_terminal_letter_ == last_terminal_letter_) {
-//      occurence.rule_->copy_last_terminal();
-//    }
-//
-//    occurence.rule_->remove_empty_letter(occurence.letter_);
-//  }
-//
-//}
-
 Rule::iterator Rule::pop_first_from_letter(Rule::iterator letter_position) {
   assert(!empty());
   assert(!letter_position->is_empty_nonterminal());
@@ -190,19 +173,14 @@ std::pair<Rule::iterator, Rule::iterator> Rule::remove_empty_letter(Rule::iterat
 
     assert(!std::prev(end())->is_empty_nonterminal());
 
-    if (position_before == std::prev(end())) {
-      set_last_terminal(position_before->last_terminal_ptr());
-    }
     return std::make_pair(position_before, position_before);
   }
 
   assert(!empty());
 
   if (position_after == letters_.begin()) {
-    set_first_terminal(position_after->first_terminal_ptr());
     return std::make_pair(end(), std::move(position_after));
   } else if (position_before == std::prev(end())) {
-    set_last_terminal(position_before->last_terminal_ptr());
     return std::make_pair(position_before, end());
   }
 
@@ -213,14 +191,7 @@ Rule::iterator Rule::compress_power(Rule::iterator position, TerminalId new_term
   assert(!position->is_nonterminal());
 
   assert(!begin()->is_empty_nonterminal());
-
-  assert(position != begin() || *first_terminal_letter_ == position->terminal_id());
-  assert(position != begin() || first_terminal_letter_ == position->first_terminal_ptr());
-
   assert(!std::prev(end())->is_empty_nonterminal());
-
-  assert(position != std::prev(end()) || *last_terminal_letter_ == position->terminal_id());
-  assert(position != std::prev(end()) || last_terminal_letter_ == position->last_terminal_ptr());
 
   position->terminal_.id = new_terminal;
   position->terminal_.power = 1;
@@ -242,9 +213,6 @@ Rule::iterator Rule::compress_pair(
 
   assert(!begin()->is_empty_nonterminal());
 
-  assert(first != begin() || *first_terminal_letter_ == first->terminal_id());
-  assert(first != begin() || first_terminal_letter_ == first->first_terminal_ptr());
-
   assert(!std::prev(end())->is_empty_nonterminal());
 
   delete_letter(second);
@@ -263,41 +231,7 @@ Rule::iterator Rule::compress_pair(
 
   assert(std::next(first) == end() || !std::next(first)->is_power_of(new_terminal));
 
-  if (first == std::prev(end())) {
-    set_last_terminal(first->last_terminal_ptr());
-  }
-
   return first;
-}
-
-void Rule::set_first_terminal(
-    TerminalId* first_terminal_ptr
-) {
-  for (auto& occurence : nonterminal_index_) {
-    if (occurence.rule_->empty()) {
-      continue;
-    }
-
-    if (occurence.rule_->begin() == occurence.letter_) {
-      occurence.rule_->set_first_terminal(first_terminal_ptr);
-    }
-  }
-  this->first_terminal_letter_ = first_terminal_ptr;
-}
-
-void Rule::set_last_terminal(
-    TerminalId* last_terminal_ptr
-) {
-  for (auto& occurence : nonterminal_index_) {
-    if (occurence.rule_->empty()) {
-      continue;
-    }
-
-    if (std::prev(occurence.rule_->end()) == occurence.letter_) {
-      occurence.rule_->set_last_terminal(last_terminal_ptr);
-    }
-  }
-  this->last_terminal_letter_ = last_terminal_ptr;
 }
 
 void Rule::insert_popped_letter_right(
@@ -320,10 +254,6 @@ void Rule::insert_popped_letter_right(
   iterator inserted = letters_.emplace(position_after, popped_letter);
 
   assert(!std::prev(end())->is_empty_nonterminal());
-
-  if (inserted == std::prev(end())) {
-    set_last_terminal(inserted->last_terminal_ptr());
-  }
 }
 
 void Rule::insert_popped_letter_left(
@@ -345,10 +275,6 @@ void Rule::insert_popped_letter_left(
   iterator inserted = letters_.emplace(letter_position, popped_letter);
 
   assert(!begin()->is_empty_nonterminal());
-
-  if (inserted == begin()) {
-    set_first_terminal(inserted->first_terminal_ptr());
-  }
 }
 
 JezRules::JezRules(const Vertex& slp)
@@ -1008,9 +934,9 @@ Vertex normal_form(Vertex root) {
     }
 
     rules.empty_cleanup();
-    Rule::collect_garbage();
   }
 
+  Rule::collect_garbage();
   return rules.terminal_vertices_[root_rule.first_terminal_id()];
 }
 
