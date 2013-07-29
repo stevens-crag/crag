@@ -529,7 +529,7 @@ void normalization_steps_check(const Vertex& root) {
         )) {
 
     //std::cout << "\n=================\n\nCurrent rules:" << std::endl;
-//    rules.debug_print(&std::cout);
+    //rules.debug_print(&std::cout);
     OneStepPairs pairs(&rules);
 
     rules.remove_crossing_blocks();
@@ -960,6 +960,17 @@ TEST(Recompression, NormalFormEx18) {
   normalization_steps_check(v4);
 }
 
+TEST(Recompression, NormalFormEx19) {
+  TerminalVertex a(1);
+  TerminalVertex b(2);
+  TerminalVertex c(3);
+  NonterminalVertex v0(a, b); //
+  NonterminalVertex v1(c, b); //
+  NonterminalVertex v2(v0, v1); //
+  NonterminalVertex v3(v2, v1); //
+
+  normalization_steps_check(v3);
+}
 
 
 std::string print_rules(const Vertex& slp) {

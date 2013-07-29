@@ -34,46 +34,51 @@ class Rule;
 
 class RuleLetter {
   public:
-    typedef std::list<RuleLetter>::iterator IterRef;
+    bool is_nonterminal() const {
+      return status_ & TERMINAL_NONTERMINAL_MASK;
+    }
 
     RuleLetter(const RuleLetter& other)
-      : terminal_id_(other.terminal_id_)
-      , terminal_power_(other.terminal_power_)
-      , nonterminal_rule_(other.nonterminal_rule_)
-    { }
+      : status_(0)
+    {
+      if (other.is_nonterminal()) {
+        nonterminal_rule_ = other.nonterminal_rule_;
+        status_ = NON_TERMINAL;
+      } else {
+        new (&terminal_) Terminal(other.terminal_.id, LetterPower(other.terminal_.power));
+        status_ = TERMINAL;
+      }
+      assert(is_valid());
+    }
 
     bool is_valid() const {
-      return terminal_id_ || nonterminal_rule_;
+      return !(status_ & FLAG_INVALID);
     }
 
     bool is_power_of(TerminalId terminal) const {
-      return terminal_id_ == terminal;
+      return !is_nonterminal() && terminal_.id == terminal;
     }
 
     bool is_power() const {
-      return terminal_power_ > 1;
-    }
-
-    bool is_nonterminal() const {
-      return nonterminal_rule_;
+      return !is_nonterminal() && terminal_.power > 1;
     }
 
     inline bool is_empty_nonterminal() const;
 
     TerminalId terminal_id() const {
-      return terminal_id_;
+      return is_nonterminal() ? 0 : terminal_.id;
     }
 
     const LetterPower& terminal_power() const {
-      return terminal_power_;
+      return is_nonterminal() ? zero_power() : terminal_.power;
     }
 
     Rule* nonterminal_rule() {
-      return nonterminal_rule_;
+      return is_nonterminal() ? nonterminal_rule_ : nullptr;
     }
 
     const Rule* nonterminal_rule() const {
-      return nonterminal_rule_;
+      return is_nonterminal() ? nonterminal_rule_ : nullptr;
     }
 
     inline TerminalId first_terminal_letter_id() const;
@@ -81,19 +86,29 @@ class RuleLetter {
     inline TerminalId last_terminal_letter_id() const;
 
     explicit RuleLetter(Rule* vertex_rule)
-      : terminal_id_(0)
-      , terminal_power_()
+      : status_(NON_TERMINAL)
       , nonterminal_rule_(vertex_rule)
     {
       assert(vertex_rule);
+      assert(is_nonterminal());
+      assert(is_valid());
     }
 
     RuleLetter(TerminalId terminal, LetterPower power)
-      : terminal_id_(terminal)
-      , terminal_power_(std::move(power))
-      , nonterminal_rule_(nullptr)
+      : status_(TERMINAL)
     {
+      assert(!is_nonterminal());
+      assert(status_ == 0);
       assert(terminal != 0);
+      assert(is_valid());
+
+      new (&terminal_) Terminal(terminal, std::move(power));
+    }
+
+    ~RuleLetter() {
+      if (!is_nonterminal()) {
+        terminal_.~Terminal();
+      }
     }
 
     void debug_print(std::ostream* os) const;
@@ -105,10 +120,36 @@ class RuleLetter {
     inline TerminalId* last_terminal_ptr();
 
   private:
-    TerminalId terminal_id_;
-    LetterPower terminal_power_;
+    static const LetterPower& zero_power() {
+      static LetterPower zero = 0;
+      return zero;
+    }
 
-    Rule* nonterminal_rule_;
+    void make_invalid() {
+      status_ |= FLAG_INVALID;
+      assert(!is_valid());
+    }
+
+    struct Terminal {
+        TerminalId id;
+        LetterPower power;
+
+        Terminal(TerminalId id, LetterPower&& power)
+          : id(id)
+          , power(std::move(power))
+        { }
+    };
+
+    union {
+      Terminal terminal_;
+      Rule* nonterminal_rule_;
+    };
+
+   unsigned char status_; //bitset, #0 - is_nonterminal, #1 - is_invalid
+   static const unsigned char TERMINAL = 0u;
+   static const unsigned char NON_TERMINAL = 1u;
+   static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
+   static const unsigned char FLAG_INVALID = (1u << 1);
 };
 
 struct LetterPosition;
@@ -162,31 +203,31 @@ class Rule {
       return letters_.end();
     }
 
-    iterator first_nonempty() {
-      auto begin = letters_.begin();
-      while (begin != letters_.end() && begin->is_empty_nonterminal()) {
-        ++begin;
-      }
-
-      return begin;
-    }
-
-    iterator last_nonempty() {
-      if (empty()) {
-        return letters_.end();
-      }
-      auto last = --letters_.end();
-      while (last != letters_.begin() && last->is_empty_nonterminal()) {
-        --last;
-      }
-
-      if (last->is_empty_nonterminal()) {
-        return letters_.end();
-      }
-
-      return last;
-    }
-
+//    iterator first_nonempty() {
+//      auto begin = letters_.begin();
+//      while (begin != letters_.end() && begin->is_empty_nonterminal()) {
+//        ++begin;
+//      }
+//
+//      return begin;
+//    }
+//
+//    iterator last_nonempty() {
+//      if (empty()) {
+//        return letters_.end();
+//      }
+//      auto last = --letters_.end();
+//      while (last != letters_.begin() && last->is_empty_nonterminal()) {
+//        --last;
+//      }
+//
+//      if (last->is_empty_nonterminal()) {
+//        return letters_.end();
+//      }
+//
+//      return last;
+//    }
+//
     inline TerminalId first_terminal_id() const {
       return first_terminal_letter_ ? *first_terminal_letter_ : 0;
     }
@@ -199,24 +240,22 @@ class Rule {
       letters_garbage().clear();
     }
 
-    RuleLetter::IterRef delete_letter(RuleLetter::IterRef letter) {
-      letter->terminal_id_ = 0;
-      letter->nonterminal_rule_ = nullptr;
+    iterator pop_first_from_letter(iterator letter_position);
+    iterator pop_last_from_letter(iterator letter_position);
+
+    Rule::const_iterator delete_letter(iterator letter) {
+      letter->make_invalid();
       letters_garbage().splice(letters_garbage().end(), letters_, letter);
       return letter;
     }
 
-    void pop_first();
-    void pop_last();
+    std::pair<iterator, iterator> remove_empty_letter(iterator position);
 
-    RuleLetter::IterRef remove_empty_letter(RuleLetter::IterRef position);
-    void remove_if_empty();
+    Rule::iterator compress_power(iterator position, TerminalId new_terminal);
 
-    void compress_power(RuleLetter::IterRef position, TerminalId new_terminal);
-
-    void compress_pair(
-        RuleLetter::IterRef first,
-        RuleLetter::IterRef second,
+    Rule::iterator compress_pair(
+        iterator first,
+        iterator second,
         TerminalId new_terminal
     );
 
@@ -227,17 +266,17 @@ class Rule {
     void debug_print_exposed(::std::ostream* os) const;
 
   private:
-    inline void register_inclusion(Rule* rule, RuleLetter::IterRef letter);
+    inline void register_inclusion(Rule* rule, iterator letter);
 
     void set_first_terminal(TerminalId*);
     void set_last_terminal(TerminalId*);
 
-    void pop_right_from_letter(
-        RuleLetter::IterRef letter_position,
+    void insert_popped_letter_right(
+        iterator letter_position,
         const RuleLetter& popped_letter);
 
-    void pop_left_from_letter(
-        RuleLetter::IterRef letter_position,
+    void insert_popped_letter_left(
+        iterator letter_position,
         const RuleLetter& popped_letter);
 
     static std::list<RuleLetter>& letters_garbage() {
@@ -259,49 +298,50 @@ class Rule {
 //}
 
 struct LetterPosition {
-    LetterPosition(Rule* rule, RuleLetter::IterRef letter)
+    LetterPosition(Rule* rule, Rule::iterator letter)
       : rule_(rule)
       , letter_(letter)
     { }
 
     Rule* rule_;
-    RuleLetter::IterRef letter_;
+    Rule::iterator letter_;
 };
 
 TerminalId RuleLetter::first_terminal_letter_id() const {
-  assert(nonterminal_rule_ == nullptr || !nonterminal_rule_->empty());
-  return nonterminal_rule_ ?
+  assert(!is_nonterminal() || !nonterminal_rule_->empty());
+  return is_nonterminal() ?
       (nonterminal_rule_->first_terminal_letter_ ?
           *(nonterminal_rule_->first_terminal_letter_) :
           0):
-      terminal_id_;
+      terminal_.id;
 }
 
 TerminalId RuleLetter::last_terminal_letter_id() const {
-  return nonterminal_rule_ ?
+  assert(!is_nonterminal() || !nonterminal_rule_->empty());
+  return is_nonterminal() ?
       (nonterminal_rule_->last_terminal_letter_ ?
           *(nonterminal_rule_->last_terminal_letter_) :
           0):
-      terminal_id_;
+      terminal_.id;
 }
 
 TerminalId* RuleLetter::first_terminal_ptr() {
-  return nonterminal_rule_ ?
+  return is_nonterminal() ?
       nonterminal_rule_->first_terminal_letter_ :
-      &terminal_id_;
+      &terminal_.id;
 }
 
 TerminalId* RuleLetter::last_terminal_ptr() {
-  return nonterminal_rule_ ?
+  return is_nonterminal() ?
       nonterminal_rule_->last_terminal_letter_ :
-      &terminal_id_;
+      &terminal_.id;
 }
 
 inline bool RuleLetter::is_empty_nonterminal() const {
-  return nonterminal_rule_ && nonterminal_rule_->empty();
+  return is_nonterminal() && nonterminal_rule_->empty();
 }
 
-inline void Rule::register_inclusion(Rule* rule, RuleLetter::IterRef letter) {
+inline void Rule::register_inclusion(Rule* rule, Rule::iterator letter) {
   nonterminal_index_.push_back(LetterPosition(rule, letter));
 }
 
