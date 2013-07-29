@@ -591,13 +591,10 @@ OneStepPairs::OneStepPairs(JezRules* rules)
   }
 }
 
-std::tuple<std::unordered_set<TerminalId>, std::unordered_set<TerminalId>>
+std::tuple<std::vector<unsigned char>, std::vector<unsigned char>>
 OneStepPairs::greedy_pairs() const {
-  std::unordered_set<TerminalId> left_letters;
-  std::unordered_set<TerminalId> right_letters;
-
-  left_letters.reserve(rules_->last_terminal());
-  right_letters.reserve(rules_->last_terminal());
+  std::vector<unsigned char> left_letters;
+  std::vector<unsigned char> right_letters;
 
   for (auto& letter_pairs : pairs_) {
     if (letter_pairs.right_letters_.empty() && letter_pairs.left_letters_.empty()) {
@@ -608,7 +605,7 @@ OneStepPairs::greedy_pairs() const {
 
     for (const auto& letter : letter_pairs.right_letters_) {
       assert(letter.id_ != letter_pairs.id_);
-      if (letter.id_ > letter_pairs.id_ || right_letters.count(letter.id_)) {
+      if (letter.id_ > letter_pairs.id_ || right_letters[letter.id_]) {
         ++new_pairs_if_left;
       }
     }
@@ -616,15 +613,20 @@ OneStepPairs::greedy_pairs() const {
     size_t new_pairs_if_right = 0;
     for (const auto& letter : letter_pairs.left_letters_) {
       assert(letter != letter_pairs.id_);
-      if (letter > letter_pairs.id_ || left_letters.count(letter)) {
+      if (letter > letter_pairs.id_ || left_letters[letter]) {
         ++new_pairs_if_right;
       }
     }
 
+    if (left_letters.empty()) {
+      left_letters.resize(rules_->last_terminal() + 1, 0);
+      right_letters.resize(rules_->last_terminal() + 1, 0);
+    }
+
     if (new_pairs_if_left >= new_pairs_if_right) {
-      left_letters.insert(letter_pairs.id_);
+      left_letters[letter_pairs.id_] = 1;
     } else {
-      right_letters.insert(letter_pairs.id_);
+      right_letters[letter_pairs.id_] = 1;
     }
   }
 
@@ -662,8 +664,8 @@ TerminalId OneStepPairs::compress_pair(
 }
 
 void OneStepPairs::remove_crossing(
-    const std::unordered_set<TerminalId>& left_letters,
-    const std::unordered_set<TerminalId>& right_letters
+    const std::vector<unsigned char>& left_letters,
+    const std::vector<unsigned char>& right_letters
 ) {
   std::vector<std::tuple<TerminalId, TerminalId, LetterPosition>> occurencies;
 
@@ -679,8 +681,10 @@ void OneStepPairs::remove_crossing(
     while (current != rule.end() && next != rule.end()) {
       assert(!next->is_empty_nonterminal());
 
-      if (left_letters.count(current->last_terminal_letter_id()) &&
-          right_letters.count(next->first_terminal_letter_id()))
+      if (current->last_terminal_letter_id() < left_letters.size() &&
+          left_letters.at(current->last_terminal_letter_id()) &&
+          next->first_terminal_letter_id() < right_letters.size() &&
+          right_letters.at(next->first_terminal_letter_id()))
       {
         current = rule.pop_last_from_letter(current);
 
@@ -691,8 +695,10 @@ void OneStepPairs::remove_crossing(
         assert(!current->is_empty_nonterminal());
         assert(next->is_valid());
         assert(!next->is_empty_nonterminal());
-        assert(left_letters.count(current->last_terminal_letter_id()));
-        assert(right_letters.count(next->first_terminal_letter_id()));
+        assert(current->last_terminal_letter_id() < left_letters.size() &&
+               left_letters.at(current->last_terminal_letter_id()));
+        assert(next->first_terminal_letter_id() < right_letters.size() &&
+               right_letters.at(next->first_terminal_letter_id()));
         assert(std::next(current) == next);
 
         occurencies.emplace_back(current->last_terminal_letter_id(),
@@ -757,15 +763,15 @@ void OneStepPairs::remove_crossing(
 
 
 void OneStepPairs::compress_pairs_from_letter_lists(
-    const std::unordered_set<TerminalId>& left_letters,
-    const std::unordered_set<TerminalId>& right_letters
+    const std::vector<unsigned char>& left_letters,
+    const std::vector<unsigned char>& right_letters
 ) {
   for (auto& pair : pairs_) {
-    if (left_letters.count(pair.id_)) {
+    if (pair.id_ < left_letters.size() && left_letters.at(pair.id_)) {
       auto right_letter = pair.right_letters_.begin();
 
       while (right_letter != pair.right_letters_.end()) {
-        if (right_letters.count(right_letter->id_)) {
+        if (right_letter->id_ < right_letters.size() && right_letters.at(right_letter->id_)) {
           auto terminal = compress_pair(
               pair.id_,
               right_letter->id_,
@@ -787,11 +793,11 @@ void OneStepPairs::compress_pairs_from_letter_lists(
       }
     }
 
-    if (right_letters.count(pair.id_)) {
+    if (pair.id_ < right_letters.size() && right_letters.at(pair.id_)) {
       auto left_letter = pair.left_letters_.begin();
 
       while (left_letter != pair.left_letters_.end()) {
-        if (left_letters.count(*left_letter)) {
+        if (*left_letter < left_letters.size() && left_letters.at(*left_letter)) {
           left_letter = pair.left_letters_.erase(left_letter);
         } else {
           ++left_letter;
@@ -897,7 +903,7 @@ Vertex normal_form(Vertex root) {
 //    std::cout << "Rules after CompressBlocks: " << std::endl;
 //    rules.debug_print(&std::cout);
 
-    std::unordered_set<TerminalId> left_letters, right_letters;
+    std::vector<unsigned char> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
 //    std::cout << "\nGreedyPairs:\nLeft: ";

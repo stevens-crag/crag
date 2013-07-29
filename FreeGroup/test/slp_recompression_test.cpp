@@ -508,7 +508,6 @@ void normalization_steps_check(const Vertex& root) {
     return;
   }
 
-  int naive_shift = 0;
   JezRules rules(root);
 
   Rule& root_rule = *(rules.vertex_rules_[root]);
@@ -519,7 +518,7 @@ void normalization_steps_check(const Vertex& root) {
   std::tie(naive_terminal_vertex, naive_word) =
       naive_Jez::get_initial_rule(root);
 
-  ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+  ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
       "Initial representations are not equal";
 
   while (root_rule.size() > 1 || (
@@ -568,10 +567,10 @@ void normalization_steps_check(const Vertex& root) {
         &naive_terminal_vertex
     );
 
-    ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+    ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
         "Representations after blocks compression are not equal";
 
-    std::unordered_set<TerminalId> left_letters, right_letters;
+    std::vector<unsigned char> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
 #ifdef DEBUG_OUTPUT
@@ -596,17 +595,17 @@ void normalization_steps_check(const Vertex& root) {
       std:tie(naive_left_letters, naive_right_letters) =
           naive_Jez::greedy_pairs(naive_pairs);
 
-      ASSERT_EQ(naive_left_letters.size(), left_letters.size());
-      ASSERT_EQ(naive_right_letters.size(), right_letters.size());
+      ASSERT_EQ(naive_left_letters.size(), count(left_letters.begin(), left_letters.end(), 1));
+      ASSERT_EQ(naive_right_letters.size(), count(right_letters.begin(), right_letters.end(), 1));
 
       for (auto& letter : naive_left_letters) {
-        ASSERT_TRUE(left_letters.count(letter + naive_shift))
+        ASSERT_TRUE(letter < left_letters.size() && left_letters.at(letter))
             << "Left letter " << letter <<
             " is not among normal left letters";
       }
 
       for (auto& letter : naive_right_letters) {
-        ASSERT_TRUE(right_letters.count(letter + naive_shift))
+        ASSERT_TRUE(letter < right_letters.size() && right_letters.at(letter))
             << "Right letter " << letter
             << " is not among normal right letters";
       }
@@ -626,7 +625,7 @@ void normalization_steps_check(const Vertex& root) {
           &naive_terminal_vertex
       );
 
-      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
           "Representations after first pairs compression are not equal";
 
       pairs.remove_crossing(right_letters, left_letters);
@@ -644,7 +643,7 @@ void normalization_steps_check(const Vertex& root) {
           &naive_terminal_vertex
       );
 
-      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, naive_shift)) <<
+      ASSERT_TRUE(normal_naive_equal(root_rule, naive_word, 0)) <<
           "Representations after second pairs compression are not equal";
 
 

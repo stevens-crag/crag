@@ -427,7 +427,7 @@ class OneStepPairs {
   public:
     OneStepPairs(JezRules* rules);
 
-    std::tuple<std::unordered_set<TerminalId>, std::unordered_set<TerminalId>>
+    std::tuple<std::vector<unsigned char>, std::vector<unsigned char>>
     greedy_pairs() const;
 
     TerminalId compress_pair(
@@ -437,13 +437,13 @@ class OneStepPairs {
     );
 
     void remove_crossing(
-        const std::unordered_set<TerminalId> & left_letters,
-        const std::unordered_set<TerminalId> & right_letters
+        const std::vector<unsigned char> & left_letters,
+        const std::vector<unsigned char> & right_letters
     );
 
     void compress_pairs_from_letter_lists(
-        const std::unordered_set<TerminalId> & left_letters,
-        const std::unordered_set<TerminalId> & right_letters
+        const std::vector<unsigned char> & left_letters,
+        const std::vector<unsigned char> & right_letters
     );
 
 
