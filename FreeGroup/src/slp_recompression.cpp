@@ -12,7 +12,7 @@ Rule::Rule(std::initializer_list<RuleLetter> letters)
     if (!letters_.empty() &&
         !letter.is_nonterminal() &&
         letters_.back().is_power_of(letter.terminal_id())) {
-      letters_.back().terminal_power_ += letter.terminal_power();
+      letters_.back().terminal_.power += letter.terminal_power();
     } else {
       letters_.push_back(letter);
 
@@ -33,297 +33,248 @@ Rule::Rule(std::initializer_list<RuleLetter> letters)
   assert(first_terminal_letter_ && last_terminal_letter_);
 }
 
-//void Rule::clear() {
-//  letters_garbage().splice(letters_garbage().end(), letters_);
-//
-//  for (auto& occurence : nonterminal_index_) {
-//    if (occurence.rule_->first_terminal_letter_ == first_terminal_letter_) {
-//      occurence.rule_->copy_first_terminal();
-//    }
-//
-//    if (occurence.rule_->last_terminal_letter_ == last_terminal_letter_) {
-//      occurence.rule_->copy_last_terminal();
-//    }
-//
-//    occurence.rule_->remove_empty_letter(occurence.letter_);
-//  }
-//
-//}
+Rule::iterator Rule::pop_first_from_letter(Rule::iterator letter_position) {
+  assert(!empty());
+  assert(!letter_position->is_empty_nonterminal());
 
-void Rule::pop_first() {
-  assert(!empty());
-  while (letters_.front().is_empty_nonterminal()) {
-    delete_letter(begin());
-  }
-  assert(!empty());
-  if (letters_.front().is_nonterminal()) {
-    Rule* front = letters_.front().nonterminal_rule_;
-    front->pop_first();
-//    if (front->empty()) {
-//      delete_letter(front);
-//    }
-    //front->remove_if_empty();
+  if (!letter_position->is_nonterminal()) {
+    return letter_position;
   }
 
-  assert(!letters_.front().is_nonterminal());
+  Rule* letter_rule = letter_position->nonterminal_rule();
 
-  RuleLetter popped_letter = letters_.front();
-  delete_letter(letters_.begin());
+  iterator popping_letter = letter_rule->begin();
+  assert(!popping_letter->is_empty_nonterminal());
 
-  auto front = first_nonempty();
-  if (front != letters_.end()) {
-    first_terminal_letter_ = front->first_terminal_ptr();
+  if (popping_letter->is_nonterminal()) {
+    popping_letter = letter_rule->pop_first_from_letter(popping_letter);
+  }
+
+  assert(!popping_letter->is_nonterminal());
+  assert(popping_letter == letter_rule->begin());
+
+  const RuleLetter& popped_letter = *(letter_rule->delete_letter(popping_letter));
+
+  assert(letter_rule->empty() || !letter_rule->begin()->is_empty_nonterminal());
+
+  if (!letter_rule->empty()) {
+    letter_rule->first_terminal_letter_ = letter_rule->begin()->first_terminal_ptr();
   } else {
-    first_terminal_letter_ = nullptr;
-    last_terminal_letter_ = nullptr;
-    while (!empty()) {
-      delete_letter(begin());
+    letter_rule->first_terminal_letter_ = nullptr;
+    letter_rule->first_terminal_letter_ = nullptr;
+  }
+
+  iterator inserted_letter;
+
+  for (auto& occurence : letter_rule->nonterminal_index_) {
+    assert(!occurence.rule_->empty());
+
+    occurence.rule_->insert_popped_letter_left(occurence.letter_, popped_letter);
+
+    if (occurence.rule_ == this) {
+      if (letter_rule->empty()) {
+        assert(occurence.letter_->is_empty_nonterminal());
+        inserted_letter = occurence.rule_->remove_empty_letter(occurence.letter_).first;
+        assert(inserted_letter != end());
+      } else {
+        assert(letter_position != begin());
+        inserted_letter = std::prev(letter_position);
+      }
+    } else {
+      if (letter_rule->empty()) {
+        assert(occurence.letter_->is_empty_nonterminal());
+        occurence.rule_->remove_empty_letter(occurence.letter_);
+      }
     }
   }
 
-  for (auto& occurence : nonterminal_index_) {
-    assert(!occurence.rule_->empty());
-
-    occurence.rule_->pop_left_from_letter(occurence.letter_, popped_letter);
-  }
-
+  return inserted_letter;
 }
 
-void Rule::pop_last() {
+Rule::iterator Rule::pop_last_from_letter(Rule::iterator letter_position) {
   assert(!empty());
-  while (letters_.back().is_empty_nonterminal()) {
-    delete_letter(--end());
-  }
-  assert(!empty());
-  if (letters_.back().is_nonterminal()) {
-    Rule* back = letters_.back().nonterminal_rule_;
-    back->pop_last();
-    //back->remove_if_empty();
+  assert(!letter_position->is_empty_nonterminal());
+
+  if (!letter_position->is_nonterminal()) {
+    return letter_position;
   }
 
-  assert(!letters_.back().is_nonterminal());
-  RuleLetter popped_letter = letters_.back();
-  delete_letter(std::prev(letters_.end()));
-  auto back = last_nonempty();
-  if (back != letters_.end()) {
-    last_terminal_letter_ = back->last_terminal_ptr();
+  Rule* letter_rule = letter_position->nonterminal_rule();
+
+  iterator popping_letter = std::prev(letter_rule->end());
+  assert(!popping_letter->is_empty_nonterminal());
+
+  if (popping_letter->is_nonterminal()) {
+    popping_letter = letter_rule->pop_last_from_letter(popping_letter);
+  }
+
+  assert(!popping_letter->is_nonterminal());
+  assert(popping_letter == std::prev(letter_rule->end()));
+
+  const RuleLetter& popped_letter = *(letter_rule->delete_letter(popping_letter));
+
+  assert(letter_rule->empty() || !std::prev(letter_rule->end())->is_empty_nonterminal());
+
+  if (!letter_rule->empty()) {
+    letter_rule->last_terminal_letter_ = std::prev(letter_rule->end())->last_terminal_ptr();
   } else {
-    first_terminal_letter_ = nullptr;
-    last_terminal_letter_ = nullptr;
-    while (!empty()) {
-      delete_letter(begin());
+    letter_rule->first_terminal_letter_ = nullptr;
+    letter_rule->first_terminal_letter_ = nullptr;
+  }
+
+  iterator inserted_letter;
+
+  for (auto& occurence : letter_rule->nonterminal_index_) {
+    assert(!occurence.rule_->empty());
+
+    occurence.rule_->insert_popped_letter_right(occurence.letter_, popped_letter);
+
+    if (occurence.rule_ == this) {
+      if (letter_rule->empty()) {
+        assert(occurence.letter_->is_empty_nonterminal());
+        inserted_letter = occurence.rule_->remove_empty_letter(occurence.letter_).second;
+        assert(inserted_letter != end());
+      } else {
+        inserted_letter = std::next(letter_position);
+        assert(inserted_letter != end());
+      }
+    } else {
+      if (letter_rule->empty()) {
+        assert(occurence.letter_->is_empty_nonterminal());
+        occurence.rule_->remove_empty_letter(occurence.letter_);
+      }
     }
   }
 
-  for (auto& occurence : nonterminal_index_) {
-    assert(!occurence.rule_->empty());
-
-    occurence.rule_->pop_right_from_letter(occurence.letter_, popped_letter);
-  }
+  return inserted_letter;
 }
 
-RuleLetter::IterRef Rule::remove_empty_letter(RuleLetter::IterRef position) {
+std::pair<Rule::iterator, Rule::iterator> Rule::remove_empty_letter(Rule::iterator position) {
   assert(!empty());
   assert(position->is_empty_nonterminal());
 
   auto position_after = std::next(position);
   auto position_before = std::prev(position);
 
-  //it is impossible that rule is empty after pop (except the changed one)
-  assert(position != letters_.begin() || position_after != letters_.end());
-
   delete_letter(position);
+
+  if (empty()) {
+    first_terminal_letter_ = nullptr;
+    last_terminal_letter_ = nullptr;
+    return std::make_pair(end(), end());
+  }
 
   if (position_after != letters_.begin() &&
       position_after != letters_.end() &&
       !position_before->is_nonterminal() &&
       position_after->is_power_of(position_before->terminal_id())) {
-    position_before->terminal_power_ += position_after->terminal_power_;
+    position_before->terminal_.power += position_after->terminal_power();
     delete_letter(position_after);
-    if (position_before == last_nonempty()) {
-      set_last_terminal(position_before->last_terminal_ptr());
-    }
-    return std::next(position_before);
+
+    assert(!std::prev(end())->is_empty_nonterminal());
+
+    return std::make_pair(position_before, position_before);
   }
 
   assert(!empty());
 
-  return position_after;
+  if (position_after == letters_.begin()) {
+    return std::make_pair(end(), std::move(position_after));
+  } else if (position_before == std::prev(end())) {
+    return std::make_pair(position_before, end());
+  }
+
+  return std::make_pair(std::move(position_before), std::move(position_after));
 }
 
-//void Rule::remove_if_empty() {
-//  if (empty()) {
-//    for (auto& occurence : nonterminal_index_) {
-//      occurence.rule_->remove_empty_letter(occurence.letter_);
-//    }
-//  }
-//}
-
-
-void Rule::compress_power(RuleLetter::IterRef position, TerminalId new_terminal) {
+Rule::iterator Rule::compress_power(Rule::iterator position, TerminalId new_terminal) {
   assert(!position->is_nonterminal());
 
-  auto nonempty_begin = letters_.begin();
-  while (nonempty_begin->is_empty_nonterminal()) {
-    ++nonempty_begin;
-  }
+  assert(!begin()->is_empty_nonterminal());
+  assert(!std::prev(end())->is_empty_nonterminal());
 
-  if (position == nonempty_begin) {
-    assert(*first_terminal_letter_ == position->terminal_id());
-    assert(first_terminal_letter_ == position->first_terminal_ptr());
-  }
+  position->terminal_.id = new_terminal;
+  position->terminal_.power = 1;
 
-  auto nonempty_end = --letters_.end();
+  assert(position == begin() || !std::prev(position)->is_power_of(new_terminal));
+  assert(std::next(position) == end() || !std::next(position)->is_power_of(new_terminal));
 
-  while (nonempty_end->is_empty_nonterminal()) {
-    --nonempty_end;
-  }
-
-  if (position == nonempty_end) {
-    assert(*last_terminal_letter_ == position->terminal_id());
-    assert(last_terminal_letter_ == position->last_terminal_ptr());
-  }
-
-  position->terminal_id_ = new_terminal;
-  position->terminal_power_ = 1;
+  return position;
 }
 
-void Rule::compress_pair(
-    RuleLetter::IterRef first,
-    RuleLetter::IterRef second,
+Rule::iterator Rule::compress_pair(
+    Rule::iterator first,
+    Rule::iterator second,
     TerminalId new_terminal
 ) {
   assert(second == std::next(first));
   assert(!first->is_nonterminal() && !first->is_power());
   assert(!second->is_nonterminal() && !second->is_power());
 
-  auto nonempty_begin = letters_.begin();
+  assert(!begin()->is_empty_nonterminal());
 
-  while (nonempty_begin->is_empty_nonterminal()) {
-    ++nonempty_begin;
-  }
-
-  if (first == nonempty_begin) {
-    assert(*first_terminal_letter_ == first->terminal_id());
-    assert(first_terminal_letter_ == first->first_terminal_ptr());
-  }
-
-  auto nonempty_end = --letters_.end();
-
-  while (nonempty_end->is_empty_nonterminal()) {
-    --nonempty_end;
-  }
-
-  if (second == nonempty_end) {
-    assert(*last_terminal_letter_ == second->terminal_id());
-    set_last_terminal(first->last_terminal_ptr());
-  }
+  assert(!std::prev(end())->is_empty_nonterminal());
 
   delete_letter(second);
 
-  first->terminal_id_ = new_terminal;
-  assert(first->terminal_power_ == 1);
+  first->terminal_.id = new_terminal;
+  assert(first->terminal_.power == 1);
 
   auto prev = std::prev(first);
 
   if (first != letters_.begin() &&
       prev->is_power_of(new_terminal)) {
-    prev->terminal_power_ += 1;
+    prev->terminal_.power += 1;
     delete_letter(first);
-    if (prev == last_nonempty()) {
-      set_last_terminal(prev->last_terminal_ptr());
-    }
+    first = prev;
   }
 
-  auto next = std::next(first);
+  assert(std::next(first) == end() || !std::next(first)->is_power_of(new_terminal));
 
-  if (next != letters_.end() &&
-      next->is_power_of(new_terminal)) {
-    assert(false);
-    first->terminal_power_ += next->terminal_power();
-    delete_letter(next);
-  }
-
+  return first;
 }
 
-void Rule::set_first_terminal(
-    TerminalId* first_terminal_shared
-) {
-  for (auto& occurence : nonterminal_index_) {
-    if (occurence.rule_->first_nonempty() == occurence.letter_) {
-      occurence.rule_->set_first_terminal(first_terminal_shared);
-    }
-  }
-  this->first_terminal_letter_ = first_terminal_shared;
-}
-
-void Rule::set_last_terminal(
-    TerminalId* last_terminal_shared
-) {
-  for (auto& occurence : nonterminal_index_) {
-    if (occurence.rule_->last_nonempty() == occurence.letter_) {
-      occurence.rule_->set_last_terminal(last_terminal_shared);
-    }
-  }
-  this->last_terminal_letter_ = last_terminal_shared;
-}
-
-void Rule::pop_right_from_letter(
-    RuleLetter::IterRef letter_position,
+void Rule::insert_popped_letter_right(
+    Rule::iterator letter_position,
     const RuleLetter& popped_letter)
 {
   assert(!popped_letter.is_nonterminal());
-  assert(popped_letter.is_valid());
+  assert(!popped_letter.is_valid());
   assert(letter_position->is_nonterminal());
+
   auto position_after = std::next(letter_position);
-  if (letter_position != letters_.end() &&
+
+  if (position_after != end() &&
       position_after->is_power_of(popped_letter.terminal_id())) {
-    position_after->terminal_power_ += popped_letter.terminal_power_;
-    if (position_after == first_nonempty()) {
-      set_first_terminal(position_after->first_terminal_ptr());
-    }
+
+    position_after->terminal_.power += popped_letter.terminal_power();
     return;
   }
 
   iterator inserted = letters_.emplace(position_after, popped_letter);
 
-  if (inserted == last_nonempty()) {
-    set_last_terminal(inserted->last_terminal_ptr());
-  }
-
-  if (inserted == first_nonempty()) {
-    set_first_terminal(inserted->first_terminal_ptr());
-  }
+  assert(!std::prev(end())->is_empty_nonterminal());
 }
 
-void Rule::pop_left_from_letter(
-    RuleLetter::IterRef letter_position,
+void Rule::insert_popped_letter_left(
+    Rule::iterator letter_position,
     const RuleLetter& popped_letter)
 {
   assert(!popped_letter.is_nonterminal());
-  assert(popped_letter.is_valid());
+  assert(!popped_letter.is_valid());
   assert(letter_position->is_nonterminal());
 
   auto position_before = std::prev(letter_position);
   if (letter_position != letters_.begin() &&
       position_before->is_power_of(popped_letter.terminal_id())) {
-    position_before->terminal_power_ += popped_letter.terminal_power_;
 
-    if (position_before == last_nonempty()) {
-      set_last_terminal(position_before->last_terminal_ptr());
-    }
+    position_before->terminal_.power += popped_letter.terminal_power();
     return;
   }
 
   iterator inserted = letters_.emplace(letter_position, popped_letter);
 
-  if (inserted == last_nonempty()) {
-    set_last_terminal(inserted->last_terminal_ptr());
-  }
-
-  if (inserted == first_nonempty()) {
-    set_first_terminal(inserted->first_terminal_ptr());
-  }
+  assert(!begin()->is_empty_nonterminal());
 }
 
 JezRules::JezRules(const Vertex& slp)
@@ -362,62 +313,32 @@ JezRules::JezRules(const Vertex& slp)
 void JezRules::remove_crossing_blocks() {
   for (auto& rule : rules_) {
     auto current = rule.begin();
-    while (current->is_empty_nonterminal() && current != rule.end()) {
-      ++current;
-    }
+
 
     while (current != rule.end()) {
+      assert(!current->is_empty_nonterminal());
       assert(current->is_valid());
+      assert(!current->is_empty_nonterminal());
       auto next = std::next(current);
-      while (next != rule.end() && next->is_empty_nonterminal()) {
-        ++next;
-      }
+      assert(next == rule.end() || !next->is_empty_nonterminal());
 
-      assert(next == rule.end() || next->is_valid());
       if (next != rule.end() &&
           current->last_terminal_letter_id() ==
           next->first_terminal_letter_id()) {
 
-        if (current->is_nonterminal()) {
+        current = rule.pop_last_from_letter(current);
+        assert(!current->is_nonterminal());
+
+        if (next->is_valid() && current != next) {
           assert(current->last_terminal_letter_id() ==
                  next->first_terminal_letter_id());
-          current->nonterminal_rule()->pop_last();
-          ++current;
-
-          assert(next->is_valid());
-          if (current != next) {
-            next = std::next(current);
-            assert(next != rule.end());
-            while (next->is_empty_nonterminal()) {
-              ++next;
-              assert(next != rule.end());
-            }
-            assert(current->last_terminal_letter_id() ==
-                   next->first_terminal_letter_id());
-          }
+          assert(next->is_nonterminal());
+          next = rule.pop_first_from_letter(next);
         }
 
-        assert(next->is_valid());
-        assert(!next->is_empty_nonterminal());
-        assert(current->last_terminal_letter_id() ==
-               next->first_terminal_letter_id());
+        assert(current->is_valid());
 
-        if (next->is_nonterminal()) {
-          next->nonterminal_rule()->pop_first();
-          --next;
-        }
-
-        assert(!current->is_nonterminal());
-        assert(!next->is_nonterminal());
-        assert(current->last_terminal_letter_id() ==
-               next->first_terminal_letter_id());
-
-        if (current != next) {
-          while(next->is_valid()) {
-            assert(std::next(current)->is_empty_nonterminal());
-            rule.remove_empty_letter(std::next(current));
-          }
-        }
+        assert(!next->is_valid() || current == next);
       } else {
         current = next;
       }
@@ -437,7 +358,7 @@ std::vector<LetterPosition> JezRules::list_blocks() {
     }
   }
 
-  std::sort(
+  std::stable_sort(
     blocks.begin(),
     blocks.end(),
     [](const LetterPosition& first, const LetterPosition& second) -> bool {
@@ -536,7 +457,7 @@ void JezRules::compress_blocks(const std::vector<LetterPosition>& blocks) {
 
 void JezRules::empty_cleanup() {
   for (auto& rule : rules_) {
-    for (RuleLetter::IterRef current = rule.begin(); current != rule.end(); ) {
+    for (auto current = rule.begin(); current != rule.end(); ) {
       auto next = std::next(current);
       if (current->is_empty_nonterminal()) {
         rule.remove_empty_letter(current);
@@ -573,7 +494,7 @@ OneStepPairs::OneStepPairs(JezRules* rules)
     }
   }
 
-  std::sort(
+  std::stable_sort(
       all_pairs.begin(),
       all_pairs.end(),
       [] (const std::tuple<TerminalId, TerminalId, LetterPosition>& first,
@@ -670,13 +591,10 @@ OneStepPairs::OneStepPairs(JezRules* rules)
   }
 }
 
-std::tuple<std::unordered_set<TerminalId>, std::unordered_set<TerminalId>>
+std::tuple<std::vector<unsigned char>, std::vector<unsigned char>>
 OneStepPairs::greedy_pairs() const {
-  std::unordered_set<TerminalId> left_letters;
-  std::unordered_set<TerminalId> right_letters;
-
-  left_letters.reserve(rules_->last_terminal());
-  right_letters.reserve(rules_->last_terminal());
+  std::vector<unsigned char> left_letters;
+  std::vector<unsigned char> right_letters;
 
   for (auto& letter_pairs : pairs_) {
     if (letter_pairs.right_letters_.empty() && letter_pairs.left_letters_.empty()) {
@@ -687,7 +605,7 @@ OneStepPairs::greedy_pairs() const {
 
     for (const auto& letter : letter_pairs.right_letters_) {
       assert(letter.id_ != letter_pairs.id_);
-      if (letter.id_ > letter_pairs.id_ || right_letters.count(letter.id_)) {
+      if (letter.id_ > letter_pairs.id_ || right_letters[letter.id_]) {
         ++new_pairs_if_left;
       }
     }
@@ -695,15 +613,20 @@ OneStepPairs::greedy_pairs() const {
     size_t new_pairs_if_right = 0;
     for (const auto& letter : letter_pairs.left_letters_) {
       assert(letter != letter_pairs.id_);
-      if (letter > letter_pairs.id_ || left_letters.count(letter)) {
+      if (letter > letter_pairs.id_ || left_letters[letter]) {
         ++new_pairs_if_right;
       }
     }
 
+    if (left_letters.empty()) {
+      left_letters.resize(rules_->last_terminal() + 1, 0);
+      right_letters.resize(rules_->last_terminal() + 1, 0);
+    }
+
     if (new_pairs_if_left >= new_pairs_if_right) {
-      left_letters.insert(letter_pairs.id_);
+      left_letters[letter_pairs.id_] = 1;
     } else {
-      right_letters.insert(letter_pairs.id_);
+      right_letters[letter_pairs.id_] = 1;
     }
   }
 
@@ -741,8 +664,8 @@ TerminalId OneStepPairs::compress_pair(
 }
 
 void OneStepPairs::remove_crossing(
-    const std::unordered_set<TerminalId>& left_letters,
-    const std::unordered_set<TerminalId>& right_letters
+    const std::vector<unsigned char>& left_letters,
+    const std::vector<unsigned char>& right_letters
 ) {
   std::vector<std::tuple<TerminalId, TerminalId, LetterPosition>> occurencies;
 
@@ -751,45 +674,31 @@ void OneStepPairs::remove_crossing(
       continue;
     }
     auto current = rule.begin();
-    while (current != rule.end() &&
-           current->is_empty_nonterminal()) {
-      current = rule.remove_empty_letter(current);
-    }
+
+    assert(!current->is_empty_nonterminal());
 
     auto next = std::next(current);
     while (current != rule.end() && next != rule.end()) {
-      if (next->is_empty_nonterminal()) {
-        next = rule.remove_empty_letter(next);
-        continue;
-      } else if (next != rule.end() &&
-          !next->is_empty_nonterminal() &&
-          left_letters.count(current->last_terminal_letter_id()) &&
-          right_letters.count(next->first_terminal_letter_id()))
+      assert(!next->is_empty_nonterminal());
+
+      if (current->last_terminal_letter_id() < left_letters.size() &&
+          left_letters.at(current->last_terminal_letter_id()) &&
+          next->first_terminal_letter_id() < right_letters.size() &&
+          right_letters.at(next->first_terminal_letter_id()))
       {
-        if (current->is_nonterminal()) {
-          current->nonterminal_rule()->pop_last();
-          ++current;
-        }
+        current = rule.pop_last_from_letter(current);
+
+        assert(next->is_valid());
+        next = rule.pop_first_from_letter(next);
 
         assert(current->is_valid());
         assert(!current->is_empty_nonterminal());
         assert(next->is_valid());
         assert(!next->is_empty_nonterminal());
-        assert(left_letters.count(current->last_terminal_letter_id()));
-        assert(right_letters.count(next->first_terminal_letter_id()));
-        assert(std::next(current) == next);
-
-        if (next->is_nonterminal()) {
-          next->nonterminal_rule()->pop_first();
-          --next;
-        }
-
-        assert(current->is_valid());
-        assert(!current->is_empty_nonterminal());
-        assert(next->is_valid());
-        assert(!next->is_empty_nonterminal());
-        assert(left_letters.count(current->last_terminal_letter_id()));
-        assert(right_letters.count(next->first_terminal_letter_id()));
+        assert(current->last_terminal_letter_id() < left_letters.size() &&
+               left_letters.at(current->last_terminal_letter_id()));
+        assert(next->first_terminal_letter_id() < right_letters.size() &&
+               right_letters.at(next->first_terminal_letter_id()));
         assert(std::next(current) == next);
 
         occurencies.emplace_back(current->last_terminal_letter_id(),
@@ -830,7 +739,6 @@ void OneStepPairs::remove_crossing(
             right_letter.occurencies.push_back(std::get<2>(*current_pair));
             ++current_pair;
 
-
             assert(!right_letter.occurencies.back().rule_->empty());
             assert(!right_letter.occurencies.back().letter_->is_nonterminal());
             assert(!right_letter.occurencies.back().letter_->is_power());
@@ -855,15 +763,15 @@ void OneStepPairs::remove_crossing(
 
 
 void OneStepPairs::compress_pairs_from_letter_lists(
-    const std::unordered_set<TerminalId>& left_letters,
-    const std::unordered_set<TerminalId>& right_letters
+    const std::vector<unsigned char>& left_letters,
+    const std::vector<unsigned char>& right_letters
 ) {
   for (auto& pair : pairs_) {
-    if (left_letters.count(pair.id_)) {
+    if (pair.id_ < left_letters.size() && left_letters.at(pair.id_)) {
       auto right_letter = pair.right_letters_.begin();
 
       while (right_letter != pair.right_letters_.end()) {
-        if (right_letters.count(right_letter->id_)) {
+        if (right_letter->id_ < right_letters.size() && right_letters.at(right_letter->id_)) {
           auto terminal = compress_pair(
               pair.id_,
               right_letter->id_,
@@ -885,11 +793,11 @@ void OneStepPairs::compress_pairs_from_letter_lists(
       }
     }
 
-    if (right_letters.count(pair.id_)) {
+    if (pair.id_ < right_letters.size() && right_letters.at(pair.id_)) {
       auto left_letter = pair.left_letters_.begin();
 
       while (left_letter != pair.left_letters_.end()) {
-        if (left_letters.count(*left_letter)) {
+        if (*left_letter < left_letters.size() && left_letters.at(*left_letter)) {
           left_letter = pair.left_letters_.erase(left_letter);
         } else {
           ++left_letter;
@@ -938,8 +846,8 @@ void Rule::debug_print_exposed(::std::ostream* os) const {
     if (letter.is_nonterminal()) {
       letter.nonterminal_rule_->debug_print_exposed(os);
     } else {
-      for (LetterPower i = 0; i < letter.terminal_power_; ++i) {
-        (*os) << letter.terminal_id_ << ',';
+      for (LetterPower i = 0; i < letter.terminal_power(); ++i) {
+        (*os) << letter.terminal_id() << ',';
       }
     }
   }
@@ -995,7 +903,7 @@ Vertex normal_form(Vertex root) {
 //    std::cout << "Rules after CompressBlocks: " << std::endl;
 //    rules.debug_print(&std::cout);
 
-    std::unordered_set<TerminalId> left_letters, right_letters;
+    std::vector<unsigned char> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
 //    std::cout << "\nGreedyPairs:\nLeft: ";
@@ -1032,9 +940,9 @@ Vertex normal_form(Vertex root) {
     }
 
     rules.empty_cleanup();
-    Rule::collect_garbage();
   }
 
+  Rule::collect_garbage();
   return rules.terminal_vertices_[root_rule.first_terminal_id()];
 }
 
