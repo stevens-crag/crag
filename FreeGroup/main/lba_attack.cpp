@@ -41,7 +41,7 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
   int eq_num = 0;
   auto start_time = our_clock::now();
   for (int i = 0; i < iterations_num; ++i) {
-    std::cout << "iteration " << i << std::endl;
+    std::cout << "iteration " << i << " ";
 
     auto iteration_start_time = our_clock::now();
 
@@ -50,8 +50,10 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
     result.save(&out);
 
     auto iteration_time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - iteration_start_time);
+    auto iteration_time_in_s = std::chrono::duration_cast<std::chrono::seconds>(our_clock::now() - iteration_start_time);
     write_comment(&out, "time");
     out << COMMENT_LINE_START << iteration_time_in_ms.count() <<  "ms" << std::endl;
+    std::cout << iteration_time_in_s.count() << "s" << std::endl;
   }
   auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
   std::stringstream s;
@@ -71,38 +73,38 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
 void process_length_base_attack() {
   //parameters
   typedef unsigned int uint;
-  const uint aut_num = 1;
+  const uint aut_num = 3;
   const uint rank = 3;
-  const uint comp_num = 5;
-  const uint conj_num = 5;
+  const uint comp_num = 10;
+  const uint conj_num = 10;
   const uint iterations_num = 5;
 
   //filenames and dirs
-  auto myuid = getuid();
-  auto mypasswd = getpwuid(myuid);
-  std::string dir(mypasswd->pw_dir);
-  dir += "/Documents/exp_res1/";
+//  auto myuid = getuid();
+//  auto mypasswd = getpwuid(myuid);
+//  std::string dir(mypasswd->pw_dir);
+//  dir += "exp_res/";
 
   std::stringstream s;
   s << "lba_total_sum_a" << aut_num << "comp" << comp_num << "conj" << conj_num << "it" << iterations_num;
   std::string name(s.str());
-  std::string filename = dir + name + ".txt";
-  std::string csv_filename = dir + name + ".csv";
-  std::string html_dir = dir + name + "/";
+  std::string filename = name + ".txt";
+//  std::string csv_filename = dir + name + ".csv";
+//  std::string html_dir = dir + name + "/";
 
   //work
   conjugation_length_based_attack_statistics(filename, aut_num, rank, comp_num, conj_num, iterations_num);
-  auto results = read_results(filename);
+//  auto results = read_results(filename);
 
-  mode_t process_mask = umask(0);
-  int result_code = mkdir(html_dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
-  if (!result_code && errno == EEXIST) {
-    std::cerr << "can not create dir!" << std::endl;
-  }
-  umask(process_mask);
+//  mode_t process_mask = umask(0);
+//  int result_code = mkdir(html_dir.c_str(), S_IRWXU | S_IRWXG | S_IRWXO);
+//  if (!result_code && errno == EEXIST) {
+//    std::cerr << "can not create dir!" << std::endl;
+//  }
+//  umask(process_mask);
 
-  print_all_html(html_dir, "lba", results, not_generate_images);
-  print_values_to_csv_file(csv_filename, results);
+//  print_all_html(html_dir, "lba", results, not_generate_images);
+//  print_values_to_csv_file(csv_filename, results);
 }
 
 
@@ -217,10 +219,10 @@ void print_help() {
 
 int main(int argc, char* argv[]) {
   if (argc == 1) {
-    print_help();
+//    print_help();
 
     //  kick_attempt();
-    //  process_length_base_attack();
+      process_length_base_attack();
     //  auto myuid = getuid();
     //  auto mypasswd = getpwuid(myuid);
     //  std::string dir(mypasswd->pw_dir);
