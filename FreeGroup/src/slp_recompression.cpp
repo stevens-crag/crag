@@ -71,7 +71,7 @@ Rule::iterator Rule::pop_first_from_letter(Rule::iterator letter_position) {
 
     occurence.rule_->insert_popped_letter_left(occurence.letter_, popped_letter);
 
-    if (occurence.rule_ == this) {
+    if (occurence.rule_ == this && occurence.letter_ == letter_position) {
       if (letter_rule->empty()) {
         assert(occurence.letter_->is_empty_nonterminal());
         inserted_letter = occurence.rule_->remove_empty_letter(occurence.letter_).first;
@@ -129,7 +129,7 @@ Rule::iterator Rule::pop_last_from_letter(Rule::iterator letter_position) {
 
     occurence.rule_->insert_popped_letter_right(occurence.letter_, popped_letter);
 
-    if (occurence.rule_ == this) {
+    if (occurence.rule_ == this && occurence.letter_ == letter_position) {
       if (letter_rule->empty()) {
         assert(occurence.letter_->is_empty_nonterminal());
         inserted_letter = occurence.rule_->remove_empty_letter(occurence.letter_).second;
@@ -253,7 +253,7 @@ void Rule::insert_popped_letter_right(
 
   iterator inserted = letters_.emplace(position_after, popped_letter);
 
-  assert(!std::prev(end())->is_empty_nonterminal());
+  //assert(!std::prev(end())->is_empty_nonterminal());
 }
 
 void Rule::insert_popped_letter_left(
@@ -274,7 +274,7 @@ void Rule::insert_popped_letter_left(
 
   iterator inserted = letters_.emplace(letter_position, popped_letter);
 
-  assert(!begin()->is_empty_nonterminal());
+  //assert(!begin()->is_empty_nonterminal());
 }
 
 JezRules::JezRules(const Vertex& slp)
