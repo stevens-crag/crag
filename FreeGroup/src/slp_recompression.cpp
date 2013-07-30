@@ -215,10 +215,8 @@ Rule::iterator Rule::compress_pair(
 
   assert(!std::prev(end())->is_empty_nonterminal());
 
-  delete_letter(second);
-
   first->terminal_.id = new_terminal;
-  assert(first->terminal_.power == 1);
+  delete_letter(second); //we have to delete the second letter after we have introduced new terminal
 
   auto prev = std::prev(first);
 
