@@ -627,6 +627,10 @@ class AutomorphismDescription {
       return AutomorphismDescription(a_.normal_form(), a_inv_.normal_form(), num_);
     }
 
+    AutomorphismDescription remove_duplicate_vertices() const {
+      return AutomorphismDescription(a_.remove_duplicate_vertices(), a_inv_.remove_duplicate_vertices(), num_);
+    }
+
     //! Number of composed morphisms consituting the given one.
     unsigned int composed_num() const {
       return num_;

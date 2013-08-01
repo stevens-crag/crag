@@ -8,6 +8,7 @@
 #ifndef CRAG_FREE_GROUPS_FGACRYPTO_H
 #define CRAG_FREE_GROUPS_FGACRYPTO_H
 
+#include <chrono>
 #include "EndomorphismSLP.h"
 
 /**
@@ -17,6 +18,8 @@
 namespace crag {
 
 namespace fga_crypto {
+
+//#define CRAG_FGA_CRYPTO_DEBUG_OUTPUT
 
   struct SchemeParameters {
       static const SchemeParameters canonical() {
@@ -42,23 +45,88 @@ namespace fga_crypto {
       //TODO make constructor
   };
 
-  typedef AutomorphismDescription<EndomorphismSLP<int> > AutomorphismDescription;
+  typedef EndomorphismSLP<int> Aut;
+  typedef AutomorphismDescription<Aut> AutDescription;
+
+  template<typename Func>
+  auto process_aut_with_logging(Func f) -> decltype(f()) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto result = f();
+    auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - start_time
+          );
+    std::cout << "|" << slp_vertices_num(result)
+      << "| " << duration_in_ms.count() << "ms";
+    return result;
+  }
+
+  template<typename Func>
+  auto process_aut_description_with_logging(Func f) -> decltype(f()) {
+    auto start_time = std::chrono::high_resolution_clock::now();
+    auto result = f();
+    auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::high_resolution_clock::now() - start_time
+          );
+    std::cout << "|" << slp_vertices_num(result()) << "," << slp_vertices_num(result.inverse())
+      << "| " << duration_in_ms.count() << "ms";
+    return result;
+  }
+
+  Aut transform(const Aut& aut) {
+    std::cout << " |" << slp_vertices_num(aut) << "|";
+
+    std::cout << " fr ";
+    auto fr = process_aut_with_logging([&]() {return aut.free_reduction();});
+
+    std::cout << " fr_rd ";
+    auto fr_rd = process_aut_with_logging([&]() {return fr.remove_duplicate_vertices();});
+
+    std::cout << " nf ";
+    auto nf = process_aut_with_logging([&]() {return fr_rd.normal_form();});
+
+    std::cout << std::endl;
+
+    return nf;
+  }
+
+  AutDescription transform(const AutDescription& aut) {
+    std::cout << " |" << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse()) << "|";
+
+    std::cout << " fr ";
+    auto fr = process_aut_description_with_logging([&]() {return aut.free_reduction();});
+
+    std::cout << " fr_rd ";
+    auto fr_rd = process_aut_description_with_logging([&]() {return fr.remove_duplicate_vertices();});
+
+    std::cout << " nf ";
+    auto nf = process_aut_description_with_logging([&]() {return fr_rd.normal_form();});
+
+    std::cout << std::endl;
+
+    return nf;
+  }
 
 
 
-  void print_stats(const AutomorphismDescription& aut_d) {
+  void print_stats(const AutDescription& aut_d) {
     auto a = aut_d();
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
     std::cout << "vertices num (a=" << slp_vertices_num(a);
+#endif
     auto fr = a.free_reduction();
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
     std::cout << ", fr=" << slp_vertices_num(fr);
+#endif
     auto nf = fr.normal_form();
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
     std::cout << ", nf=" << slp_vertices_num(nf) << ")" << std::endl;
+#endif
   }
 
   //! Set of commutators for a given pair of automorphisms. We use it only because we can not find inverses efficiently.
   class CommutatorSet {
     public:
-      CommutatorSet(const AutomorphismDescription& first, const AutomorphismDescription& second) {
+      CommutatorSet(const AutDescription& first, const AutDescription& second) {
         auto inv_first = first.inverse_description();
         auto inv_second = second.inverse_description();
         comm_.reserve(4);
@@ -68,18 +136,24 @@ namespace fga_crypto {
         comm_.push_back(make_commutator(inv_first, inv_second));
       }
 
-      const AutomorphismDescription& get(bool first_inversed, bool second_inversed) const {
+      const AutDescription& get(bool first_inversed, bool second_inversed) const {
         return comm_[(first_inversed ? 1 : 0) + (second_inversed ? 2 : 0)];
       }
 
-      CommutatorSet conjugate_with(const AutomorphismDescription& conjugator) const {
+      CommutatorSet conjugate_with(const AutDescription& conjugator) const {
         CommutatorSet result;
         result.comm_ = conjugate_all(comm_, conjugator);
         return result;
       }
 
+      void convert_to_normal_form() {
+        for (std::size_t i = 0; i < comm_.size(); ++i) {
+          comm_[i] = comm_[i].normal_form();
+        }
+      }
+
     private:
-      std::vector<AutomorphismDescription> comm_;
+      std::vector<AutDescription> comm_;
 
       CommutatorSet() {}
   };
@@ -87,15 +161,15 @@ namespace fga_crypto {
 
   //! Public keys
   struct PublicKeys {
-      std::vector<AutomorphismDescription> s;
+      std::vector<AutDescription> s;
       std::vector<CommutatorSet> r;
 
       PublicKeys() {}
 
-      PublicKeys(std::vector<AutomorphismDescription>&& v_s, std::vector<CommutatorSet>&& v_r)
+      PublicKeys(std::vector<AutDescription>&& v_s, std::vector<CommutatorSet>&& v_r)
         : s(v_s), r(v_r) {}
 
-      AutomorphismDescription get_s(int index) const {
+      AutDescription get_s(int index) const {
         if (index > 0) {
           return s[index - 1];
         } else {
@@ -103,7 +177,7 @@ namespace fga_crypto {
         }
       }
 
-      const AutomorphismDescription& get_r(int first_index, int second_index) const {
+      const AutDescription& get_r(int first_index, int second_index) const {
         bool first_inversed = first_index < 0;
         bool second_inversed = second_index < 0;
         first_index = first_inversed ? - first_index : first_index;
@@ -112,11 +186,19 @@ namespace fga_crypto {
         second_index -= 3;
         return r[2 * first_index + second_index].get(first_inversed, second_inversed);
       }
+
+      void convert_to_normal_form() {
+        for (std::size_t i = 0; i < s.size(); ++i) {
+          s[i] = s[i].normal_form();
+        }
+        for (auto& e: r) {
+          e.convert_to_normal_form();
+        }
+      }
   };
 
   //! Generates keys for the scheme.
   class KeysGenerator {
-      static const bool debug = false;
     public:
 
       KeysGenerator() = delete;
@@ -135,7 +217,8 @@ namespace fga_crypto {
           c_(),
           priv_key_(),
           pub_keys_(),
-          shared_key_() {
+          shared_key_(),
+          p_log_stream_(nullptr) {
 
         //generating alphas, betas
         UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_alphas(params.N, &rand);
@@ -145,23 +228,23 @@ namespace fga_crypto {
         alphas_.reserve(4);
         betas_.reserve(4);
         for (int i = 0; i < 4; ++i) {
-          alphas_.push_back(AutomorphismDescription(params.A_SIZE, random_for_alphas));
-          betas_.push_back(AutomorphismDescription(params.B_SIZE, random_for_betas));
+          alphas_.push_back(AutDescription(params.A_SIZE, random_for_alphas));
+          betas_.push_back(AutDescription(params.B_SIZE, random_for_betas));
         }
 
-        if (debug) {
-          for (int i = 0; i < 4; ++i) {
-            std::cout << "alpha " << i + 1 << " n=" << alphas_[i].composed_num() << std::endl;
-            alphas_[i]().print(&std::cout);
-          }
-
-          for (int i = 0; i < 4; ++i) {
-            std::cout << "beta " << i + 1 << " n=" << betas_[i].composed_num() <<  std::endl;
-            betas_[i]().print(&std::cout);
-          }
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        for (int i = 0; i < 4; ++i) {
+          std::cout << "alpha " << i + 1 << " n=" << alphas_[i].composed_num() << std::endl;
+          alphas_[i]().print(&std::cout);
         }
 
-        c_ = AutomorphismDescription(params.C_SIZE, random_for_c);
+        for (int i = 0; i < 4; ++i) {
+          std::cout << "beta " << i + 1 << " n=" << betas_[i].composed_num() <<  std::endl;
+          betas_[i]().print(&std::cout);
+        }
+#endif
+
+        c_ = AutDescription(params.C_SIZE, random_for_c);
 
         //generating u, v
         std::uniform_int_distribution<int> binary_rand(0, 1);
@@ -188,17 +271,17 @@ namespace fga_crypto {
         u_ = random_binary_vector(params.U_LENGTH, 1);
         v_ = random_binary_vector(params.V_LENGTH, 3);
 
-        if (debug) {
-          std::cout << "u ";
-          for (int i: u_)
-            std::cout << i << " ";
-          std::cout << std::endl;
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        std::cout << "u ";
+        for (int i: u_)
+          std::cout << i << " ";
+        std::cout << std::endl;
 
-          std::cout << "v ";
-          for (int i: v_)
-            std::cout << i << " ";
-          std::cout << std::endl;
-        }
+        std::cout << "v ";
+        for (int i: v_)
+          std::cout << i << " ";
+        std::cout << std::endl;
+#endif
 
         //generating public and private keys bases
         s_.reserve(4);
@@ -206,59 +289,77 @@ namespace fga_crypto {
           s_.push_back(alphas_[i] * betas_[i]);
         }
 
-        if (debug)
-          for (int i = 0; i < 4; ++i) {
-            std::cout << "s " << i + 1 << " n=" << s_[i].composed_num() <<  std::endl;
-            s_[i]().print(&std::cout);
-          }
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        for (int i = 0; i < 4; ++i) {
+          std::cout << "s " << i + 1 << " n=" << s_[i].composed_num() <<  std::endl;
+          s_[i]().print(&std::cout);
+        }
+#endif
 
         r_.reserve(4);
-        for (int i: {0, 1})
+        for (int i: {0, 1}) {
           for (int j: {2, 3}) {
             r_.push_back(CommutatorSet(betas_[i], betas_[j]));
-            if (debug) {
-              std::cout << "r_" << i + 1 << "_" << j + 1 << " n=" << r_.back().get(false, false).composed_num() <<  std::endl;
-              r_.back().get(false, false)().print(&std::cout);
-            }
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+            std::cout << "r_" << i + 1 << "_" << j + 1 << " n=" << r_.back().get(false, false).composed_num() <<  std::endl;
+            r_.back().get(false, false)().print(&std::cout);
+#endif
           }
+        }
 
         priv_key_base_ = make_commutator(get_betas_composition(u_),
             get_betas_composition(v_));
 
-        if (debug) {
-          std::cout << "priv key base" << " n=" << priv_key_base_.composed_num() <<   std::endl;
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        std::cout << "priv key base" << " n=" << priv_key_base_.composed_num() <<   std::endl;
 //          priv_key_base_().print(&std::cout);
-          print_stats(priv_key_base_);
-        }
+        print_stats(priv_key_base_);
+#endif
 
         //generating keys
         priv_key_ = priv_key_base_.conjugate_with(c_);
 
-        if (debug) {
-          std::cout << "priv key" << " n=" << priv_key_.composed_num() <<  std::endl;
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        std::cout << "priv key" << " n=" << priv_key_.composed_num() <<  std::endl;
 //          priv_key_().print(&std::cout);
-          print_stats(priv_key_);
-        }
+        print_stats(priv_key_);
+#endif
 
         pub_keys_.s = conjugate_all(s_, c_);
         pub_keys_.r = conjugate_all(r_, c_);
 
-//        std::cout << "pub key" << std::endl;
-//        std::cout << "s" << std::endl;
-//        for (auto& ad: pub_keys_.s) {
-//          print_stats(ad);
-//        }
-//        std::cout << "r" << std::endl;
-//        for (auto& cs: pub_keys_.r) {
-//          print_stats(cs.get(false, false));
-//        }
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        std::cout << "pub key" << std::endl;
+        std::cout << "s" << std::endl;
+        for (auto& ad: pub_keys_.s) {
+          print_stats(ad);
+        }
+        std::cout << "r" << std::endl;
+        for (auto& cs: pub_keys_.r) {
+          print_stats(cs.get(false, false));
+        }
+#endif
+
+        pub_keys_.convert_to_normal_form();
+
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+        std::cout << "normal form pub key" << std::endl;
+        std::cout << "s" << std::endl;
+        for (auto& ad: pub_keys_.s) {
+          print_stats(ad);
+        }
+        std::cout << "r" << std::endl;
+        for (auto& cs: pub_keys_.r) {
+          print_stats(cs.get(false, false));
+        }
+#endif
       }
 
       const PublicKeys& public_keys() const {
         return pub_keys_;
       }
 
-      const AutomorphismDescription& private_key() const {
+      const AutDescription& private_key() const {
         return priv_key_;
       }
 
@@ -284,14 +385,14 @@ namespace fga_crypto {
        * @param order if true Alice makes the key, otherwise Bob
        * @return
        */
-      AutomorphismDescription make_shared_key(const PublicKeys& processed_public_keys, bool order = true) {
-        AutomorphismDescription key;
-        AutomorphismDescription conjugator;
-        std::map<int, AutomorphismDescription> line_cache;
+      AutDescription make_shared_key(const PublicKeys& processed_public_keys, bool order = true) {
+        AutDescription key;
+        AutDescription conjugator;
+        std::map<int, AutDescription> line_cache;
 //        for (int row_index: v_) {
 ////          std::cout << "row " << row_index << std::endl;
 //          auto cached_ad = line_cache.find(row_index);
-//          AutomorphismDescription line;
+//          AutDescription line;
 //          if (cached_ad != line_cache.end()) {
 //            line = cached_ad->second;
 //          } else {
@@ -306,13 +407,17 @@ namespace fga_crypto {
         for (int i = v_.size() - 1; i >= 0; --i) {
           const int row_index = v_[i];
           auto cached_ad = line_cache.find(row_index);
-          AutomorphismDescription line;
+          AutDescription line;
           if (cached_ad != line_cache.end()) {
             line = cached_ad->second;
           } else {
-            std::cout << "start line" << std::endl;
+            if (p_log_stream_ != nullptr) {
+              std::cout << "start line" << std::endl;
+            }
             line = calculate_private_key_line(row_index, processed_public_keys);
-            std::cout << "line finished" << std::endl;
+            if (p_log_stream_ != nullptr) {
+              std::cout << "line finished" << std::endl;
+            }
             line_cache.insert(std::make_pair(row_index, line));
           }
           key = line * key;
@@ -320,11 +425,15 @@ namespace fga_crypto {
             const int conj_index = v_[i - 1];
             key = key.conjugate_with(processed_public_keys.get_s(conj_index));
           }
-          std::cout << "key vert num (val=" << slp_vertices_num(key()) <<
-                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+          if (p_log_stream_ != nullptr) {
+            std::cout << "key vert num (val=" << slp_vertices_num(key()) <<
+                         ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+          }
           key = key.free_reduction().normal_form();
-          std::cout << "nf key item vert num (val=" << slp_vertices_num(key()) <<
+          if (p_log_stream_ != nullptr) {
+            std::cout << "nf key item vert num (val=" << slp_vertices_num(key()) <<
                        ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+          }
         }
 
         if (order) {
@@ -332,38 +441,46 @@ namespace fga_crypto {
         } else {
           key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
         }
-        std::cout << "almost final key vert num (val=" << slp_vertices_num(key()) <<
-                     ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
-        key = key.free_reduction().normal_form();
-        std::cout << "result key item vert num (val=" << slp_vertices_num(key()) <<
-                     ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
-
-        if (debug) {
-//          key().print(&std::cout);
+        if (p_log_stream_ != nullptr) {
+          std::cout << "almost final key vert num (val=" << slp_vertices_num(key()) <<
+                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
         }
+        key = key.free_reduction().normal_form();
+        if (p_log_stream_ != nullptr) {
+          std::cout << "result key item vert num (val=" << slp_vertices_num(key()) <<
+                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+        }
+
         return key;
+      }
+
+      //! Set logging stream. If pass null_ptr, logging is disabled.
+      void set_logging(std::ostream* p_log_stream = &std::cout) const {
+        p_log_stream_ = p_log_stream;
       }
 
     private:
       const SchemeParameters params_;
-      std::vector<AutomorphismDescription> alphas_;
-      std::vector<AutomorphismDescription> betas_;
+      std::vector<AutDescription> alphas_;
+      std::vector<AutDescription> betas_;
       std::vector<int> u_;
       std::vector<int> v_;
-      std::vector<AutomorphismDescription> s_;
+      std::vector<AutDescription> s_;
       std::vector<CommutatorSet> r_;
 
-      AutomorphismDescription priv_key_base_;
+      AutDescription priv_key_base_;
 
-      AutomorphismDescription c_;
+      AutDescription c_;
 
-      AutomorphismDescription priv_key_;
+      AutDescription priv_key_;
 
       PublicKeys pub_keys_;
 
-      AutomorphismDescription shared_key_;
+      AutDescription shared_key_;
 
-      AutomorphismDescription get_betas_composition(const std::vector<int>& pattern) {
+      mutable std::ostream* p_log_stream_;
+
+      AutDescription get_betas_composition(const std::vector<int>& pattern) {
         auto pick = [&] (int i) {
           if (i > 0) {
             return betas_[i - 1];
@@ -371,15 +488,15 @@ namespace fga_crypto {
             return betas_[- i - 1].inverse_description();
           }
         };
-        AutomorphismDescription result;
+        AutDescription result;
         for (auto i: pattern) {
           result *= pick(i);
         }
         return result;
       }
 
-      AutomorphismDescription calculate_private_key_line(int row_index, const PublicKeys& public_key) {
-        AutomorphismDescription value;
+      AutDescription calculate_private_key_line(int row_index, const PublicKeys& public_key) {
+        AutDescription value;
 //        for (int col_index: u_) {
 ////          std::cout << "column " << col_index << std::endl;
 //          auto beta_conj = public_key.get_r(col_index, row_index);
@@ -394,11 +511,15 @@ namespace fga_crypto {
           if (i > 0) {
             value = value.conjugate_with(public_key.get_s(conj_index));
           }
-          std::cout << "item before red vert num (val=" << slp_vertices_num(value()) <<
-                      ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+          if (p_log_stream_ != nullptr) {
+            std::cout << "item before red vert num (val=" << slp_vertices_num(value()) <<
+                        ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+          }
           value = value.free_reduction().normal_form();//reducing the size
-          std::cout << "item vert num (val=" << slp_vertices_num(value()) <<
-                       ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+          if (p_log_stream_ != nullptr) {
+            std::cout << "item vert num (val=" << slp_vertices_num(value()) <<
+                         ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+          }
         }
         return value;
       }
