@@ -15,10 +15,10 @@
 #include <algorithm>
 #include <functional>
 #include <assert.h>
+#include <chrono>
 #include "slp.h"
 
 namespace crag {
-
 
 
 namespace endomorphism_default_parameters {
@@ -35,6 +35,7 @@ namespace endomorphism_default_parameters {
     crag::slp::hashers::PermutationHash<crag::Permutation16>
   > WeakVertexHashAlgorithms;
 }
+
 
 /**
  * Represents a free group endomorphism using straight-line programs.
@@ -217,7 +218,7 @@ public:
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
 
     for_each_non_trivial_image([&result, &vertex_hashes, &reduced_vertices] (const symbol_image_pair_type& pair) {
-      auto reduced = VertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
+      auto reduced = VertexHashAlgorithms::reduce_narrow_slp(pair.second, &vertex_hashes, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
         result.images_.insert(std::make_pair(pair.first, reduced));
@@ -401,17 +402,21 @@ EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>&
   return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
 }
 
+
 //! Find the maximal height of SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int height(const EndomorphismSLP<TerminalSymbol>& e);
+
 
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 
+
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_unique_images_num(const EndomorphismSLP<TerminalSymbol>& e);
+
 
 //! Returns the map contatining the lengths of non-trivial images (actually some of the images might be trivial).
 template<typename TerminalSymbol>
@@ -565,9 +570,9 @@ class AutomorphismDescription {
         num_(0) {}
 
     //! Creates the description of a single autmorphism.
-    AutomorphismDescription(const Automorphism& e)
-      : a_(e),
-        a_inv_(e.inverse()),
+    AutomorphismDescription(Automorphism e)
+      : a_(std::move(e)),
+        a_inv_(std::move(a_.inverse())),
         num_(1u) {}
 
     //! Generates a random autmorphism.l
@@ -640,16 +645,13 @@ class AutomorphismDescription {
     Automorphism a_inv_;
     unsigned long num_;//num of composed automorphisms
 
-    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv, unsigned int num)
-      : a_(a),
-        a_inv_(a_inv),
+    AutomorphismDescription(Automorphism a, Automorphism a_inv, unsigned int num)
+      : a_(std::move(a)),
+        a_inv_(std::move(a_inv)),
         num_(num) {}
 
-    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv, unsigned int num)
-      : a_(a),
-        a_inv_(a_inv),
-        num_(num) {}
 };
+
 
 //! Conjugate the elements of the given vector by the given conjugator.
 template<typename T, typename Conjugator>
@@ -662,12 +664,75 @@ static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conju
   return result;
 }
 
+
 //! Calculates commutator of the arguments.
 template<typename T>
 T make_commutator(const T& first, const T& second) {
   return first * second * first.inverse_description() * second.inverse_description();
 }
 
+
+//! Reduces endomorphisms of their descriptions with optional logging.
+class AutomorphismReducer { //todo replace logging to std::cout by logging facility
+    class SizePrinter {
+      public:
+        template<typename AutDescription>
+        void operator()(const AutDescription& aut) const {
+          std::cout << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse());
+        }
+
+        template<typename TerminalSymbol>
+        void operator()(const EndomorphismSLP<TerminalSymbol>& aut) const {
+          std::cout << slp_vertices_num(aut);
+        }
+    };
+
+  public:
+    template<typename Aut>
+    static Aut reduce(const Aut& aut, bool is_logging) {
+      return is_logging ? reduce(aut, SizePrinter()) : reduce(aut);
+    }
+
+    template<typename Aut, typename AutLogger>
+    static Aut reduce(const Aut& aut, AutLogger aut_logger) {
+        std::ostream& out = std::cout;
+        out << "|";
+        aut_logger(aut);
+        out << "|";
+
+        out << " fr ";
+        auto fr = perform_action_with_logging(aut_logger, [&aut]() {return aut.free_reduction();});
+
+        out << " rd ";
+        auto rd = perform_action_with_logging(aut_logger, [&fr]() {return fr.remove_duplicate_vertices();});
+
+        out << " nf ";
+        auto result = perform_action_with_logging(aut_logger, [&rd]() {return rd.normal_form();});
+
+        out << std::endl;
+        return result;
+    }
+
+    template<typename Aut>
+    static Aut reduce(const Aut& aut) {
+      auto fr = aut.free_reduction();
+      auto rd = fr.remove_duplicate_vertices();;
+      return rd.normal_form();
+    }
+
+    template<typename Func, typename AutLogger>
+    static auto perform_action_with_logging(AutLogger aut_logger, Func f) -> decltype(f()) {
+     auto start_time = std::chrono::high_resolution_clock::now();
+     auto result = f();
+     auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+           std::chrono::high_resolution_clock::now() - start_time
+           );
+     std::cout << "|";
+     aut_logger(result);
+     std::cout << "| " << duration_in_ms.count() << "ms";
+     return result;
+    }
+};
 
 //-------------------------------------------------------------------------------------
 // Implementation of EndomorphismSLP methods.
