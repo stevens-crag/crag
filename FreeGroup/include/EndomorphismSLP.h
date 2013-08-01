@@ -15,10 +15,10 @@
 #include <algorithm>
 #include <functional>
 #include <assert.h>
+#include <chrono>
 #include "slp.h"
 
 namespace crag {
-
 
 
 namespace endomorphism_default_parameters {
@@ -35,6 +35,7 @@ namespace endomorphism_default_parameters {
     crag::slp::hashers::PermutationHash<crag::Permutation16>
   > WeakVertexHashAlgorithms;
 }
+
 
 /**
  * Represents a free group endomorphism using straight-line programs.
@@ -401,22 +402,25 @@ EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>&
   return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
 }
 
+
 //! Find the maximal height of SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int height(const EndomorphismSLP<TerminalSymbol>& e);
+
 
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 
+
 //! Find the total number of vertices in SLPs, representing the endomorphism
 template<typename TerminalSymbol>
 unsigned int slp_unique_images_num(const EndomorphismSLP<TerminalSymbol>& e);
 
+
 //! Returns the map contatining the lengths of non-trivial images (actually some of the images might be trivial).
 template<typename TerminalSymbol>
 std::map<TerminalSymbol, LongInteger> images_length(const EndomorphismSLP<TerminalSymbol>& e);
-
 
 
 //! Automorphisms generator
@@ -652,6 +656,7 @@ class AutomorphismDescription {
         num_(num) {}
 };
 
+
 //! Conjugate the elements of the given vector by the given conjugator.
 template<typename T, typename Conjugator>
 static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conjugator& conjugator) {
@@ -663,12 +668,94 @@ static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conju
   return result;
 }
 
+
 //! Calculates commutator of the arguments.
 template<typename T>
 T make_commutator(const T& first, const T& second) {
   return first * second * first.inverse_description() * second.inverse_description();
 }
 
+
+//! Reduces endomorphisms of their descriptions with optional logging.
+class EndomorphismReducer {
+  public:
+    EndomorphismReducer(std::ostream* p_log_stream = nullptr)
+      : p_log_stream_(p_log_stream) {}
+
+
+    void enable_logging(std::ostream* p_log_stream = &std::cout) {
+      p_log_stream_ = p_log_stream;
+    }
+
+    void disable_logging() {
+      p_log_stream_ == nullptr;
+    }
+
+    bool is_logging() const {
+      return p_log_stream_ == nullptr;
+    }
+
+    template<typename T>
+    void log(const T& item) {
+      assert(is_logging());
+      *p_log_stream_ << item;
+    }
+
+    template<typename Aut>
+    Aut reduce(const Aut& aut) {
+      if (is_logging()) {
+        std::ostream& out = *p_log_stream_;
+        out << "|";
+        print_size(aut);
+        out << "|";
+
+        out << " fr ";
+        auto fr = process_with_logging([&aut]() {return aut.free_reduction();});
+
+        out << " rd ";
+        auto fr_rd = process_with_logging([&]() {return fr.remove_duplicate_vertices();});
+
+        out << " nf ";
+        auto result = process_with_logging([&]() {return fr_rd.normal_form();});
+
+        out << std::endl;
+        return result;
+      } else {
+        auto fr = aut.free_reduction();
+        auto rd = fr.remove_duplicate_vertices();;
+        return rd.normal_form();
+      }
+    }
+
+  private:
+    std::ostream* p_log_stream_;
+
+    template<typename Func>
+    auto process_with_logging(Func f) -> decltype(f()) {
+      assert (is_logging());
+      auto start_time = std::chrono::high_resolution_clock::now();
+      auto result = f();
+      auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::high_resolution_clock::now() - start_time
+            );
+      *p_log_stream_ << "|";
+      print_size(result);
+      *p_log_stream_ << "| " << duration_in_ms.count() << "ms";
+      return result;
+    }
+
+    template<typename TerminalSymbol>
+    void print_size(const EndomorphismSLP<TerminalSymbol>& aut) {
+      assert (is_logging());
+      *p_log_stream_ << slp_vertices_num(aut);
+    }
+
+    template<typename AutDescription>
+    void print_size(const AutDescription& aut) {
+      assert (is_logging());
+      *p_log_stream_ << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse());
+    }
+};
 
 //-------------------------------------------------------------------------------------
 // Implementation of EndomorphismSLP methods.

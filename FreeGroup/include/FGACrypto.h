@@ -48,65 +48,6 @@ namespace fga_crypto {
   typedef EndomorphismSLP<int> Aut;
   typedef AutomorphismDescription<Aut> AutDescription;
 
-  template<typename Func>
-  auto process_aut_with_logging(Func f) -> decltype(f()) {
-    auto start_time = std::chrono::high_resolution_clock::now();
-    auto result = f();
-    auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::high_resolution_clock::now() - start_time
-          );
-    std::cout << "|" << slp_vertices_num(result)
-      << "| " << duration_in_ms.count() << "ms";
-    return result;
-  }
-
-  template<typename Func>
-  auto process_aut_description_with_logging(Func f) -> decltype(f()) {
-    auto start_time = std::chrono::high_resolution_clock::now();
-    auto result = f();
-    auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-          std::chrono::high_resolution_clock::now() - start_time
-          );
-    std::cout << "|" << slp_vertices_num(result()) << "," << slp_vertices_num(result.inverse())
-      << "| " << duration_in_ms.count() << "ms";
-    return result;
-  }
-
-  Aut transform(const Aut& aut) {
-    std::cout << " |" << slp_vertices_num(aut) << "|";
-
-    std::cout << " fr ";
-    auto fr = process_aut_with_logging([&]() {return aut.free_reduction();});
-
-    std::cout << " fr_rd ";
-    auto fr_rd = process_aut_with_logging([&]() {return fr.remove_duplicate_vertices();});
-
-    std::cout << " nf ";
-    auto nf = process_aut_with_logging([&]() {return fr_rd.normal_form();});
-
-    std::cout << std::endl;
-
-    return nf;
-  }
-
-  AutDescription transform(const AutDescription& aut) {
-    std::cout << " |" << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse()) << "|";
-
-    std::cout << " fr ";
-    auto fr = process_aut_description_with_logging([&]() {return aut.free_reduction();});
-
-    std::cout << " fr_rd ";
-    auto fr_rd = process_aut_description_with_logging([&]() {return fr.remove_duplicate_vertices();});
-
-    std::cout << " nf ";
-    auto nf = process_aut_description_with_logging([&]() {return fr_rd.normal_form();});
-
-    std::cout << std::endl;
-
-    return nf;
-  }
-
-
 
   void print_stats(const AutDescription& aut_d) {
     auto a = aut_d();
@@ -218,7 +159,8 @@ namespace fga_crypto {
           priv_key_(),
           pub_keys_(),
           shared_key_(),
-          p_log_stream_(nullptr) {
+          p_log_stream_(nullptr),
+          reducer_(p_log_stream_) {
 
         //generating alphas, betas
         UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_alphas(params.N, &rand);
@@ -412,12 +354,9 @@ namespace fga_crypto {
             line = cached_ad->second;
           } else {
             if (p_log_stream_ != nullptr) {
-              std::cout << "start line" << std::endl;
+              *p_log_stream_ << "new line calculation:" << std::endl;
             }
             line = calculate_private_key_line(row_index, processed_public_keys);
-            if (p_log_stream_ != nullptr) {
-              std::cout << "line finished" << std::endl;
-            }
             line_cache.insert(std::make_pair(row_index, line));
           }
           key = line * key;
@@ -426,12 +365,12 @@ namespace fga_crypto {
             key = key.conjugate_with(processed_public_keys.get_s(conj_index));
           }
           if (p_log_stream_ != nullptr) {
-            std::cout << "key vert num (val=" << slp_vertices_num(key()) <<
+            *p_log_stream_ << "key vert num (val=" << slp_vertices_num(key()) <<
                          ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
           }
           key = key.free_reduction().normal_form();
           if (p_log_stream_ != nullptr) {
-            std::cout << "nf key item vert num (val=" << slp_vertices_num(key()) <<
+            *p_log_stream_ << "nf key item vert num (val=" << slp_vertices_num(key()) <<
                        ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
           }
         }
@@ -442,12 +381,12 @@ namespace fga_crypto {
           key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
         }
         if (p_log_stream_ != nullptr) {
-          std::cout << "almost final key vert num (val=" << slp_vertices_num(key()) <<
+          *p_log_stream_ << "almost final key vert num (val=" << slp_vertices_num(key()) <<
                        ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
         }
         key = key.free_reduction().normal_form();
         if (p_log_stream_ != nullptr) {
-          std::cout << "result key item vert num (val=" << slp_vertices_num(key()) <<
+          *p_log_stream_ << "result key item vert num (val=" << slp_vertices_num(key()) <<
                        ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
         }
 
@@ -457,6 +396,11 @@ namespace fga_crypto {
       //! Set logging stream. If pass null_ptr, logging is disabled.
       void set_logging(std::ostream* p_log_stream = &std::cout) const {
         p_log_stream_ = p_log_stream;
+        if (p_log_stream == nullptr) {
+          reducer_.disable_logging();
+        } else {
+          reducer_.enable_logging(p_log_stream);
+        }
       }
 
     private:
@@ -479,6 +423,7 @@ namespace fga_crypto {
       AutDescription shared_key_;
 
       mutable std::ostream* p_log_stream_;
+      mutable EndomorphismReducer reducer_;
 
       AutDescription get_betas_composition(const std::vector<int>& pattern) {
         auto pick = [&] (int i) {
@@ -512,14 +457,9 @@ namespace fga_crypto {
             value = value.conjugate_with(public_key.get_s(conj_index));
           }
           if (p_log_stream_ != nullptr) {
-            std::cout << "item before red vert num (val=" << slp_vertices_num(value()) <<
-                        ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
+            *p_log_stream_ << "line step ";
           }
           value = value.free_reduction().normal_form();//reducing the size
-          if (p_log_stream_ != nullptr) {
-            std::cout << "item vert num (val=" << slp_vertices_num(value()) <<
-                         ", inv=" << slp_vertices_num(value.inverse()) << ")" << std::endl;
-          }
         }
         return value;
       }
