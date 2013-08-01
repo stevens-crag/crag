@@ -20,7 +20,6 @@ using namespace crag::fga_crypto;
 std::default_random_engine rnd;
 
 struct Stats {
-    LongInteger total_length;
     unsigned int height;
     unsigned int vertices_num;
 };
@@ -37,10 +36,16 @@ class FGAExperiment {
     }
 
     FGAExperiment(std::ostream* p_out) : out_(*p_out) {
-      out_ << "|u|,|v|,|c|,time,total_length,height,vertices_num" << std::endl;
+      out_ << "|u|,|v|,|c|,time,height,vertices_num" << std::endl;
     }
 
     void evaluate_scheme_time(const SchemeParameters& params, unsigned int samples_num) {
+      std::cout << "Starting fga experiment with params = ("
+                << params.A_SIZE << ", "
+                << params.B_SIZE << ", "
+                << params.U_LENGTH << ", "
+                << params.V_LENGTH << ", "
+                << params.C_SIZE << ")" << std::endl;
       unsigned int n = 0;
       unsigned long ms = 0;
       for (int i = 0; i < samples_num; ++i) {
@@ -53,18 +58,21 @@ class FGAExperiment {
         print(params.V_LENGTH);
         print(params.C_SIZE);
         print(time_in_ms.count());
-        print(s.total_length);
         print(s.height);
         print(s.vertices_num, false);
 
         std::cout << time_in_ms.count() << "ms" << std::endl;
       }
-      std::cout << "total time " << ms << "ms for " << samples_num << " samples" << std::endl;
+      auto s = ms / 1000;
+      std::cout << "total time " << s << "s for " << samples_num << " samples (average time="
+                << (s / samples_num) << "s)" <<  std::endl;
     }
 
     Stats evaluate_sample(const SchemeParameters& params) {
       KeysGenerator alice(params, rnd);
       KeysGenerator bob(params, rnd);
+
+      alice.is_logging = true;
 
       auto a_pk = alice.public_keys();
       auto b_pk = bob.public_keys();
@@ -75,11 +83,6 @@ class FGAExperiment {
       auto key = a_shared_key();
 
       Stats s;
-      s.total_length = 0;
-      auto lengths = images_length(key);
-      for (const auto& pair: lengths) {
-        s.total_length += pair.second;
-      }
       s.height = height(key);
       s.vertices_num = slp_vertices_num(key);
       return s;
@@ -114,13 +117,11 @@ class AAGExperiment {
     }
 
     void evaluate_scheme_time(const SchemeParameters& params, CalculationType calc_type, unsigned int samples_num) {
-      if (logging) {
-        std::cout << "Starting with params = (" << params.ALICE_TUPLE_SIZE << ", "
-                  << params.BOB_TUPLE_SIZE << ", "
-                  << params.LOWER_BOUND_PUB_KEY_LENGTH << ", "
-                  << params.UPPER_BOUND_PUB_KEY_LENGTH << ", "
-                  << params.KEY_LENGTH << ")" << std::endl;
-      }
+      std::cout << "Starting aag experiment with params = (" << params.ALICE_TUPLE_SIZE << ", "
+                << params.BOB_TUPLE_SIZE << ", "
+                << params.LOWER_BOUND_PUB_KEY_LENGTH << ", "
+                << params.UPPER_BOUND_PUB_KEY_LENGTH << ", "
+                << params.KEY_LENGTH << ")" << std::endl;
       unsigned long ms = 0;
       for (int i = 0; i < samples_num; ++i) {
         auto start_time = our_clock::now();
@@ -133,9 +134,13 @@ class AAGExperiment {
         print(s.height);
         print(s.vertices_num, false);
 
-        std::cout << time_in_ms.count() << "ms" << std::endl;
+        if (logging) {
+          std::cout << time_in_ms.count() << "ms" << std::endl;
+        }
       }
-      std::cout << "total time " << ms << "ms for " << samples_num << " samples" << std::endl;
+      auto s = ms / 1000;
+      std::cout << "total time " << s << "s for " << samples_num << " samples (average time="
+                << (s / samples_num) << "s)" <<  std::endl;
     }
 
     Stats evaluate_sample(const SchemeParameters& params, CalculationType calc_type) {
@@ -183,11 +188,6 @@ class AAGExperiment {
       }
 
       Stats s;
-      s.total_length = 0;
-//      auto lengths = images_length(key);
-//      for (const auto& pair: lengths) {
-//        s.total_length += pair.second;
-//      }
       s.height = height(key);
       s.vertices_num = slp_vertices_num(key);
       return s;
@@ -213,32 +213,44 @@ class AAGExperiment {
 
 
 int main(int argc, char* argv[]) {
-  if (argc != 3) {
+//  if (argc != 3) {
+//    std::cout << "Wrong input arguments" << std::endl;
+//  } else {
+//    std::string calc_type(argv[1]);
+//    crag::aag_crypto::CalculationType type;
+//    if (calc_type == "--block") {
+//      type = crag::aag_crypto::BlockFrNf;
+//      std::cout << "Block mode" << std::endl;
+//    } else if (calc_type == "--iterative") {
+//      type = crag::aag_crypto::IterativeFrNf;
+//      std::cout << "Iterative mode" << std::endl;
+//    } else if (calc_type == "--fold_threshold") {
+//      type = crag::aag_crypto::IterativeFoldThreshold;
+//      std::cout << "Fold threshold with threshold = " << crag::aag_crypto::fold_threshold;
+//    } else {
+//      type = crag::aag_crypto::SinlgeFrNf;
+//      std::cout << "Single mode" << std::endl;
+//    }
+
+//    std::string output_filename(argv[2]);
+//    std::cout << "Writing to " << output_filename << std::endl;
+//    std::ofstream out(output_filename);
+//    crag::aag_crypto::AAGExperiment e(&out);
+//    int iterations = 5;
+//    for (int i: {50, 60, 70}) {
+//      e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 4, 5, i), type, iterations);
+//    }
+//  }
+  if (argc != 2) {
     std::cout << "Wrong input arguments" << std::endl;
   } else {
-    std::string calc_type(argv[1]);
-    crag::aag_crypto::CalculationType type;
-    if (calc_type == "--block") {
-      type = crag::aag_crypto::BlockFrNf;
-      std::cout << "Block mode" << std::endl;
-    } else if (calc_type == "--iterative") {
-      type = crag::aag_crypto::IterativeFrNf;
-      std::cout << "Iterative mode" << std::endl;
-    } else if (calc_type == "--fold_threshold") {
-      type = crag::aag_crypto::IterativeFoldThreshold;
-      std::cout << "Fold threshold with threshold = " << crag::aag_crypto::fold_threshold;
-    } else {
-      type = crag::aag_crypto::SinlgeFrNf;
-      std::cout << "Single mode" << std::endl;
-    }
-
-    std::string output_filename(argv[2]);
+    std::string output_filename(argv[1]);
     std::cout << "Writing to " << output_filename << std::endl;
     std::ofstream out(output_filename);
-    crag::aag_crypto::AAGExperiment e(&out);
+    crag::fga_crypto::FGAExperiment e(&out);
     int iterations = 5;
-    for (int i: {50, 60, 70}) {
-      e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 4, 5, i), type, iterations);
+    for (int size = 5; size < 20; ++size) {
+      e.evaluate_scheme_time(crag::fga_crypto::SchemeParameters(3, size, size, size), iterations);
     }
   }
 }
