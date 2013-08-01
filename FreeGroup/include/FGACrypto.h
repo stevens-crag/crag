@@ -87,9 +87,9 @@ namespace fga_crypto {
         return result;
       }
 
-      void convert_to_normal_form() {
+      void normalize() {
         for (std::size_t i = 0; i < comm_.size(); ++i) {
-          comm_[i] = comm_[i].normal_form();
+          comm_[i] = AutomorphismReducer::reduce(comm_[i]);
         }
       }
 
@@ -128,12 +128,13 @@ namespace fga_crypto {
         return r[2 * first_index + second_index].get(first_inversed, second_inversed);
       }
 
-      void convert_to_normal_form() {
+      //! Make the normal form of free reduction
+      void normalize() {
         for (std::size_t i = 0; i < s.size(); ++i) {
-          s[i] = s[i].normal_form();
+          s[i] = AutomorphismReducer::reduce(s[i]);
         }
         for (auto& e: r) {
-          e.convert_to_normal_form();
+          e.normalize();
         }
       }
   };
@@ -141,6 +142,8 @@ namespace fga_crypto {
   //! Generates keys for the scheme.
   class KeysGenerator {
     public:
+
+      bool is_logging = false;
 
       KeysGenerator() = delete;
 
@@ -158,9 +161,7 @@ namespace fga_crypto {
           c_(),
           priv_key_(),
           pub_keys_(),
-          shared_key_(),
-          p_log_stream_(nullptr),
-          reducer_(p_log_stream_) {
+          shared_key_() {
 
         //generating alphas, betas
         UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_alphas(params.N, &rand);
@@ -282,7 +283,7 @@ namespace fga_crypto {
         }
 #endif
 
-        pub_keys_.convert_to_normal_form();
+        pub_keys_.normalize();
 
 #ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
         std::cout << "normal form pub key" << std::endl;
@@ -309,6 +310,7 @@ namespace fga_crypto {
       PublicKeys process_incoming_public_keys(const PublicKeys& incoming_public_keys) {
         PublicKeys result(conjugate_all(incoming_public_keys.s, priv_key_),
                             conjugate_all(incoming_public_keys.r, priv_key_));
+        result.normalize();
 //        std::cout << "processed pub key" << std::endl;
 //        std::cout << "s" << std::endl;
 //        for (auto& ad: result.s) {
@@ -329,7 +331,6 @@ namespace fga_crypto {
        */
       AutDescription make_shared_key(const PublicKeys& processed_public_keys, bool order = true) {
         AutDescription key;
-        AutDescription conjugator;
         std::map<int, AutDescription> line_cache;
 //        for (int row_index: v_) {
 ////          std::cout << "row " << row_index << std::endl;
@@ -353,8 +354,8 @@ namespace fga_crypto {
           if (cached_ad != line_cache.end()) {
             line = cached_ad->second;
           } else {
-            if (p_log_stream_ != nullptr) {
-              *p_log_stream_ << "new line calculation:" << std::endl;
+            if (is_logging) {
+              std::cout << "new line calculation:" << std::endl;
             }
             line = calculate_private_key_line(row_index, processed_public_keys);
             line_cache.insert(std::make_pair(row_index, line));
@@ -364,15 +365,10 @@ namespace fga_crypto {
             const int conj_index = v_[i - 1];
             key = key.conjugate_with(processed_public_keys.get_s(conj_index));
           }
-          if (p_log_stream_ != nullptr) {
-            *p_log_stream_ << "key vert num (val=" << slp_vertices_num(key()) <<
-                         ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+          if (is_logging) {
+            std::cout << "line addtion: ";
           }
-          key = key.free_reduction().normal_form();
-          if (p_log_stream_ != nullptr) {
-            *p_log_stream_ << "nf key item vert num (val=" << slp_vertices_num(key()) <<
-                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
-          }
+          key = AutomorphismReducer::reduce(key, is_logging);
         }
 
         if (order) {
@@ -380,27 +376,11 @@ namespace fga_crypto {
         } else {
           key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
         }
-        if (p_log_stream_ != nullptr) {
-          *p_log_stream_ << "almost final key vert num (val=" << slp_vertices_num(key()) <<
-                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
+        if (is_logging) {
+          std::cout << "key: ";
         }
-        key = key.free_reduction().normal_form();
-        if (p_log_stream_ != nullptr) {
-          *p_log_stream_ << "result key item vert num (val=" << slp_vertices_num(key()) <<
-                       ", inv=" << slp_vertices_num(key.inverse()) << ")" << std::endl;
-        }
-
+        key = AutomorphismReducer::reduce(key, is_logging);
         return key;
-      }
-
-      //! Set logging stream. If pass null_ptr, logging is disabled.
-      void set_logging(std::ostream* p_log_stream = &std::cout) const {
-        p_log_stream_ = p_log_stream;
-        if (p_log_stream == nullptr) {
-          reducer_.disable_logging();
-        } else {
-          reducer_.enable_logging(p_log_stream);
-        }
       }
 
     private:
@@ -421,9 +401,6 @@ namespace fga_crypto {
       PublicKeys pub_keys_;
 
       AutDescription shared_key_;
-
-      mutable std::ostream* p_log_stream_;
-      mutable EndomorphismReducer reducer_;
 
       AutDescription get_betas_composition(const std::vector<int>& pattern) {
         auto pick = [&] (int i) {
@@ -456,10 +433,10 @@ namespace fga_crypto {
           if (i > 0) {
             value = value.conjugate_with(public_key.get_s(conj_index));
           }
-          if (p_log_stream_ != nullptr) {
-            *p_log_stream_ << "line step ";
+          if (is_logging) {
+            std::cout << "line step ";
           }
-          value = value.free_reduction().normal_form();//reducing the size
+          value = AutomorphismReducer::reduce(value, is_logging);;//reducing the size
         }
         return value;
       }

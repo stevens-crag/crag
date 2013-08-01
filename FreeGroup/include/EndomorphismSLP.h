@@ -677,83 +677,64 @@ T make_commutator(const T& first, const T& second) {
 
 
 //! Reduces endomorphisms of their descriptions with optional logging.
-class EndomorphismReducer {
+class AutomorphismReducer { //todo replace logging to std::cout by logging facility
+    class SizePrinter {
+      public:
+        template<typename AutDescription>
+        void operator()(const AutDescription& aut) const {
+          std::cout << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse());
+        }
+
+        template<typename TerminalSymbol>
+        void operator()(const EndomorphismSLP<TerminalSymbol>& aut) const {
+          std::cout << slp_vertices_num(aut);
+        }
+    };
+
   public:
-    EndomorphismReducer(std::ostream* p_log_stream = nullptr)
-      : p_log_stream_(p_log_stream) {}
-
-
-    void enable_logging(std::ostream* p_log_stream = &std::cout) {
-      p_log_stream_ = p_log_stream;
-    }
-
-    void disable_logging() {
-      p_log_stream_ == nullptr;
-    }
-
-    bool is_logging() const {
-      return p_log_stream_ == nullptr;
-    }
-
-    template<typename T>
-    void log(const T& item) {
-      assert(is_logging());
-      *p_log_stream_ << item;
-    }
-
     template<typename Aut>
-    Aut reduce(const Aut& aut) {
-      if (is_logging()) {
-        std::ostream& out = *p_log_stream_;
+    static Aut reduce(const Aut& aut, bool is_logging) {
+      return is_logging ? reduce(aut, SizePrinter()) : reduce(aut);
+    }
+
+    template<typename Aut, typename AutLogger>
+    static Aut reduce(const Aut& aut, AutLogger aut_logger) {
+        std::ostream& out = std::cout;
         out << "|";
-        print_size(aut);
+        aut_logger(aut);
         out << "|";
 
         out << " fr ";
-        auto fr = process_with_logging([&aut]() {return aut.free_reduction();});
+        auto fr = perform_action_with_logging(aut_logger, [&aut]() {return aut.free_reduction();});
 
         out << " rd ";
-        auto fr_rd = process_with_logging([&]() {return fr.remove_duplicate_vertices();});
+        auto rd = perform_action_with_logging(aut_logger, [&fr]() {return fr.remove_duplicate_vertices();});
 
         out << " nf ";
-        auto result = process_with_logging([&]() {return fr_rd.normal_form();});
+        auto result = perform_action_with_logging(aut_logger, [&rd]() {return rd.normal_form();});
 
         out << std::endl;
         return result;
-      } else {
-        auto fr = aut.free_reduction();
-        auto rd = fr.remove_duplicate_vertices();;
-        return rd.normal_form();
-      }
     }
 
-  private:
-    std::ostream* p_log_stream_;
-
-    template<typename Func>
-    auto process_with_logging(Func f) -> decltype(f()) {
-      assert (is_logging());
-      auto start_time = std::chrono::high_resolution_clock::now();
-      auto result = f();
-      auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::high_resolution_clock::now() - start_time
-            );
-      *p_log_stream_ << "|";
-      print_size(result);
-      *p_log_stream_ << "| " << duration_in_ms.count() << "ms";
-      return result;
+    template<typename Aut>
+    static Aut reduce(const Aut& aut) {
+      auto fr = aut.free_reduction();
+      auto rd = fr.remove_duplicate_vertices();;
+      return rd.normal_form();
     }
 
-    template<typename TerminalSymbol>
-    void print_size(const EndomorphismSLP<TerminalSymbol>& aut) {
-      assert (is_logging());
-      *p_log_stream_ << slp_vertices_num(aut);
-    }
-
-    template<typename AutDescription>
-    void print_size(const AutDescription& aut) {
-      assert (is_logging());
-      *p_log_stream_ << slp_vertices_num(aut()) << "," << slp_vertices_num(aut.inverse());
+    template<typename Func, typename AutLogger>
+    static auto perform_action_with_logging(AutLogger aut_logger, Func f) -> decltype(f()) {
+     auto start_time = std::chrono::high_resolution_clock::now();
+     auto result = f();
+     auto duration_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+           std::chrono::high_resolution_clock::now() - start_time
+           );
+     std::cout << "|";
+     aut_logger(result);
+     std::cout << "| " << duration_in_ms.count() << "ms";
+     return result;
     }
 };
 
