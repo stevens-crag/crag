@@ -193,11 +193,8 @@ namespace aag_crypto {
         auto transform = [&] (const Aut& aut) {
           std::cout << " |" << slp_vertices_num(aut) << "|";
 
-          std::cout << " rd ";
-          auto rd = process_with_logging([&]() {return aut.remove_duplicate_vertices();});
-
           std::cout << " fr ";
-          auto fr = process_with_logging([&]() {return rd.free_reduction();});
+          auto fr = process_with_logging([&]() {return aut.free_reduction();});
 
           std::cout << " fr_rd ";
           auto fr_rd = process_with_logging([&]() {return fr.remove_duplicate_vertices();});
@@ -263,7 +260,7 @@ namespace aag_crypto {
                 std::cout << "size exceeded threshold: folding..." << std::endl;
                 conj = transform(conj);
               }
-            } 
+            }
           } else {//SingleFrNf
             std::cout << "building key" << std::endl;
             for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
