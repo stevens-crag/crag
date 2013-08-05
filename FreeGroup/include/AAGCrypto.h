@@ -8,6 +8,8 @@
 #ifndef CRAG_FREE_GROUPS_AAGCRYPTO_H
 #define CRAG_FREE_GROUPS_AAGCRYPTO_H
 
+
+#include <chrono>
 #include "EndomorphismSLP.h"
 
 namespace crag {
@@ -107,7 +109,8 @@ namespace aag_crypto {
       TransmittedInfo(const PublicKey& pub_key, const PrivateKey& pr_key) {
         tuple_.reserve(pub_key.num());
         for (std::size_t i = 0; i < pub_key.num(); ++i) {
-          tuple_.push_back(pub_key[i].conjugate_with(pr_key()));
+          auto element = pub_key[i].conjugate_with(pr_key());
+          tuple_.push_back(element.free_reduction().normal_form());
         }
       }
 
@@ -127,6 +130,12 @@ namespace aag_crypto {
   enum Mode {
     Alice,
     Bob
+  };
+
+  enum CalculationType {
+    BlockFrNf,
+    IterativeFrNf,
+    SinlgeFrNf
   };
 
   typedef std::default_random_engine RandomEngine;
@@ -154,19 +163,109 @@ namespace aag_crypto {
         return PrivateKey(pub_key, params_.KEY_LENGTH, *p_rand_);
       }
 
-      Aut make_shared_key(const PrivateKey& priv_key, const TransmittedInfo& info, Mode mode) {
+
+
+      Aut make_shared_key(const PrivateKey& priv_key, const TransmittedInfo& info, Mode mode, CalculationType calc_type) {
         //the shared key is aba^{-1}b^{-1}
+        auto time = [] () {
+            return std::chrono::high_resolution_clock::now();
+          };
+        auto start_time = time();
+        auto duration = [&start_time, &time] () {
+          return std::chrono::duration_cast<std::chrono::milliseconds>(time() - start_time);
+        };
+
         if (mode == Alice) {
           Aut conj;
           auto inv_iter = priv_key.inverses_.crbegin();
           auto ind_iter = priv_key.indices_.crbegin();
-          for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
-            bool inverse = *inv_iter;
-            auto n = *ind_iter;
-            const auto& aut = info[n];
-            conj *= inverse ? aut() : aut.inverse();
-          }
-          return priv_key()() * conj;
+          if (calc_type == BlockFrNf) {
+            std::cout << "building blocks" << std::endl;
+            unsigned int block_lengths = 5;
+            std::vector<Aut> blocks;
+            blocks.reserve(params_.KEY_LENGTH / block_lengths + 1);
+            for (std::size_t i = 0; i < params_.KEY_LENGTH; i += block_lengths) {
+              Aut block;
+              for (std::size_t j = 0; j < block_lengths && j < params_.KEY_LENGTH - i; ++j) {
+                auto k = i + j;
+                bool inverse = priv_key.inverses_[k];
+                auto n = priv_key.indices_[k];
+                const auto& aut = info[n];
+                block *= inverse ? aut() : aut.inverse();
+              }
+
+              std::cout << "block size " << slp_vertices_num(block);
+
+              start_time = time();
+              auto fr_block = block.free_reduction();
+              std::cout << " fr_block size " << slp_vertices_num(fr_block)
+                << " fr_block duration " << duration().count() << "ms";
+
+              start_time = time();
+              auto nf_block = fr_block.normal_form();
+              std::cout << " nf_block size " << slp_vertices_num(nf_block)
+                << " nf_block duration " << duration().count() << "ms" << std::endl;
+
+              blocks.push_back(nf_block);
+            }
+
+            std::cout << "building key" << std::endl;
+            for (const auto& block: blocks) {
+              auto prod = conj * block;
+              std::cout << " size " << slp_vertices_num(prod);
+              start_time = time();
+              auto fr = prod.free_reduction();
+              std::cout << " fr size " << slp_vertices_num(fr)
+                << " fr duration " << duration().count() << "ms";
+              start_time = time();
+              auto nf = fr.normal_form();
+              std::cout << " nf size " << slp_vertices_num(nf)
+                << " nf duration " << duration().count() << "ms" << std::endl;
+              conj = nf;
+            }
+          } else if (calc_type == IterativeFrNf) {
+            std::cout << "building key" << std::endl;
+            for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
+              bool inverse = *inv_iter;
+              auto n = *ind_iter;
+              const auto& aut = info[n];
+              std::cout << "aut size " << slp_vertices_num(aut());
+              auto prod = conj * (inverse ? aut() : aut.inverse());
+              start_time = time();
+              auto fr = prod.free_reduction();
+              std::cout << " fr size " << slp_vertices_num(fr)
+                << " fr duration " << duration().count() << "ms";
+              start_time = time();
+              auto nf = fr.normal_form();
+              std::cout << " nf size " << slp_vertices_num(nf)
+                << " nf duration " << duration().count() << "ms" << std::endl;
+              conj = nf;
+            }  
+          } else {//SingleFrNf
+            std::cout << "building key" << std::endl;
+            for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
+              bool inverse = *inv_iter;
+              auto n = *ind_iter;
+              const auto& aut = info[n];
+              conj *= inverse ? aut() : aut.inverse();
+            }
+          }     
+          
+          auto key = priv_key()() * conj;
+
+          std::cout << "size " << slp_vertices_num(key);
+
+          start_time = time();  
+
+          auto fr_key = key.free_reduction();
+          std::cout << " fr size " << slp_vertices_num(fr_key)
+            << " fr duration " << duration().count() << "ms";
+
+          start_time = time();
+          auto nf_key = fr_key.normal_form();
+          std::cout << " nf size " << slp_vertices_num(nf_key)
+            << " nf duration " << duration().count() << "ms" << std::endl;
+          return nf_key;
         } else {//Bob
           Aut conj;
           auto inv_iter = priv_key.inverses_.cbegin();
