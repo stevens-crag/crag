@@ -224,6 +224,9 @@ int main(int argc, char* argv[]) {
     } else if (calc_type == "--iterative") {
       type = crag::aag_crypto::IterativeFrNf;  
       std::cout << "Iterative mode" << std::endl;
+    } else if (calc_type == "--fold_threshold") {
+      type = crag::aag_crypto::IterativeFoldThreshold; 
+      std::cout << "Fold threshold with threshold = " << crag::aag_crypto::fold_threshold;
     } else {
       type = crag::aag_crypto::SinlgeFrNf;  
       std::cout << "Single mode" << std::endl;
@@ -234,7 +237,7 @@ int main(int argc, char* argv[]) {
     std::ofstream out(output_filename);
     crag::aag_crypto::AAGExperiment e(&out);
     int iterations = 5;
-    for (int i = 10; i < 100; i+=10) {
+    for (int i = 50; i < 100; i+=10) {
       e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 4, 5, i), type, iterations);
     }
   }
