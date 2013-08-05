@@ -20,12 +20,18 @@ std::default_random_engine rnd(22345);
 
 
 class Experiment {
+    struct Stats {
+        LongInteger total_length;
+        unsigned int height;
+        unsigned int vertices_num;
+    };
+
   public:
     Experiment() : Experiment(&std::cout) {
     }
 
     Experiment(std::ostream* p_out) : out_(*p_out) {
-      out_ << "|u|,|v|,|c|,time,id_num" << std::endl;
+      out_ << "|u|,|v|,|c|,time,total_length,height,vertices_num" << std::endl;
     }
 
     void evaluate_scheme_time(const SchemeParameters& params, unsigned int samples_num) {
@@ -33,17 +39,24 @@ class Experiment {
       unsigned long ms = 0;
       for (int i = 0; i < samples_num; ++i) {
         auto start_time = our_clock::now();
-        n += evaluate_sample(params);
+        Stats s = evaluate_sample(params);
         auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
-       ms += time_in_ms.count();
+        ms += time_in_ms.count();
+
+        print(params.U_LENGTH);
+        print(params.V_LENGTH);
+        print(params.C_SIZE);
+        print(time_in_ms.count());
+        print(s.total_length);
+        print(s.height);
+        print(s.vertices_num, false);
+
         std::cout << time_in_ms.count() << "ms" << std::endl;
       }
-      std::cout << "total time " << ms << "ms for " << samples_num << " samples with " << n << " identities keys" << std::endl;
-      std::vector<unsigned long int> a = {params.U_LENGTH, params.V_LENGTH, params.C_SIZE, ms, n};
-      print_csv_line(a);
+      std::cout << "total time " << ms << "ms for " << samples_num << " samples" << std::endl;
     }
 
-    bool evaluate_sample(const SchemeParameters& params) {
+    Stats evaluate_sample(const SchemeParameters& params) {
       KeysGenerator alice(params, rnd);
       KeysGenerator bob(params, rnd);
 
@@ -53,37 +66,46 @@ class Experiment {
       auto a_processed = bob.process_incoming_public_keys(a_pk);
 
       auto a_shared_key = alice.make_shared_key(a_processed, true);
-      return a_shared_key().is_identity();
+      auto key = a_shared_key();
+
+      Stats s;
+      s.total_length = 0;
+      auto lengths = images_length(key);
+      for (const auto& pair: lengths) {
+        s.total_length += pair.second;
+      }
+      s.height = height(key);
+      s.vertices_num = slp_vertices_num(key);
+      return s;
     }
 
   private:
     std::ostream& out_;
 
     template<typename T>
-    void print_csv_line(const std::vector<T>& vals) {
-      for (std::size_t i = 0; i < vals.size() - 1; ++i) {
-        out_ << vals[i] << ",";
+    void print(const T& val, bool separator = true) {
+      out_ << val;
+      if (separator) {
+        out_ << ",";
+      } else {
+        out_ << std::endl;
       }
-      out_ << vals[vals.size() - 1] << std::endl;
     }
 };
 
-void crush_example() {
-  std::ifstream in("crush_log");
-  auto e = EndomorphismSLP<int>::load_from(&in);
-  std::cout << "loaded" << std::endl;
-  auto fr = e.free_reduction();
-  std::cout << "fr num (val=" << slp_vertices_num(fr) << ")" << std::endl;
-  std::cout << "free red" << std::endl;
-  auto nf = fr.normal_form();
-  std::cout << "normal form" << std::endl;
-}
-
 
 int main() {
-  Experiment e;
-  e.evaluate_scheme_time(SchemeParameters(3, 1, 1, 1), 5);
-  e.evaluate_scheme_time(SchemeParameters(3, 2, 2, 2), 5);
+  int iterations = 10;
+  std::ofstream out("conj_scheme.csv");
+  Experiment e(&out);
+  for (int base = 1; base < 5; ++base) {
+    e.evaluate_scheme_time(SchemeParameters(3, base, base, base), iterations);
+    for (int i = base + 1; i < base + 6 && i < 9; ++i) {
+      e.evaluate_scheme_time(SchemeParameters(3, i, base, base), iterations);
+      e.evaluate_scheme_time(SchemeParameters(3, base, i, base), iterations);
+      e.evaluate_scheme_time(SchemeParameters(3, base, base, i), iterations);
+    }
+  }
 //  crush_example();
 
 }
