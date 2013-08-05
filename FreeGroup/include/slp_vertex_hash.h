@@ -473,6 +473,69 @@ class TVertexHashAlgorithms {
       return reduce(vertex, &cache, &reduced_vertices);
     }
 
+    static const size_t CANCELLATION_LENGTH_CACHE_SIZE = 10;
+
+    static Vertex reduce_narrow_slp(
+        const Vertex& vertex,
+        Cache* calculated_hashes,
+        std::unordered_map<Vertex, Vertex>* reduced_vertices
+    ) {
+      std::map<LongInteger, size_t> cancellation_length_cache;
+
+      size_t current_iteration = 0;
+
+      return base_reduce(
+          vertex,
+          [calculated_hashes, &cancellation_length_cache, &current_iteration](const Vertex& vertex) {
+            ++current_iteration;
+            Vertex left = vertex.left_child().negate();
+            Vertex right = vertex.right_child();
+
+            for (auto& reduction : cancellation_length_cache) {
+              if (get_subvertex_hash(left, 0, reduction.first, calculated_hashes) ==
+                  get_subvertex_hash(right, 0, reduction.first, calculated_hashes)) {
+
+                if (crag::slp::get_sub_slp(left, reduction.first, reduction.first + 1) != crag::slp::get_sub_slp(right, reduction.first, reduction.first + 1)) {
+                  reduction.second = current_iteration;
+                  return reduction.first;
+                }
+              } else {
+                break;
+              }
+            }
+
+            if (cancellation_length_cache.size() >= CANCELLATION_LENGTH_CACHE_SIZE) {
+              auto oldest_entry = std::min_element(cancellation_length_cache.begin(), cancellation_length_cache.end(),
+                  [](const std::pair<const LongInteger, size_t>& first, const std::pair<const LongInteger, size_t>& second) {
+                    return first.second < second.second;
+                  }
+              );
+
+              cancellation_length_cache.erase(oldest_entry);
+            }
+
+
+            LongInteger cancellation_length = get_longest_common_prefix(
+                left,
+                right,
+                calculated_hashes
+            );
+
+            cancellation_length_cache[cancellation_length] = current_iteration;
+
+            return cancellation_length;
+          },
+          reduced_vertices
+      );
+    }
+
+    static Vertex reduce_narrow_slp(const Vertex& vertex) {
+      Cache cache;
+      std::unordered_map<Vertex, Vertex> reduced_vertices;
+      return reduce_narrow_slp(vertex, &cache, &reduced_vertices);
+    }
+
+
     //! Remove redundant vertices with the same hash value reducing the size of SLP in this way.
     static Vertex remove_duplicates(const Vertex& root, Cache* p_cache, HashRepresentativesCache* p_hash_cache) {
       assert(p_cache);

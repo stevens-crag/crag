@@ -162,6 +162,42 @@ TEST(HashedReduce, StressTest) {
   }
 }
 
+TEST(HashedReduceNarrow, StressTest) {
+  const size_t REPEAT = 10000;
+  constexpr size_t RANK = 3;
+  const size_t ENDOMORPHISMS_NUMBER = 20;
+
+  typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
+  size_t seed = 0;
+  while (++seed <= REPEAT) {
+    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+
+    Vertex reduced = VertexHashAlgorithms::reduce_narrow_slp(image);
+
+    std::vector<int> reduced_image;
+    for (auto symbol : VertexWord<int>(image)) {
+      if (!reduced_image.empty() && symbol == -reduced_image.back()) {
+        reduced_image.pop_back();
+      } else {
+        reduced_image.push_back(symbol);
+      }
+    }
+    std::ostringstream reduced_image_string;
+    std::copy(reduced_image.begin(), reduced_image.end(), std::ostream_iterator<int>(reduced_image_string, ""));
+    auto correct_symbol = reduced_image.begin();
+    for (auto symbol : VertexWord<int>(reduced)) {
+      ASSERT_EQ(*correct_symbol, symbol) << seed << std::endl
+          << print_tree_preorder_single(image) << std::endl
+          << print_tree_preorder(reduced) << std::endl
+          << VertexWord<int>(image) << std::endl
+          << VertexWord<int>(reduced) << std::endl
+          << reduced_image_string.str() << std::endl;
+      ++correct_symbol;
+    }
+  }
+}
+
 
 
 TEST(HashedReduce, RemoveDuplicatesStressTest) {
