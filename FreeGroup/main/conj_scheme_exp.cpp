@@ -113,7 +113,7 @@ class AAGExperiment {
       out_ << "key_length,time,height,vertices_num," << std::endl;
     }
 
-    void evaluate_scheme_time(const SchemeParameters& params, unsigned int samples_num) {
+    void evaluate_scheme_time(const SchemeParameters& params, CalculationType calc_type, unsigned int samples_num) {
       if (logging) {
         std::cout << "Starting with params = (" << params.ALICE_TUPLE_SIZE << ", "
                   << params.BOB_TUPLE_SIZE << ", "
@@ -124,7 +124,7 @@ class AAGExperiment {
       unsigned long ms = 0;
       for (int i = 0; i < samples_num; ++i) {
         auto start_time = our_clock::now();
-        Stats s = evaluate_sample(params);
+        Stats s = evaluate_sample(params, calc_type);
         auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - start_time);
         ms += time_in_ms.count();
 
@@ -138,7 +138,7 @@ class AAGExperiment {
       std::cout << "total time " << ms << "ms for " << samples_num << " samples" << std::endl;
     }
 
-    Stats evaluate_sample(const SchemeParameters& params) {
+    Stats evaluate_sample(const SchemeParameters& params, CalculationType calc_type) {
       auto k_gen = make_keys_generator(params, &rnd);
 
       auto a_pub = k_gen.generate_public_key(Alice);
@@ -176,7 +176,7 @@ class AAGExperiment {
         }
         std::cout << ")" << std::endl;
       }
-      Aut key = k_gen.make_shared_key(a_priv, b_ti, Alice);
+      Aut key = k_gen.make_shared_key(a_priv, b_ti, Alice, calc_type);
 
       if (logging) {
         std::cout << "shared key size " << slp_vertices_num(key) << std::endl;
@@ -212,11 +212,30 @@ class AAGExperiment {
 }// namespace crag
 
 
-int main() {
-  std::ofstream out("aag_direct.csv");
-  crag::aag_crypto::AAGExperiment e(&out);
-  int iterations = 5;
- for (int i = 10; i < 100; i+=10) {
-   e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 5, 8, i), iterations);
- }
+int main(int argc, char* argv[]) {
+  if (argc != 3) {
+    std::cout << "Wrong input arguments" << std::endl;
+  } else {
+    std::string calc_type(argv[1]);
+    crag::aag_crypto::CalculationType type;
+    if (calc_type == "--block") {
+      type = crag::aag_crypto::BlockFrNf;
+      std::cout << "Block mode" << std::endl;
+    } else if (calc_type == "--iterative") {
+      type = crag::aag_crypto::IterativeFrNf;  
+      std::cout << "Iterative mode" << std::endl;
+    } else {
+      type = crag::aag_crypto::SinlgeFrNf;  
+      std::cout << "Single mode" << std::endl;
+    }
+
+    std::string output_filename(argv[2]);
+    std::cout << "Writing to " << output_filename << std::endl;
+    std::ofstream out(output_filename);
+    crag::aag_crypto::AAGExperiment e(&out);
+    int iterations = 5;
+    for (int i = 10; i < 100; i+=10) {
+      e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 4, 5, i), type, iterations);
+    }
+  }
 }
