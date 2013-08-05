@@ -11,6 +11,8 @@
 #include <chrono>
 #include "EndomorphismSLP.h"
 
+#include <fstream>
+
 /**
  * The file contains cryptoscheme programmed corresponding to the specifications by Sasha Ushakov.
  */
@@ -33,8 +35,13 @@ namespace fga_crypto {
         return params;
       }
 
+
+      SchemeParameters(int n, int u, int v, int c)
+        : N(n), A_SIZE(5), B_SIZE(4), U_LENGTH(u), V_LENGTH(v), C_SIZE(c) {}
+
       SchemeParameters(int n, int a, int b, int u, int v, int c)
         : N(n), A_SIZE(a), B_SIZE(b), U_LENGTH(u), V_LENGTH(v), C_SIZE(c) {}
+
 
       const unsigned int N;
       const unsigned int A_SIZE;
@@ -42,7 +49,6 @@ namespace fga_crypto {
       const unsigned int U_LENGTH;
       const unsigned int V_LENGTH;
       const unsigned int C_SIZE;
-      //TODO make constructor
   };
 
   typedef EndomorphismSLP<int> Aut;
