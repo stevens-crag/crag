@@ -529,6 +529,12 @@ class TVertexHashAlgorithms {
       );
     }
 
+    static Vertex reduce_narrow_slp(const Vertex& vertex) {
+      Cache cache;
+      std::unordered_map<Vertex, Vertex> reduced_vertices;
+      return reduce_narrow_slp(vertex, &cache, &reduced_vertices);
+    }
+
 
     //! Remove redundant vertices with the same hash value reducing the size of SLP in this way.
     static Vertex remove_duplicates(const Vertex& root, Cache* p_cache, HashRepresentativesCache* p_hash_cache) {
