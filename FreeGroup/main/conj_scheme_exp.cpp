@@ -110,7 +110,7 @@ class AAGExperiment {
     }
 
     AAGExperiment(std::ostream* p_out) : out_(*p_out) {
-      out_ << "key_length,time,total_length,height,vertices_num," << std::endl;
+      out_ << "key_length,time,height,vertices_num," << std::endl;
     }
 
     void evaluate_scheme_time(const SchemeParameters& params, unsigned int samples_num) {
@@ -130,9 +130,8 @@ class AAGExperiment {
 
         print(params.KEY_LENGTH);
         print(time_in_ms.count());
-        print(s.total_length);
         print(s.height);
-        print(s.vertices_num);
+        print(s.vertices_num, false);
 
         std::cout << time_in_ms.count() << "ms" << std::endl;
       }
@@ -183,8 +182,6 @@ class AAGExperiment {
         std::cout << "shared key size " << slp_vertices_num(key) << std::endl;
       }
 
-      key = key.free_reduction();
-
       Stats s;
       s.total_length = 0;
 //      auto lengths = images_length(key);
@@ -205,7 +202,7 @@ class AAGExperiment {
       if (separator) {
         out_ << ",";
       } else {
-        out_ << std::endl;
+        out_ << "," << std::endl;
       }
     }
 };
@@ -216,11 +213,10 @@ class AAGExperiment {
 
 
 int main() {
-//  std::ofstream out("conj_exp.csv");
-  crag::aag_crypto::AAGExperiment e;
-  int iterations = 10;
-  e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 5, 8, 12), 1);
-//  for (int i = 0; i < 100; ++i) {
-//    e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 5, 8, i), iterations);
-//  }
+  std::ofstream out("aag_direct.csv");
+  crag::aag_crypto::AAGExperiment e(&out);
+  int iterations = 5;
+ for (int i = 10; i < 100; i+=10) {
+   e.evaluate_scheme_time(crag::aag_crypto::SchemeParameters(3, 20, 20, 5, 8, i), iterations);
+ }
 }
