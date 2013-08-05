@@ -209,6 +209,9 @@ Vertex reduce(const Vertex& vertex,
         auto result = NonterminalVertex(reduced_left, reduced_right);
         auto end = std::chrono::system_clock::now();
         std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
+//        auto temp_result_joined = NonterminalVertex(result, result);
+//        auto conjugate_length = VertexHashAlgorithms::get_cancellation_length(temp_result_joined, hash_cache);
+//        std::cout << ',' << result.vertex_id() << ',' << conjugate_length << ", n\n";
         std::cout << ',' << result.vertex_id() << ", n\n";
         assert(result.length() > 1);
         assert(result.height() > 1);
