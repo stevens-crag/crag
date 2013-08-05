@@ -16,6 +16,8 @@ namespace crag {
 
 namespace aag_crypto {
 
+  const std::size_t fold_threshold = 50000;
+
   struct SchemeParameters {
       SchemeParameters(unsigned int rank,
                        unsigned int alice_tuple_size, unsigned int bob_tuple_size,
@@ -135,6 +137,7 @@ namespace aag_crypto {
   enum CalculationType {
     BlockFrNf,
     IterativeFrNf,
+    IterativeFoldThreshold,//use threshold
     SinlgeFrNf
   };
 
@@ -247,6 +250,20 @@ namespace aag_crypto {
               std::cout << "key part";
               conj = transform(prod);
             }
+          } else if (calc_type == IterativeFoldThreshold) {
+            std::cout << "building key" << std::endl;
+            for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
+              bool inverse = *inv_iter;
+              auto n = *ind_iter;
+              const auto& aut = info[n];
+              conj *= inverse ? aut() : aut.inverse();
+              const std::size_t v_num = slp_vertices_num(conj);
+              std::cout << "key part |" << v_num << "|" << std::endl;
+              if (v_num > fold_threshold) {
+                std::cout << "size exceeded threshold: folding..." << std::endl;
+                conj = transform(conj);
+              }
+            } 
           } else {//SingleFrNf
             std::cout << "building key" << std::endl;
             for (; inv_iter != priv_key.inverses_.crend(); ++inv_iter, ++ind_iter) {
