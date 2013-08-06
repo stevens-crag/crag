@@ -570,9 +570,9 @@ class AutomorphismDescription {
         num_(0) {}
 
     //! Creates the description of a single autmorphism.
-    AutomorphismDescription(const Automorphism& e)
-      : a_(e),
-        a_inv_(e.inverse()),
+    AutomorphismDescription(Automorphism e)
+      : a_(std::move(e)),
+        a_inv_(std::move(a_.inverse())),
         num_(1u) {}
 
     //! Generates a random autmorphism.l
@@ -645,15 +645,11 @@ class AutomorphismDescription {
     Automorphism a_inv_;
     unsigned long num_;//num of composed automorphisms
 
-    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv, unsigned int num)
-      : a_(a),
-        a_inv_(a_inv),
+    AutomorphismDescription(Automorphism a, Automorphism a_inv, unsigned int num)
+      : a_(std::move(a)),
+        a_inv_(std::move(a_inv)),
         num_(num) {}
 
-    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv, unsigned int num)
-      : a_(a),
-        a_inv_(a_inv),
-        num_(num) {}
 };
 
 
