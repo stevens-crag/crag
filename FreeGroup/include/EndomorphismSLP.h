@@ -336,7 +336,6 @@ template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 
 
-
 //! Automorphisms generator
 /**
  * @tparam TerminalSymbol          terminal symbol representation. We suppose it has a constructor taking index
@@ -528,19 +527,19 @@ template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
   std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-  for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
+  for (const auto& root_entry: a.images_) {//mapping vertices of #a to new ones
     slp::map_vertices(root_entry.second, &new_vertices,
                       std::bind(&EndomorphismSLP<TerminalSymbol>::map_vertex, *this, std::placeholders::_1, std::placeholders::_2));
   }
 
   //replacing roots
   std::map<TerminalSymbol, slp::Vertex> new_images;
-  for (auto root_entry: a.images_) {
+  for (const auto& root_entry: a.images_) {
     auto new_root = new_vertices.find(root_entry.second)->second;
-      new_images.insert(std::make_pair(root_entry.first, new_root));
+    new_images.insert(std::make_pair(root_entry.first, new_root));
   }
   //adding images that were not inserted
-  for (auto root_entry: images_) {
+  for (const auto& root_entry: images_) {
     if (new_images.find(root_entry.first) == new_images.end())//it was not mapped by a
       new_images.insert(root_entry);
   }
@@ -551,6 +550,11 @@ EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(con
 
 template<typename TerminalSymbol>
 slp::Vertex EndomorphismSLP<TerminalSymbol>::map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const {
+  auto item = images.find(vertex.negate());
+  if (item != images.end()) {//already mapped inverse
+    return item->second.negate();
+  }
+
   if (!vertex)
     return vertex;//Mapping null vertex
 
@@ -679,18 +683,34 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
   out << "digraph " << name << " {" << std::endl;
   out << "node [shape=point]" << std::endl;
 
-  size_t vertex_num = 0;
+  long vertex_num = 0;
 
-  std::unordered_map<size_t, std::pair<size_t, size_t>> non_terminals;
+  std::unordered_map<size_t, std::pair<long, long>> non_terminals;
   std::unordered_map<size_t, TerminalSymbol> terminals;
-  std::unordered_map<TerminalSymbol, size_t> sym_to_vertix_num;
+  std::unordered_map<TerminalSymbol, size_t> sym_to_vertex_num;
 
-  auto processor = [&] (const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, size_t>& mapped_images) {
+  auto processor = [&] (const slp::Vertex& vertex, std::unordered_map<slp::Vertex, long>& mapped_images) {
+    auto item = mapped_images.find(vertex.negate());
+    if (item != mapped_images.end()) {//inverse was already visited
+      auto negate_index = item->second;
+      return -negate_index;
+    }
+
     ++vertex_num;
     if (vertex.height() == 1) {//the vertex is terminal
       const TerminalSymbol& symbol = TerminalVertex(vertex).terminal_symbol();
-      terminals.insert(std::make_pair(vertex_num, symbol));
-      sym_to_vertix_num.insert(std::make_pair(symbol, vertex_num));
+      bool is_positive = symbol > 0;
+      const TerminalSymbol positive_symbol = is_positive ? symbol : - symbol;
+      terminals.insert(std::make_pair(vertex_num, positive_symbol));
+      sym_to_vertex_num.insert(std::make_pair(positive_symbol, vertex_num));
+      if (is_positive) {
+        mapped_images.insert(std::make_pair(vertex.negate(), -vertex_num));
+        return vertex_num;
+      } else {
+        mapped_images.insert(std::make_pair(vertex.negate(), vertex_num));
+        return -vertex_num;
+      }
+
     } else {//nonterminal
       size_t left_val = mapped_images.find(vertex.left_child())->second;
       size_t right_val = mapped_images.find(vertex.right_child())->second;
@@ -699,7 +719,7 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
     return vertex_num;
   };
 
-  std::unordered_map<slp::Vertex, size_t> vertex_numbers;
+  std::unordered_map<slp::Vertex, long> vertex_numbers;
   for (auto root_entry: images_) {
     slp::map_vertices(root_entry.second, &vertex_numbers,
                       processor);
@@ -713,14 +733,25 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
     auto img = root_entry.second;
     if (img.height() <= 1) {
       auto symbol = TerminalVertex(img).terminal_symbol();
-      auto terminal = sym_to_vertix_num.find(symbol);
-      if (terminal != sym_to_vertix_num.end()) {
-        out << terminal->second << ";" << std::endl;
+      bool is_positive = symbol > 0;
+      auto positive_symbol = is_positive ? symbol : -symbol;
+      auto terminal = sym_to_vertex_num.find(positive_symbol);
+      if (terminal != sym_to_vertex_num.end()) {
+        if (is_positive) {
+          out << terminal->second << ";" << std::endl;
+        } else {
+          out << terminal->second << "[label=\"-\"];" << std::endl;
+        }
       } else {
         out << "\"" << symbol << "\"[shape=plaintext];" << std::endl;
       }
     } else {
-      out << vertex_numbers.find(img)->second << " [style=dotted];" << std::endl;
+      auto non_terminal_index = vertex_numbers.find(img)->second;
+      if (non_terminal_index > 0) {
+        out << non_terminal_index << " [style=dotted];" << std::endl;
+      } else {
+        out << (-non_terminal_index) << " [style=dotted, label=\"-\"];" << std::endl;
+      }
     }
   }
 
@@ -733,10 +764,18 @@ void EndomorphismSLP<TerminalSymbol>::save_graphviz(std::ostream *p_out, const s
   for (auto non_terminal: non_terminals) {
     size_t non_terminal_index = non_terminal.first;
 
-    size_t left_index = non_terminal.second.first;
-    size_t right_index = non_terminal.second.second;
-    out << INDENT << non_terminal_index << " -> " << left_index << ";" << std::endl;
-    out << INDENT << non_terminal_index << " -> " << right_index << "[color=red,style=dashed];" << std::endl;
+    auto left_index = non_terminal.second.first;
+    auto right_index = non_terminal.second.second;
+    if (left_index > 0) {
+      out << INDENT << non_terminal_index << " -> " << left_index << ";" << std::endl;
+    } else {
+      out << INDENT << non_terminal_index << " -> " << -left_index << "[label=\"-\"];" << std::endl;
+    }
+    if (right_index > 0){
+      out << INDENT << non_terminal_index << " -> " << right_index << "[color=red,style=dashed];" << std::endl;
+    } else {
+      out << INDENT << non_terminal_index << " -> " << -right_index << "[color=red,style=dashed,label=\"-\"];" << std::endl;
+    }
   }
 
 
@@ -759,12 +798,15 @@ unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
   return h;
 }
 
+
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
   std::unordered_set<slp::Vertex> visited_vertices;
 
   auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
-    return visited_vertices.find(task.vertex) == visited_vertices.end();
+    auto v = task.vertex;
+    return visited_vertices.count(v) == 0
+        && visited_vertices.count(v.negate()) == 0;
   };
 
   auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {

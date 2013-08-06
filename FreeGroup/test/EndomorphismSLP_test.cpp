@@ -641,5 +641,18 @@ TEST_F(EndomorphismSLPTest, SaveAndLoad) {
 }
 
 
+TEST_F(EndomorphismSLPTest, CompositionSizeTest) {
+  UniformAutomorphismSLPGenerator<int> rnd(3);
+  for (int i = 0; i < 100; ++i) {
+    EndomorphismSLP<int> e = EndomorphismSLP<int>::composition(100, rnd);
+    EndomorphismSLP<int> e1 = EndomorphismSLP<int>::composition(100, rnd);
+
+    auto sum = slp_vertices_num(e) + slp_vertices_num(e1);
+    assert(sum >= slp_vertices_num(e * e1));
+    assert(sum >= slp_vertices_num(e1 * e));
+  }
+}
+
+
 
 } /* namespace crag */
