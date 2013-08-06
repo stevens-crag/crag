@@ -550,6 +550,11 @@ EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(con
 
 template<typename TerminalSymbol>
 slp::Vertex EndomorphismSLP<TerminalSymbol>::map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const {
+  auto item = images.find(vertex.negate());
+  if (item != images.end()) {//already mapped inverse
+    return item->second.negate();
+  }
+
   if (!vertex)
     return vertex;//Mapping null vertex
 
