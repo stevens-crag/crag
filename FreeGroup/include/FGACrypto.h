@@ -56,7 +56,7 @@ namespace fga_crypto {
 
 
   void print_stats(const AutDescription& aut_d) {
-    auto a = aut_d();
+    auto& a = aut_d();
 #ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
     std::cout << "vertices num (a=" << slp_vertices_num(a);
 #endif
@@ -120,7 +120,7 @@ namespace fga_crypto {
         if (index > 0) {
           return s[index - 1];
         } else {
-          return s[- index - 1].inverse_description();
+          return s[-index - 1].inverse_description();
         }
       }
 
@@ -417,7 +417,7 @@ namespace fga_crypto {
           }
         };
         AutDescription result;
-        for (auto i: pattern) {
+        for (auto& i: pattern) {
           result *= pick(i);
         }
         return result;
