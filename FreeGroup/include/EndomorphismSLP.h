@@ -793,12 +793,15 @@ unsigned int height(const EndomorphismSLP<TerminalSymbol>& e) {
   return h;
 }
 
+
 template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e) {
   std::unordered_set<slp::Vertex> visited_vertices;
 
   auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
-    return visited_vertices.find(task.vertex) == visited_vertices.end();
+    auto v = task.vertex;
+    return visited_vertices.count(v) == 0
+        && visited_vertices.count(v.negate()) == 0;
   };
 
   auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP<TerminalSymbol>::symbol_image_pair_type& v) {
