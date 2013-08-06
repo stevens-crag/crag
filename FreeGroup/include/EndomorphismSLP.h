@@ -336,7 +336,6 @@ template<typename TerminalSymbol>
 unsigned int slp_vertices_num(const EndomorphismSLP<TerminalSymbol>& e);
 
 
-
 //! Automorphisms generator
 /**
  * @tparam TerminalSymbol          terminal symbol representation. We suppose it has a constructor taking index
@@ -528,19 +527,19 @@ template <typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol>& EndomorphismSLP<TerminalSymbol>::operator*=(const EndomorphismSLP<TerminalSymbol>& a) {
   std::unordered_map<slp::Vertex, slp::Vertex> new_vertices;//a's vertices to new vertices correspondence
 
-  for (auto root_entry: a.images_) {//mapping vertices of #a to new ones
+  for (const auto& root_entry: a.images_) {//mapping vertices of #a to new ones
     slp::map_vertices(root_entry.second, &new_vertices,
                       std::bind(&EndomorphismSLP<TerminalSymbol>::map_vertex, *this, std::placeholders::_1, std::placeholders::_2));
   }
 
   //replacing roots
   std::map<TerminalSymbol, slp::Vertex> new_images;
-  for (auto root_entry: a.images_) {
+  for (const auto& root_entry: a.images_) {
     auto new_root = new_vertices.find(root_entry.second)->second;
-      new_images.insert(std::make_pair(root_entry.first, new_root));
+    new_images.insert(std::make_pair(root_entry.first, new_root));
   }
   //adding images that were not inserted
-  for (auto root_entry: images_) {
+  for (const auto& root_entry: images_) {
     if (new_images.find(root_entry.first) == new_images.end())//it was not mapped by a
       new_images.insert(root_entry);
   }
