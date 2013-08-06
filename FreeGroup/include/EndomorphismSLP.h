@@ -218,7 +218,7 @@ public:
     std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
 
     for_each_non_trivial_image([&result, &vertex_hashes, &reduced_vertices] (const symbol_image_pair_type& pair) {
-      auto reduced = VertexHashAlgorithms::reduce(pair.second, &vertex_hashes, &reduced_vertices);
+      auto reduced = VertexHashAlgorithms::reduce_narrow_slp(pair.second, &vertex_hashes, &reduced_vertices);
       //insert if it is not an identity map
       if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
         result.images_.insert(std::make_pair(pair.first, reduced));
