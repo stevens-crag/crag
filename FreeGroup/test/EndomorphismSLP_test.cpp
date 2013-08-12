@@ -427,22 +427,6 @@ TEST_F(EndomorphismSLPTest, SLPVerticesNumTest) {
         EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(j, i)));
         EXPECT_EQ(3, slp_vertices_num(EMorphism::left_multiplier(-j, i)));
       }
-
-  for (auto rank : {3, 10, 20}) {
-    UniformAutomorphismSLPGenerator<int> rnd(rank);
-    for (auto size : {50}) {
-      auto e = EMorphism::composition(size, rnd);
-      std::unordered_set<slp::Vertex> visited_vertices;
-      e.for_each_non_trivial_image( [&visited_vertices] (const typename EMorphism::symbol_image_pair_type& v) {
-        slp::Inspector<slp::inspector::Postorder> inspector(v.second);
-        while (!inspector.stopped()) {
-          visited_vertices.insert(inspector.vertex());
-          inspector.next();
-        }
-      } );
-      EXPECT_EQ(visited_vertices.size(), slp_vertices_num(e));
-    }
-  }
 }
 
 
@@ -615,8 +599,9 @@ TEST_F(EndomorphismSLPTest, SaveAndLoad) {
   auto check_save_load = [] (const EMorphism& e) {
     std::stringstream s;
     e.save_to(&s);
-//    e.save_to(&std::cout);
-    EXPECT_EQ(e, EMorphism::load_from(&s));
+    auto loaded = EMorphism::load_from(&s);
+    EXPECT_EQ(e, loaded);
+    EXPECT_EQ(slp_vertices_num(e), slp_vertices_num(loaded));
   };
 
 
