@@ -68,8 +68,8 @@ class AAGExperiment {
     Stats evaluate_sample(const SchemeParameters& params, CalculationType calc_type) {
       auto k_gen = make_keys_generator(params, &rnd);
 
-      auto a_pub = k_gen.generate_public_key(Alice);
-      auto b_pub = k_gen.generate_public_key(Bob);
+      auto a_pub = k_gen.generate_public_key(Participant::Alice);
+      auto b_pub = k_gen.generate_public_key(Participant::Bob);
 
       if (logging) {
         std::cout << "pub key sizes" << std::endl << "A = (";
@@ -103,7 +103,7 @@ class AAGExperiment {
         }
         std::cout << ")" << std::endl;
       }
-      Aut key = k_gen.make_shared_key(a_priv, b_ti, Alice, calc_type);
+      Aut key = k_gen.make_shared_key(a_priv, b_ti, Participant::Alice, calc_type);
 
       if (logging) {
         std::cout << "shared key size " << slp_vertices_num(key) << std::endl;
@@ -141,16 +141,16 @@ int main(int argc, char* argv[]) {
     std::string calc_type(argv[1]);
     crag::aag_crypto::CalculationType type;
     if (calc_type == "--block") {
-      type = crag::aag_crypto::BlockFrNf;
+      type = crag::aag_crypto::CalculationType::BlockReduction;
       std::cout << "Block mode" << std::endl;
     } else if (calc_type == "--iterative") {
-      type = crag::aag_crypto::IterativeFrNf;
+      type = crag::aag_crypto::CalculationType::IterativeReduction;
       std::cout << "Iterative mode" << std::endl;
     } else if (calc_type == "--fold_threshold") {
-      type = crag::aag_crypto::IterativeFoldThreshold;
+      type = crag::aag_crypto::CalculationType::ThresholdReduction;
       std::cout << "Fold threshold with threshold = " << crag::aag_crypto::fold_threshold;
     } else {
-      type = crag::aag_crypto::SinlgeFrNf;
+      type = crag::aag_crypto::CalculationType::SingleReduction;
       std::cout << "Single mode" << std::endl;
     }
 
