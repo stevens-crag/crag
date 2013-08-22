@@ -67,6 +67,15 @@ typedef crag::slp::TVertexHashAlgorithms<
 //const size_t LAST_REDUCTIONS_LIMIT = 7;
 long int max_distance = 0;
 
+std::map<long int, size_t> distances(long int distance = -1) {
+  static std::map<long int, size_t> distances;
+  if (distance != -1) {
+    ++distances[distance];
+  }
+
+  return distances;
+}
+
 Vertex reduce(const Vertex& vertex,
               const std::unordered_map<Vertex, Vertex>& reduced_vertices,
               const LongInteger& left_siblings_length,
@@ -137,6 +146,7 @@ Vertex reduce(const Vertex& vertex,
             });
 
             max_distance = std::max(max_distance, current_distance);
+            distances(current_distance);
 
             reduction.second = this_reduction_id;
             success = true;
@@ -241,6 +251,11 @@ int main() {
 
         reduced_vertices.insert(new_entry);
         inspector.next();
+      }
+      int total = 0;
+      std::cout << max_distance << std::endl;
+      for (auto distance : distances()) {
+        std::cout << distance.first << ' ' << distance.second << ' ' << (total += distance.second) << std::endl;
       }
 
       std::cout << "End#: " << endomorphisms_number << ", rank: " << rank << ", max_distance: " << max_distance << std::endl;
