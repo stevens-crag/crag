@@ -408,15 +408,18 @@ class TVertexHashAlgorithms {
     static LongInteger get_longest_common_prefix(
         const Vertex& first,
         const Vertex& second,
-        LongInteger begin, //already verified length
+        LongInteger begin, //already verified left boundary
+        LongInteger end, //already verified right boundary
         Cache* calculated_hashes
     ) {
 
       if (first.length() > second.length()) {
-        return get_longest_common_prefix(second, first, std::move(begin), calculated_hashes);
+        return get_longest_common_prefix(second, first, std::move(begin), std::move(end), calculated_hashes);
       }
 
-      LongInteger end = first.length();
+      if (end == -1 || end > first.length()) {
+        end = first.length();
+      }
 
       while (begin < end) {
         LongInteger split = (begin + end) / 2 + 1;
@@ -435,7 +438,7 @@ class TVertexHashAlgorithms {
         const Vertex& second,
         Cache* calculated_hashes
     ) {
-      return get_longest_common_prefix(first, second, 0, calculated_hashes);
+      return get_longest_common_prefix(first, second, 0, -1, calculated_hashes);
     }
 
     //! Call get_longest_common_prefix(first, second, temporary cache)

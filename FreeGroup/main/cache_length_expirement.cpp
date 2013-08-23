@@ -159,7 +159,7 @@ Vertex reduce(const Vertex& vertex,
     }
 
     if (!success) {
-      cancellation_length = VertexHashAlgorithms::get_longest_common_prefix(first, second, cancellation_length, hash_cache);
+      cancellation_length = VertexHashAlgorithms::get_longest_common_prefix(first, second, cancellation_length, -1, hash_cache);
 //      LongInteger cancellation_length = VertexHashAlgorithms::get_cancellation_length(result, hash_cache);
       (*last_reductions)[cancellation_length] = this_reduction_id;
     }

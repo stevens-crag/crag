@@ -167,7 +167,7 @@ Vertex reduce(const Vertex& vertex,
     }
 
     if (!success) {
-      cancellation_length = VertexHashAlgorithms::get_longest_common_prefix(first, second, cancellation_length, hash_cache);
+      cancellation_length = VertexHashAlgorithms::get_longest_common_prefix(first, second, cancellation_length, -1, hash_cache);
 //      LongInteger cancellation_length = VertexHashAlgorithms::get_cancellation_length(result, hash_cache);
       if (last_reductions->size() >= LAST_REDUCTIONS_LIMIT) {
         auto oldest_entry = min_element(last_reductions->begin(), last_reductions->end(),
