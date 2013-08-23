@@ -497,10 +497,19 @@ class TVertexHashAlgorithms {
 
       return base_reduce(
           vertex,
-          [calculated_hashes, &cancellation_length_cache, &current_iteration](const Vertex& vertex) {
+          [calculated_hashes, &cancellation_length_cache, &current_iteration](const Vertex& vertex) -> LongInteger {
             ++current_iteration;
             Vertex left = vertex.left_child().negate();
             Vertex right = vertex.right_child();
+
+            if (!left || !right) {
+              return LongInteger(0);
+            }
+
+            if (crag::slp::get_sub_slp(left, 0, 1) !=
+                crag::slp::get_sub_slp(right, 0, 1)) {
+              return LongInteger(0);
+            }
 
             for (auto& reduction : cancellation_length_cache) {
               if (get_subvertex_hash(left, 0, reduction.first, calculated_hashes) ==
