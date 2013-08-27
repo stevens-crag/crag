@@ -64,34 +64,18 @@ typedef crag::slp::TVertexHashAlgorithms<
     crag::slp::hashers::PermutationHash<crag::Permutation16>
 > VertexHashAlgorithms;
 
-Vertex logging_get_sub_slp(const Vertex& root, const LongInteger& begin, const LongInteger& end) {
-  if (begin >= root.length() || end < 0 || end <= begin) {
-    static Vertex Null;
-    return Null;
+//const size_t LAST_REDUCTIONS_LIMIT = 7;
+long int max_distance = 0;
+
+std::map<long int, size_t> distances(long int distance = -1) {
+  static std::map<long int, size_t> distances;
+  if (distance != -1) {
+    ++distances[distance];
   }
-  if (root.height() == 1) {
-    assert(root.length() == 1);
-    return root;
-  } else if (begin <= 0 && end >= root.length()) {
-    assert(root.height() != 1 || root.length() == 1);
-    return root;
-  } else {
-    if (root.split_point() >= end) {
-      std::cout << root.right_child().vertex_id() << " (r" << (root.right_child().height() > 1 ? "" : "t") << ") * ";
-      return logging_get_sub_slp(root.left_child(), begin, end);
-    } else if (root.split_point() <= begin) {
-      std::cout << root.left_child().vertex_id() << " (l" << (root.left_child().height() > 1 ? "" : "t") << ") * ";
-      return logging_get_sub_slp(root.right_child(), begin - root.split_point(), end - root.split_point());
-    } else {
-      return NonterminalVertex(
-          logging_get_sub_slp(root.left_child(), begin, root.split_point()),
-          logging_get_sub_slp(root.right_child(), 0, end - root.split_point())
-      );
-    }
-  }
+
+  return distances;
 }
 
-const size_t LAST_REDUCTIONS_LIMIT = 7;
 Vertex reduce(const Vertex& vertex,
               const std::unordered_map<Vertex, Vertex>& reduced_vertices,
               const LongInteger& left_siblings_length,
@@ -156,6 +140,14 @@ Vertex reduce(const Vertex& vertex,
         if (first_hash == VertexHashAlgorithms::get_subvertex_hash(second, 0, reduction.first, hash_cache)) {
           cancellation_length = reduction.first;
           if (crag::slp::get_sub_slp(first, cancellation_length, cancellation_length + 1) != crag::slp::get_sub_slp(second, cancellation_length, cancellation_length + 1)) {
+            auto last_id = reduction.second;
+            auto current_distance = std::count_if(last_reductions->begin(), last_reductions->end(), [last_id](const std::pair<const LongInteger, size_t>& length) {
+              return length.second > last_id;
+            });
+
+            max_distance = std::max(max_distance, current_distance);
+            distances(current_distance);
+
             reduction.second = this_reduction_id;
             success = true;
             break;
@@ -169,81 +161,50 @@ Vertex reduce(const Vertex& vertex,
     if (!success) {
       cancellation_length = VertexHashAlgorithms::get_longest_common_prefix(first, second, cancellation_length, -1, hash_cache);
 //      LongInteger cancellation_length = VertexHashAlgorithms::get_cancellation_length(result, hash_cache);
-      if (last_reductions->size() >= LAST_REDUCTIONS_LIMIT) {
-        auto oldest_entry = min_element(last_reductions->begin(), last_reductions->end(),
-            [](const std::pair<const LongInteger, size_t>& first, const std::pair<const LongInteger, size_t>& second) {
-              return first.second < second.second;
-            }
-        );
-
-        last_reductions->erase(oldest_entry);
-      }
-
       (*last_reductions)[cancellation_length] = this_reduction_id;
     }
 
-    std::cout << vertex.vertex_id() << ',' << vertex.length() << ',' << vertex.height() << ',' << vertex.left_child().vertex_id() << ',' << vertex.right_child().vertex_id() << ',' << 2*cancellation_length << ',' << left_siblings_length << ',' << success << ',';
     if (cancellation_length == 0) {
       if (left == vertex.left_child() && right == vertex.right_child()) {
         assert(
             (vertex.height() > 1 && vertex.length() > 1) || (vertex.length() == 1 && vertex.height() == 1) || (vertex.length() == 0 && vertex.height() == 0));
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << "=\n";
         return vertex;
       } else if (!left) {
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << ">\n";
         return right;
       } else if (!right) {
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << "<\n";
         return left;
       } else {
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << "!\n";
         assert(
             (result.height() > 1 && result.length() > 1) || (result.length() == 1 && result.height() == 1) || (result.length() == 0 && result.height() == 0));
         return result;
       }
     } else {
 
-      Vertex reduced_left = logging_get_sub_slp(left, 0,
+      Vertex reduced_left = get_sub_slp(left, 0,
                                         left.length() - cancellation_length);
-      std::cout << ',';
-      Vertex reduced_right = logging_get_sub_slp(right, cancellation_length,
+      Vertex reduced_right = get_sub_slp(right, cancellation_length,
                                          right.length());
 
       if (!reduced_left && !reduced_right) {
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << ", 0, e\n";
         return Vertex();
       } else if (!reduced_left) {
         assert(reduced_right.height() >= 1);
         assert(reduced_right.height() != 1 || reduced_right.length() == 1);
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << ',' << reduced_right.vertex_id() << ", r\n";
         return reduced_right;
       } else if (!reduced_right) {
         assert(reduced_left.height() >= 1);
         assert(reduced_left.height() != 1 || reduced_left.length() == 1);
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-        std::cout << ',' << reduced_left.vertex_id()<< ", l\n";
         return reduced_left;
       } else {
         auto result = NonterminalVertex(reduced_left, reduced_right);
         auto end = std::chrono::system_clock::now();
-        std::cout << ',' << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count();
-//        auto temp_result_joined = NonterminalVertex(result, result);
-//        auto conjugate_length = VertexHashAlgorithms::get_cancellation_length(temp_result_joined, hash_cache);
-//        std::cout << ',' << result.vertex_id() << ',' << conjugate_length << ", n\n";
-        std::cout << ',' << result.vertex_id() << ", n\n";
         assert(result.length() > 1);
         assert(result.height() > 1);
         return result;
@@ -254,50 +215,53 @@ Vertex reduce(const Vertex& vertex,
 
 int main() {
   gmp_pool_setup();
-  constexpr size_t RANK = 6;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
 
   typedef crag::slp::TVertexHashAlgorithms<
       crag::slp::hashers::SinglePowerHash,
       crag::slp::hashers::PermutationHash<crag::Permutation16>
   > VertexHashAlgorithms;
 
-  auto slp = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+  size_t endomorphisms_number = 10;
+  while (endomorphisms_number < 10000) {
+    for (auto rank : {3, 6, 10, 20, 40, 100}) {
+      UniformAutomorphismSLPGenerator<int> generator(rank, seed + endomorphisms_number + rank);
+      auto slp = EndomorphismSLP<int>::composition(endomorphisms_number, generator).image(1);
+      max_distance = 0;
 
-  std::unordered_map<Vertex, Vertex> reduced_vertices;
-  VertexHashAlgorithms::Cache hash_cache;
+      std::unordered_map<Vertex, Vertex> reduced_vertices;
+      VertexHashAlgorithms::Cache hash_cache;
 
-  auto acceptor = [&reduced_vertices] (const crag::slp::inspector::InspectorTask& task) {
-    return reduced_vertices.count(task.vertex) == 0;//do not accept if vertex is mapped already
-  };
+      auto acceptor = [&reduced_vertices] (const crag::slp::inspector::InspectorTask& task) {
+        return reduced_vertices.count(task.vertex) == 0;//do not accept if vertex is mapped already
+      };
 
-  crag::slp::Inspector<crag::slp::inspector::Postorder, decltype(acceptor)> inspector(slp, acceptor);
+      crag::slp::Inspector<crag::slp::inspector::Postorder, decltype(acceptor)> inspector(slp, acceptor);
 
+      size_t reduce_count = 0;
+      std::map<LongInteger, size_t> last_reductions;
 
-  size_t reduce_count;
-  std::map<LongInteger, size_t> last_reductions;
+      auto begin = std::chrono::system_clock::now();
 
-  auto begin = std::chrono::system_clock::now();
+      while (!inspector.stopped()) {
+        auto& vertex = inspector.vertex();
 
-  while (!inspector.stopped()) {
-    auto& vertex = inspector.vertex();
+        auto img = reduce(inspector.vertex(), reduced_vertices, inspector.vertex_left_siblings_length(), &last_reductions, ++reduce_count, &hash_cache);
+        auto new_entry = std::make_pair(inspector.vertex(), img);
 
-    auto img = reduce(inspector.vertex(), reduced_vertices, inspector.vertex_left_siblings_length(), &last_reductions, ++reduce_count, &hash_cache);
-    auto new_entry = std::make_pair(inspector.vertex(), img);
+        reduced_vertices.insert(new_entry);
+        inspector.next();
+      }
+      int total = 0;
+      std::cout << max_distance << std::endl;
+      for (auto distance : distances()) {
+        std::cout << distance.first << ' ' << distance.second << ' ' << (total += distance.second) << std::endl;
+      }
 
-    reduced_vertices.insert(new_entry);
-    inspector.next();
+      std::cout << "End#: " << endomorphisms_number << ", rank: " << rank << ", max_distance: " << max_distance << std::endl;
+    }
+    endomorphisms_number *= 2;
   }
-  auto end = std::chrono::system_clock::now();
-
-  for (auto& item : last_reductions) {
-    std::cout << item.first << ',' << item.second << std::endl;
-  }
-
-  std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
-
   return 0;
 }
 
