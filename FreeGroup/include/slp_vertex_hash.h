@@ -484,14 +484,15 @@ class TVertexHashAlgorithms {
       return reduce(vertex, &cache, &reduced_vertices);
     }
 
-    static const size_t CANCELLATION_LENGTH_CACHE_SIZE = 10;
+    static const size_t CANCELLATION_LENGTH_CACHE_SIZE = 100;
 
     static Vertex reduce_narrow_slp(
         const Vertex& vertex,
         Cache* calculated_hashes,
         std::unordered_map<Vertex, Vertex>* reduced_vertices
     ) {
-      std::map<LongInteger, size_t> cancellation_length_cache;
+      std::vector<std::pair<LongInteger, size_t>> cancellation_length_cache;
+      cancellation_length_cache.reserve(CANCELLATION_LENGTH_CACHE_SIZE);
 
       size_t current_iteration = 0;
 
@@ -511,18 +512,28 @@ class TVertexHashAlgorithms {
               return LongInteger(0);
             }
 
-            for (auto& reduction : cancellation_length_cache) {
-              if (get_subvertex_hash(left, 0, reduction.first, calculated_hashes) ==
-                  get_subvertex_hash(right, 0, reduction.first, calculated_hashes)) {
+            size_t previous_reduction_begin = 0;
+            size_t previous_reduction_end = cancellation_length_cache.size();
 
-                if (crag::slp::get_sub_slp(left, reduction.first, reduction.first + 1) != crag::slp::get_sub_slp(right, reduction.first, reduction.first + 1)) {
-                  reduction.second = current_iteration;
-                  return reduction.first;
+            while (previous_reduction_begin < previous_reduction_end) {
+              size_t split = (previous_reduction_begin + previous_reduction_end) / 2;
+              const auto& current_length = cancellation_length_cache[split].first;
+
+              if (current_length <= left.length() && current_length <= right.length() &&
+                  get_subvertex_hash(left, 0, current_length, calculated_hashes) ==
+                  get_subvertex_hash(right, 0, current_length, calculated_hashes)) {
+                if (crag::slp::get_sub_slp(left, current_length, current_length + 1) !=
+                    crag::slp::get_sub_slp(right, current_length, current_length + 1)) {
+                  cancellation_length_cache.at(split).second = current_iteration;
+                  return cancellation_length_cache[split].first;
                 }
+                previous_reduction_begin = split + 1;
               } else {
-                break;
+                previous_reduction_end = split;
               }
             }
+
+            auto new_length_insert_position = cancellation_length_cache.begin() + previous_reduction_begin;
 
             if (cancellation_length_cache.size() >= CANCELLATION_LENGTH_CACHE_SIZE) {
               auto oldest_entry = std::min_element(cancellation_length_cache.begin(), cancellation_length_cache.end(),
@@ -531,19 +542,29 @@ class TVertexHashAlgorithms {
                   }
               );
 
+              if (new_length_insert_position > oldest_entry) {
+                --new_length_insert_position;
+                --previous_reduction_begin;
+                --previous_reduction_end;
+              }
+
               cancellation_length_cache.erase(oldest_entry);
             }
 
+            assert(new_length_insert_position <= cancellation_length_cache.end());
+            assert(new_length_insert_position >= cancellation_length_cache.begin());
 
             LongInteger cancellation_length = get_longest_common_prefix(
                 left,
                 right,
+                previous_reduction_begin > 0 ? cancellation_length_cache[previous_reduction_begin - 1].first : 0,
+                previous_reduction_end < cancellation_length_cache.size() ? cancellation_length_cache[previous_reduction_end].first : -1,
                 calculated_hashes
             );
 
-            cancellation_length_cache[cancellation_length] = current_iteration;
+            auto new_length = cancellation_length_cache.emplace(new_length_insert_position, std::move(cancellation_length), current_iteration);
 
-            return cancellation_length;
+            return new_length->first;
           },
           reduced_vertices
       );
