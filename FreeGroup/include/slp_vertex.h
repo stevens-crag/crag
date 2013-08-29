@@ -255,7 +255,7 @@ class NonterminalVertex : public Vertex {
       assert(height() > 1);
       assert(length() > 1);
 
-      if (last_vertex_id_ == 0) {
+      if (last_vertex_id_ <= 0) {
         throw std::overflow_error("NonterminalVertex::vertex_id is overflowed");
       }
     }
