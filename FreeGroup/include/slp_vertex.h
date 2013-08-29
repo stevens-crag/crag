@@ -241,7 +241,7 @@ class NonterminalVertex : public Vertex {
 
     NonterminalVertex(Vertex left, Vertex right)
       : Vertex(
-          ++last_vertex_id_ > 0 ? last_vertex_id_ : (last_vertex_id_ = 1),
+          ++last_vertex_id_,
           std::make_shared<internal::BasicVertex>(
             //get_allocator(),
             ::std::move(left),
@@ -254,6 +254,14 @@ class NonterminalVertex : public Vertex {
       assert(right_child().length() > 0);
       assert(height() > 1);
       assert(length() > 1);
+
+      if (last_vertex_id_ <= 0) {
+        throw std::overflow_error("NonterminalVertex::vertex_id is overflowed");
+      }
+    }
+
+    static void reset_vertex_id() {
+      last_vertex_id_ = 0;
     }
 
   private:
