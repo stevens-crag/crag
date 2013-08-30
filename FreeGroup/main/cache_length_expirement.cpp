@@ -140,7 +140,7 @@ Vertex reduce(const Vertex& vertex,
           cancellation_length = reduction.first;
           if (crag::slp::get_sub_slp(first, cancellation_length, cancellation_length + 1) != crag::slp::get_sub_slp(second, cancellation_length, cancellation_length + 1)) {
             auto last_id = reduction.second;
-            auto current_distance = std::count_if(last_reductions->begin(), last_reductions->end(), [last_id](const std::pair<const LongInteger, size_t>& length) {
+            long int current_distance = std::count_if(last_reductions->begin(), last_reductions->end(), [last_id](const std::pair<const LongInteger, size_t>& length) {
               return length.second > last_id;
             });
 
