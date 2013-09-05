@@ -36,6 +36,8 @@ namespace endomorphism_default_parameters {
   > WeakVertexHashAlgorithms;
 }
 
+template<typename Automorphism>
+class AutomorphismDescription;
 
 /**
  * Represents a free group endomorphism using straight-line programs.
@@ -200,6 +202,11 @@ public:
       inverses.push_back(endomorphism.inverse());
     }
     return conjugator * (*this) * EndomorphismSLP::composition(inverses.rbegin(), inverses.rend());
+  }
+
+  //! Conjugate with the automorphisms given by the description.
+  EndomorphismSLP conjugate_with(const AutomorphismDescription<EndomorphismSLP>& conjugator) const {
+    return conjugator() * (*this) * conjugator.inverse();
   }
 
   //! Returns the automorphisms inverse
@@ -665,7 +672,7 @@ static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conju
 }
 
 
-//! Calculates commutator of the arguments.
+//! Calculates the arguments commutator.
 template<typename T>
 T make_commutator(const T& first, const T& second) {
   return first * second * first.inverse_description() * second.inverse_description();
@@ -732,6 +739,46 @@ class AutomorphismReducer { //todo replace logging to std::cout by logging facil
      std::cout << "| " << duration_in_ms.count() << "ms";
      return result;
     }
+};
+
+//! Set of commutators for a given pair of automorphisms. We use it only because we can not compute inverses efficiently.
+template<typename AutDescription>
+class CommutatorSet {
+  public:
+    CommutatorSet(const AutDescription& first, const AutDescription& second) {
+      auto inv_first = first.inverse_description();
+      auto inv_second = second.inverse_description();
+      comm_.reserve(4);
+      comm_.push_back(make_commutator(first, second));
+      comm_.push_back(make_commutator(inv_first, second));
+      comm_.push_back(make_commutator(first, inv_second));
+      comm_.push_back(make_commutator(inv_first, inv_second));
+    }
+
+    const AutDescription& get(bool first_inversed, bool second_inversed) const {
+      return comm_[(first_inversed ? 1 : 0) + (second_inversed ? 2 : 0)];
+    }
+
+    CommutatorSet conjugate_with(const AutDescription& conjugator) const {
+      return CommutatorSet(std::move(conjugate_all(comm_, conjugator)));
+    }
+
+    CommutatorSet reduce() const {
+      std::vector<AutDescription> new_comm;
+      new_comm.reserve(comm_.size());
+      std::transform(comm_.cbegin(), comm_.cend(),
+                     std::back_inserter(new_comm),
+                     [] (const AutDescription& ad) {return AutomorphismReducer::reduce(ad);});
+      return CommutatorSet(std::move(new_comm));
+    }
+
+  private:
+    CommutatorSet(std::vector<AutDescription>&& v)
+      : comm_(v) {}
+
+    std::vector<AutDescription> comm_;
+
+    CommutatorSet() {}
 };
 
 //-------------------------------------------------------------------------------------

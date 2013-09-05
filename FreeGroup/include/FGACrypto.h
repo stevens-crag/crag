@@ -16,7 +16,6 @@
 /**
  * The file contains cryptoscheme programmed corresponding to the specifications by Sasha Ushakov.
  */
-
 namespace crag {
 
 namespace fga_crypto {
@@ -53,74 +52,42 @@ namespace fga_crypto {
 
   typedef EndomorphismSLP<int> Aut;
   typedef AutomorphismDescription<Aut> AutDescription;
-
-
-  void print_stats(const AutDescription& aut_d) {
-    auto a = aut_d();
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-    std::cout << "vertices num (a=" << slp_vertices_num(a);
-#endif
-    auto fr = a.free_reduction();
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-    std::cout << ", fr=" << slp_vertices_num(fr);
-#endif
-    auto nf = fr.normal_form();
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-    std::cout << ", nf=" << slp_vertices_num(nf) << ")" << std::endl;
-#endif
-  }
-
-  //! Set of commutators for a given pair of automorphisms. We use it only because we can not find inverses efficiently.
-  class CommutatorSet {
-    public:
-      CommutatorSet(const AutDescription& first, const AutDescription& second) {
-        auto inv_first = first.inverse_description();
-        auto inv_second = second.inverse_description();
-        comm_.reserve(4);
-        comm_.push_back(make_commutator(first, second));
-        comm_.push_back(make_commutator(inv_first, second));
-        comm_.push_back(make_commutator(first, inv_second));
-        comm_.push_back(make_commutator(inv_first, inv_second));
-      }
-
-      const AutDescription& get(bool first_inversed, bool second_inversed) const {
-        return comm_[(first_inversed ? 1 : 0) + (second_inversed ? 2 : 0)];
-      }
-
-      CommutatorSet conjugate_with(const AutDescription& conjugator) const {
-        CommutatorSet result;
-        result.comm_ = conjugate_all(comm_, conjugator);
-        return result;
-      }
-
-      void normalize() {
-        for (std::size_t i = 0; i < comm_.size(); ++i) {
-          comm_[i] = AutomorphismReducer::reduce(comm_[i]);
-        }
-      }
-
-    private:
-      std::vector<AutDescription> comm_;
-
-      CommutatorSet() {}
-  };
+  typedef CommutatorSet<AutDescription> CommSet;
 
 
   //! Public keys
-  struct PublicKeys {
-      std::vector<AutDescription> s;
-      std::vector<CommutatorSet> r;
+  class PublicKeys {
+    public:
 
       PublicKeys() {}
 
-      PublicKeys(std::vector<AutDescription>&& v_s, std::vector<CommutatorSet>&& v_r)
-        : s(v_s), r(v_r) {}
+      PublicKeys(const std::vector<AutDescription>& alphas, const std::vector<AutDescription>& betas) {
+        s_.reserve(4);
+        for (int i = 0; i < 4; ++i) {
+          s_.push_back(alphas[i] * betas[i]);
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+          std::cout << "s " << i + 1 << " n=" << s_[i].composed_num() <<  std::endl;
+          s_[i]().print(&std::cout);
+#endif
+        }
+
+        r_.reserve(4);
+        for (int i: {0, 1}) {
+          for (int j: {2, 3}) {
+            r_.push_back(CommSet(betas[i], betas[j]));
+#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
+            std::cout << "r_" << i + 1 << "_" << j + 1 << " n=" << r_.back().get(false, false).composed_num() <<  std::endl;
+            r_.back().get(false, false)().print(&std::cout);
+#endif
+          }
+        }
+      }
 
       AutDescription get_s(int index) const {
         if (index > 0) {
-          return s[index - 1];
+          return s_[index - 1];
         } else {
-          return s[- index - 1].inverse_description();
+          return s_[- index - 1].inverse_description();
         }
       }
 
@@ -131,18 +98,41 @@ namespace fga_crypto {
         first_index -= 1;
         second_index = second_inversed ? - second_index : second_index;
         second_index -= 3;
-        return r[2 * first_index + second_index].get(first_inversed, second_inversed);
+        return r_[2 * first_index + second_index].get(first_inversed, second_inversed);
       }
 
       //! Make the normal form of free reduction
-      void normalize() {
-        for (std::size_t i = 0; i < s.size(); ++i) {
-          s[i] = AutomorphismReducer::reduce(s[i]);
-        }
-        for (auto& e: r) {
-          e.normalize();
-        }
+      PublicKeys reduce() const {
+        std::vector<AutDescription> new_s;
+        new_s.reserve(s_.size());
+        std::transform(s_.cbegin(), s_.cend(),
+                       std::back_inserter(new_s),
+                       [] (const AutDescription& ad) {return AutomorphismReducer::reduce(ad);});
+
+        std::vector<CommSet> new_r;
+        new_r.reserve(r_.size());
+        std::transform(r_.cbegin(), r_.cend(),
+                       std::back_inserter(new_r),
+                       [] (const CommSet& cs) {return cs.reduce();});
+        return PublicKeys(std::move(new_s), std::move(new_r));
       }
+
+      PublicKeys conjugate_with(const AutDescription& conjugator) const {
+        return PublicKeys(std::move(conjugate_all(s_, conjugator)),
+                          std::move(conjugate_all(r_, conjugator)));
+      }
+
+    private:
+      PublicKeys(std::vector<AutDescription>&& v_s, std::vector<CommSet>&& v_r)
+        : s_(v_s), r_(v_r) {}
+
+      std::vector<AutDescription> s_;
+      std::vector<CommSet> r_;
+  };
+
+  enum class Mode {
+      Alice,
+      Bob
   };
 
   //! Generates keys for the scheme.
@@ -161,8 +151,6 @@ namespace fga_crypto {
           betas_(),
           u_(),
           v_(),
-          s_(),
-          r_(),
           priv_key_base_(),
           c_(),
           priv_key_(),
@@ -219,7 +207,6 @@ namespace fga_crypto {
 
         u_ = random_binary_vector(params.U_LENGTH, 1);
         v_ = random_binary_vector(params.V_LENGTH, 3);
-
 #ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
         std::cout << "u ";
         for (int i: u_)
@@ -231,76 +218,27 @@ namespace fga_crypto {
           std::cout << i << " ";
         std::cout << std::endl;
 #endif
-
-        //generating public and private keys bases
-        s_.reserve(4);
-        for (int i = 0; i < 4; ++i) {
-          s_.push_back(alphas_[i] * betas_[i]);
-        }
-
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-        for (int i = 0; i < 4; ++i) {
-          std::cout << "s " << i + 1 << " n=" << s_[i].composed_num() <<  std::endl;
-          s_[i]().print(&std::cout);
-        }
-#endif
-
-        r_.reserve(4);
-        for (int i: {0, 1}) {
-          for (int j: {2, 3}) {
-            r_.push_back(CommutatorSet(betas_[i], betas_[j]));
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-            std::cout << "r_" << i + 1 << "_" << j + 1 << " n=" << r_.back().get(false, false).composed_num() <<  std::endl;
-            r_.back().get(false, false)().print(&std::cout);
-#endif
-          }
-        }
-
-        priv_key_base_ = make_commutator(get_betas_composition(u_),
-            get_betas_composition(v_));
-
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-        std::cout << "priv key base" << " n=" << priv_key_base_.composed_num() <<   std::endl;
-//          priv_key_base_().print(&std::cout);
-        print_stats(priv_key_base_);
-#endif
-
-        //generating keys
-        priv_key_ = priv_key_base_.conjugate_with(c_);
-
-#ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-        std::cout << "priv key" << " n=" << priv_key_.composed_num() <<  std::endl;
-//          priv_key_().print(&std::cout);
-        print_stats(priv_key_);
-#endif
-
-        pub_keys_.s = conjugate_all(s_, c_);
-        pub_keys_.r = conjugate_all(r_, c_);
-
+        pub_keys_ = PublicKeys(alphas_, betas_).conjugate_with(c_).reduce();
 #ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
         std::cout << "pub key" << std::endl;
         std::cout << "s" << std::endl;
         for (auto& ad: pub_keys_.s) {
-          print_stats(ad);
+          AutomorphismReducer::reduce(ad, true);
         }
         std::cout << "r" << std::endl;
         for (auto& cs: pub_keys_.r) {
-          print_stats(cs.get(false, false));
+          AutomorphismReducer::reduce(cs.get(false, false), true);
         }
 #endif
 
-        pub_keys_.normalize();
-
+        priv_key_base_ = make_commutator(get_betas_composition(u_),
+            get_betas_composition(v_));
+        priv_key_ = priv_key_base_.conjugate_with(c_);
 #ifdef CRAG_FGA_CRYPTO_DEBUG_OUTPUT
-        std::cout << "normal form pub key" << std::endl;
-        std::cout << "s" << std::endl;
-        for (auto& ad: pub_keys_.s) {
-          print_stats(ad);
-        }
-        std::cout << "r" << std::endl;
-        for (auto& cs: pub_keys_.r) {
-          print_stats(cs.get(false, false));
-        }
+        std::cout << "priv key base" << " n=" << priv_key_base_.composed_num() <<   std::endl;
+        AutomorphismReducer::reduce(priv_key_base_, true);
+        std::cout << "priv key" << " n=" << priv_key_.composed_num() <<  std::endl;
+        AutomorphismReducer::reduce(priv_key_, true);
 #endif
       }
 
@@ -314,19 +252,7 @@ namespace fga_crypto {
 
       //! Processes public keys provided by other party to send them back
       PublicKeys process_incoming_public_keys(const PublicKeys& incoming_public_keys) {
-        PublicKeys result(conjugate_all(incoming_public_keys.s, priv_key_),
-                            conjugate_all(incoming_public_keys.r, priv_key_));
-        result.normalize();
-//        std::cout << "processed pub key" << std::endl;
-//        std::cout << "s" << std::endl;
-//        for (auto& ad: result.s) {
-//          print_stats(ad);
-//        }
-//        std::cout << "r" << std::endl;
-//        for (auto& cs: result.r) {
-//          print_stats(cs.get(false, false));
-//        }
-        return result;
+        return incoming_public_keys.conjugate_with(priv_key_).reduce();
       }
 
       //! Make shared keys with the given public keys of another party
@@ -335,40 +261,29 @@ namespace fga_crypto {
        * @param order if true Alice makes the key, otherwise Bob
        * @return
        */
-      AutDescription make_shared_key(const PublicKeys& processed_public_keys, bool order = true) {
-        AutDescription key;
-        std::map<int, AutDescription> line_cache;
-//        for (int row_index: v_) {
-////          std::cout << "row " << row_index << std::endl;
-//          auto cached_ad = line_cache.find(row_index);
-//          AutDescription line;
-//          if (cached_ad != line_cache.end()) {
-//            line = cached_ad->second;
-//          } else {
-//            line = calculate_private_key_line(row_index, processed_public_keys);
-//            line_cache.insert(std::make_pair(row_index, line));
-//          }
-//          key *= line.conjugate_with(conjugator);
-//          conjugator *= processed_public_keys.get_s(row_index);
-//        }
-
-
-        for (int i = v_.size() - 1; i >= 0; --i) {
-          const int row_index = v_[i];
+      Aut make_shared_key(const PublicKeys& processed_public_keys, Mode mode) {
+        Aut key;
+        std::map<int, Aut> line_cache;
+        const std::vector<int>& indices = mode == Mode::Alice ? u_ : v_;
+        for (int i = indices.size() - 1; i >= 0; --i) {
+          const int row_index = indices[i];
           auto cached_ad = line_cache.find(row_index);
-          AutDescription line;
+          Aut line;
           if (cached_ad != line_cache.end()) {
             line = cached_ad->second;
           } else {
             if (is_logging) {
               std::cout << "new line calculation:" << std::endl;
             }
-            line = calculate_private_key_line(row_index, processed_public_keys);
+            line = calculate_private_key_line(row_index, processed_public_keys, mode);
             line_cache.insert(std::make_pair(row_index, line));
+          }
+          if (is_logging) {
+            std::cout << "mult:" << std::endl;
           }
           key = line * key;
           if (i > 0) {
-            const int conj_index = v_[i - 1];
+            const int conj_index = indices[i - 1];
             key = key.conjugate_with(processed_public_keys.get_s(conj_index));
           }
           if (is_logging) {
@@ -377,11 +292,12 @@ namespace fga_crypto {
           key = AutomorphismReducer::reduce(key, is_logging);
         }
 
-        if (order) {
-          key = priv_key_ * key.inverse_description();//Alice: a * (bab^-1)^-1
+        if (mode == Mode::Alice) {
+          key = priv_key_() * key;//Alice: a * (bab^-1)^-1
         } else {
-          key *= priv_key_.inverse_description();//Bob: aba^-1 *= b^-1
+          key *= priv_key_.inverse();//Bob: aba^-1 *= b^-1
         }
+
         if (is_logging) {
           std::cout << "key: ";
         }
@@ -395,8 +311,6 @@ namespace fga_crypto {
       std::vector<AutDescription> betas_;
       std::vector<int> u_;
       std::vector<int> v_;
-      std::vector<AutDescription> s_;
-      std::vector<CommutatorSet> r_;
 
       AutDescription priv_key_base_;
 
@@ -423,26 +337,26 @@ namespace fga_crypto {
         return result;
       }
 
-      AutDescription calculate_private_key_line(int row_index, const PublicKeys& public_key) {
-        AutDescription value;
-//        for (int col_index: u_) {
-////          std::cout << "column " << col_index << std::endl;
-//          auto beta_conj = public_key.get_r(col_index, row_index);
-//          value = beta_conj.conjugate_with(conjugator) * value;
-//          conjugator *= public_key.get_s(col_index);
-//        }
+      Aut calculate_private_key_line(int row_index, const PublicKeys& public_key, Mode mode) {
+        Aut value;
+        const std::vector<int>& indices = mode == Mode::Alice ? v_ : u_;
+        auto get_r = [&mode, &row_index, &public_key] (int col_index) {
+          return mode == Mode::Alice
+              ? public_key.get_r(row_index, col_index).inverse()
+              : public_key.get_r(col_index, row_index)();
+        };
 
-        for (int i = u_.size() - 1; i >= 0; --i) {
-          const int col_index = u_[i];
-          value *= public_key.get_r(col_index, row_index);
-          const int conj_index = u_[i-1];
+        for (int i = indices.size() - 1; i >= 0; --i) {
+          const int col_index = indices[i];
+          value *= get_r(col_index);
+          const int conj_index = indices[i-1];
           if (i > 0) {
             value = value.conjugate_with(public_key.get_s(conj_index));
           }
           if (is_logging) {
             std::cout << "line step ";
           }
-          value = AutomorphismReducer::reduce(value, is_logging);;//reducing the size
+          value = AutomorphismReducer::reduce(value, is_logging);//reducing the size
         }
         return value;
       }
