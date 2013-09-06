@@ -78,8 +78,7 @@ class FGAExperiment {
 
       auto a_processed = bob.process_incoming_public_keys(a_pk);
 
-      auto a_shared_key = alice.make_shared_key(a_processed, true);
-      auto key = a_shared_key();
+      auto key = alice.make_shared_key(a_processed, Mode::Alice);
 
       Stats s;
       s.height = height(key);
