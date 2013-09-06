@@ -32,6 +32,9 @@ public:
   typedef typename std::map<TerminalSymbol, slp::Vertex>::const_iterator const_iterator;
   typedef typename std::map<TerminalSymbol, slp::Vertex>::value_type symbol_image_pair_type;
 
+  //! Creates an identity automorphism.
+  EndomorphismSLP() {}
+
   //use default copy/move constructors/assignments
 
   //! Returns the identity automorphism
@@ -131,7 +134,7 @@ public:
    * @return a this a^{-1}
    */
   template<typename Iterator>
-  const EndomorphismSLP conjugate_with(Iterator begin, Iterator end) const {
+  EndomorphismSLP conjugate_with(Iterator begin, Iterator end) const {
     std::vector<EndomorphismSLP> inverses;
     EndomorphismSLP e(*this);
     for(;begin != end; ++begin) {
@@ -149,7 +152,7 @@ public:
    * @return a this a^{-1}
    */
   template<typename Generator>
-  const EndomorphismSLP conjugate_with(unsigned int num, Generator& generator) const {
+  EndomorphismSLP conjugate_with(unsigned int num, Generator& generator) const {
     std::vector<EndomorphismSLP> inverses;
     inverses.reserve(num);
     EndomorphismSLP e(*this);
@@ -182,7 +185,6 @@ public:
     });
     return result;
   }
-
 
   //! Returns the image of the terminal.
   slp::VertexWord<TerminalSymbol> image_word(const TerminalSymbol& t) const {
@@ -297,9 +299,6 @@ private:
    */
   slp::Vertex map_vertex(const slp::Vertex& vertex, const std::unordered_map<slp::Vertex, slp::Vertex>& images) const;
 
-  //! The default constructor.
-  EndomorphismSLP() {}
-
   EndomorphismSLP(const TerminalSymbol& inverted) {
     images_.insert(std::make_pair(inverted,
       TerminalVertex(inverted).negate()));
@@ -353,7 +352,7 @@ public:
    * @param rank free group rank > 0
    */
   UniformAutomorphismSLPGenerator(index_type rank)
-    : UniformAutomorphismSLPGenerator(rank, std::make_shared<RandomEngine>(), nullptr)
+    : UniformAutomorphismSLPGenerator(1, rank, std::make_shared<RandomEngine>(), nullptr)
   {}
 
   //! Constructs a generator of automorphisms of the free group of the given rank.
@@ -362,7 +361,7 @@ public:
    * @param seed random engine seed for creation of a new one
    */
   explicit UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
-    : UniformAutomorphismSLPGenerator(rank, ::std::make_shared<RandomEngine>(seed), nullptr)
+    : UniformAutomorphismSLPGenerator(1, rank, ::std::make_shared<RandomEngine>(seed), nullptr)
   {}
 
   //! Constructs a generator of automorphisms of the free group of the given rank.
@@ -371,7 +370,36 @@ public:
    * @param random_engine random engine
    */
   explicit UniformAutomorphismSLPGenerator(index_type rank, RandomEngine* random_engine)
-    : UniformAutomorphismSLPGenerator(rank, nullptr, random_engine)
+    : UniformAutomorphismSLPGenerator(1, rank, nullptr, random_engine)
+  {}
+
+  //! Constructs a generator of automorphisms of the free group with generators from the interval [min_symbol_index, max_symbol_index].
+  /**
+   * @param min_symbol_index min index of free group generator > 0
+   * @param max_symbol_index min index of free group generator > 0
+   */
+  UniformAutomorphismSLPGenerator(index_type min_symbol_index, index_type max_symbol_index)
+    : UniformAutomorphismSLPGenerator(min_symbol_index, max_symbol_index, std::make_shared<RandomEngine>(), nullptr)
+  {}
+
+  //! Constructs a generator of automorphisms of the free group with generators from the interval [min_symbol_index, max_symbol_index].
+  /**
+   * @param min_symbol_index min index of free group generator > 0
+   * @param max_symbol_index min index of free group generator > 0
+   * @param seed random engine seed for creation of a new one
+   */
+  explicit UniformAutomorphismSLPGenerator(index_type min_symbol_index, index_type max_symbol_index, typename RandomEngine::result_type seed)
+    : UniformAutomorphismSLPGenerator(min_symbol_index, max_symbol_index, ::std::make_shared<RandomEngine>(seed), nullptr)
+  {}
+
+  //! Constructs a generator of automorphisms of the free group with generators from the interval [min_symbol_index, max_symbol_index].
+  /**
+   * @param min_symbol_index min index of free group generator > 0
+   * @param max_symbol_index min index of free group generator > 0
+   * @param random_engine random engine
+   */
+  explicit UniformAutomorphismSLPGenerator(index_type min_symbol_index, index_type max_symbol_index, RandomEngine* random_engine)
+    : UniformAutomorphismSLPGenerator(min_symbol_index, max_symbol_index, nullptr, random_engine)
   {}
 
   //! Set the probability to generate an inverter of terminal symbol. By default it corresponds to uniform distribution.
@@ -385,14 +413,14 @@ public:
     double p = real_distr_(*random_engine_);
     if (p <= inverters_probability_) {//generate an inverter
       index_type val = inverter_distr_(*random_engine_);
-      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(1 + val));
+      return EndomorphismSLP<TerminalSymbol>::inverter(TerminalSymbol(MIN_SYMBOL_INDEX + val));
     } else {//generate a multiplier
       index_type val = multiplier_distr_(*random_engine_);
       const bool right_multiplier = (val % 2) == 0;
       val >>= 1;
-      const int mapped_symbol_index = 1 + ( val % RANK );
+      const int mapped_symbol_index = MIN_SYMBOL_INDEX + ( val % RANK );
       const TerminalSymbol mapped_symbol(mapped_symbol_index);
-      const int multiplier_index = 1 + ( val / RANK );
+      const int multiplier_index = MIN_SYMBOL_INDEX + ( val / RANK );
       const TerminalSymbol multiplier(multiplier_index < mapped_symbol_index ? multiplier_index : multiplier_index + 1);
 
       if (right_multiplier)
@@ -404,6 +432,8 @@ public:
 
 
 private:
+  const index_type MIN_SYMBOL_INDEX;
+  const index_type MAX_SYMBOL_INDEX;
   const index_type RANK;
   const index_type RIGHT_MULTIPLIERS_COUNT;
   const index_type LEFT_MULTIPLIERS_COUNT = RIGHT_MULTIPLIERS_COUNT;
@@ -413,17 +443,23 @@ private:
 
   const double DEFAULT_INVERTER_PROBABILITY = static_cast<double>(INVERTERS_COUNT) / COUNT;
 
-  UniformAutomorphismSLPGenerator(index_type rank, const ::std::shared_ptr<RandomEngine>& random_engine_ptr, RandomEngine* random_engine)
-      : RANK(rank),
-        RIGHT_MULTIPLIERS_COUNT(rank * (rank - 1)),
-        INVERTERS_COUNT(rank),
+  UniformAutomorphismSLPGenerator(index_type min_sym_index, index_type max_sym_index,
+                                  const ::std::shared_ptr<RandomEngine>& random_engine_ptr,
+                                  RandomEngine* random_engine)
+      : MIN_SYMBOL_INDEX(min_sym_index),
+        MAX_SYMBOL_INDEX(max_sym_index),
+        RANK(max_sym_index - min_sym_index + 1),
+        RIGHT_MULTIPLIERS_COUNT(RANK * (RANK - 1)),
+        INVERTERS_COUNT(RANK),
         random_engine_ptr_(random_engine_ptr),
         random_engine_(random_engine_ptr ? random_engine_ptr.get() : random_engine),
         inverter_distr_(0, INVERTERS_COUNT - 1),
         multiplier_distr_(0, MULTIPLIERS_COUNT - 1),
         real_distr_(),//interval [0, 1)
         inverters_probability_(DEFAULT_INVERTER_PROBABILITY) {
-      assert(rank > 0);
+      assert(min_sym_index > 0);
+      assert(max_sym_index > 0);
+      assert(max_sym_index >= min_sym_index);
     }
 
   ::std::shared_ptr<RandomEngine> random_engine_ptr_;
@@ -434,6 +470,199 @@ private:
   double inverters_probability_;
 };
 
+
+//! Automorphism description keeping track of the automorphisms and its inverse.
+template<typename Automorphism = EndomorphismSLP<int> >
+class AutomorphismDescription {
+  public:
+
+    static AutomorphismDescription make_commutator(const AutomorphismDescription& first, const AutomorphismDescription& second) {
+      Automorphism a = (first() * second() * first.inverse() * second.inverse()).free_reduction();
+      Automorphism a_inv = (second() * first() * second.inverse() * first.inverse()).free_reduction();
+      return AutomorphismDescription(a, a_inv);
+    }
+
+    AutomorphismDescription() {}
+
+    //! Creates the description for a single autmorphism.
+    AutomorphismDescription(const Automorphism& e)
+      : a_(e),
+        a_inv_(e.inverse()) {}
+
+    //! Generates a random autmorphism.
+    template<typename RandomAutomorphismGenerator>
+    AutomorphismDescription(unsigned int size, RandomAutomorphismGenerator& random) {
+      std::vector<Automorphism> parts;
+      parts.reserve(size);
+      for (unsigned int i = 0; i < size; ++i) {
+        parts.push_back(random());
+      }
+      a_ = Automorphism::composition(parts.begin(), parts.end()).free_reduction();
+      std::for_each(parts.rbegin(), parts.rend(), [&] (const Automorphism& a) {
+        a_inv_ *= a.inverse();
+      });
+      a_inv_ = a_inv_.free_reduction();
+    }
+
+    //! Returns the automorphism itself.
+    const Automorphism& operator()() const {
+      return a_;
+    }
+
+    //! Returns the automorphism inverse.
+    const Automorphism& inverse() const {
+      return a_inv_;
+    }
+
+    //! Returns description of inverse automorphism.
+    AutomorphismDescription inverse_description() const {
+      return AutomorphismDescription(a_inv_, a_);
+    }
+
+    //! Returns description of the composition of automorphisms.
+    AutomorphismDescription operator*(const AutomorphismDescription& ad) const {
+      Automorphism prod = a_ * ad.a_;
+      Automorphism inv_prod = ad.a_inv_ * a_inv_;
+      return AutomorphismDescription(prod, inv_prod).free_reduction();
+    }
+
+    //! Modifies itself to be a description of the composition of itself and the given automorphism.
+    AutomorphismDescription& operator*=(const AutomorphismDescription& ad) {
+      *this = *this * ad;
+      return *this;
+    }
+
+    AutomorphismDescription conjugate_with(const AutomorphismDescription& conjugator) const {
+      Automorphism a = (conjugator() * a_ * conjugator.inverse()).free_reduction();
+      Automorphism a_inv = (conjugator() * a_inv_ * conjugator.inverse()).free_reduction();
+      return AutomorphismDescription(a, a_inv);
+    }
+
+    AutomorphismDescription free_reduction() const {
+      return AutomorphismDescription(a_.free_reduction(), a_inv_.free_reduction());
+    }
+
+  private:
+    Automorphism a_;
+    Automorphism a_inv_;
+
+    AutomorphismDescription(const Automorphism& a, const Automorphism& a_inv)
+      : a_(a),
+        a_inv_(a_inv) {}
+
+    AutomorphismDescription(Automorphism&& a, Automorphism&& a_inv)
+      : a_(a),
+        a_inv_(a_inv) {}
+};
+
+//! Automorphism description keeping track of the automorphisms and its inverse and the parts of which they are composed.
+template<typename Automorphism = EndomorphismSLP<int> >
+class AutomorphismDescriptionWithHistory {
+  public:
+
+    //! Creates the description for a single autmorphism.
+    AutomorphismDescriptionWithHistory(const Automorphism& e)
+      : a_(e),
+        a_inv_(e.inverse()),
+        a_parts_(),
+        a_inv_parts_() {
+      a_parts_.push_back(a_);
+      a_inv_parts_.push_back(a_inv_);
+    }
+
+    //! Generates a random autmorphism.
+    template<typename RandomAutomorphismGenerator>
+    AutomorphismDescriptionWithHistory(unsigned int size, RandomAutomorphismGenerator& random) {
+      a_parts_.reserve(size);
+      a_inv_parts_.reserve(size);
+      for (unsigned int i = 0; i < size; ++i) {
+        a_parts_.push_back(random());
+      }
+      std::for_each(a_parts_.rbegin(), a_parts_.rend(), [&] (const Automorphism& e) {
+        this->a_inv_parts_.push_back(e.inverse());
+      });
+      a_ = Automorphism::composition(a_parts_.begin(), a_parts_.end());
+      a_ = a_.free_reduction();
+      a_inv_ = Automorphism::composition(a_inv_parts_.begin(), a_inv_parts_.end());
+      a_inv_ = a_inv_.free_reduction();
+    }
+
+    //! Returns the automorphism itself.
+    const Automorphism& operator()() const {
+      return a_;
+    }
+
+    //! Returns the automorphism inverse.
+    const Automorphism& inverse() const {
+      return a_inv_;
+    }
+
+    //! Apply the provided function to each of the composition parts of the automorphism.
+    template<typename Func>
+    Func for_each_comp_part(Func f) const {
+      return std::for_each(a_parts_.begin(), a_parts_.end(), f);
+    }
+
+    //! Apply the provided function to each of the composition parts of the autmorphism inverse.
+    template<typename Func>
+    Func for_each_inv_comp_part(Func f) const {
+      return std::for_each(a_inv_parts_.begin(), a_inv_parts_.end(), f);
+    }
+
+    //! Returns description of inverse automorphism.
+    AutomorphismDescriptionWithHistory description_of_inverse() const {
+      return AutomorphismDescriptionWithHistory(a_inv_, a_, a_inv_parts_, a_parts_);
+    }
+
+    //! Returns description of the composition of automorphisms.
+    AutomorphismDescriptionWithHistory operator*(const AutomorphismDescriptionWithHistory& ad) const {
+      Automorphism prod = a_ * ad.a_;
+      Automorphism inv_prod = ad.a_inv_ * a_inv_;
+
+      std::vector<Automorphism> prod_parts;
+      prod_parts.reserve(a_parts_.size() + ad.a_parts_.size());
+      prod_parts.insert(prod_parts.end(), a_parts_.begin(), a_parts_.end());
+      prod_parts.insert(prod_parts.end(), ad.a_parts_.begin(), ad.a_parts_.end());
+
+      std::vector<Automorphism> inv_prod_parts;
+      inv_prod_parts.reserve(a_inv_parts_.size() + ad.a_inv_parts_.size());
+      inv_prod_parts.insert(inv_prod_parts.end(), ad.a_inv_parts_.begin(), ad.a_inv_parts_.end());
+      inv_prod_parts.insert(inv_prod_parts.end(), a_inv_parts_.begin(), a_inv_parts_.end());
+
+      return AutomorphismDescriptionWithHistory(prod.free_reduction(), inv_prod.free_reduction(),
+                                     prod_parts, inv_prod_parts);
+    }
+
+    //! Modifies itself to be a description of the composition of itself and the given automorphism.
+    AutomorphismDescriptionWithHistory& operator*=(const AutomorphismDescriptionWithHistory& ad) {
+      *this = *this * ad;
+      return *this;
+    }
+
+  private:
+    Automorphism a_;
+    Automorphism a_inv_;
+    std::vector<Automorphism> a_parts_;
+    std::vector<Automorphism> a_inv_parts_;
+
+    AutomorphismDescriptionWithHistory(const Automorphism& a, const Automorphism& a_inv,
+                            const std::vector<Automorphism>& a_parts,
+                            const std::vector<Automorphism>& a_inv_parts)
+      : a_(a),
+        a_inv_(a_inv),
+        a_parts_(a_parts),
+        a_inv_parts_(a_inv_parts) {}
+};
+
+template<typename T, typename Conjugator>
+static std::vector<T> conjugate_all(const std::vector<T>& morphisms, const Conjugator& conjugator) {
+  std::vector<T> result;
+  result.reserve(morphisms.size());
+  for (int i = 0; i < morphisms.size(); ++i) {
+    result.push_back(morphisms[i].conjugate_with(conjugator));
+  }
+  return result;
+}
 
 //-------------------------------------------------------------------------------------
 // Implementation of EndomorphismSLP methods.

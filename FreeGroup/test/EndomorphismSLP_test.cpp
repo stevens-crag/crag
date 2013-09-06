@@ -638,6 +638,52 @@ TEST_F(EndomorphismSLPTest, CompositionSizeTest) {
   }
 }
 
+TEST_F(EndomorphismSLPTest, AutomorphismDescriptionBasicTest) {
+  auto e = EMorphism::identity();
+  AutomorphismDescription<> a(e);
+  EXPECT_EQ(e, a());
+  EXPECT_EQ(e.inverse(), a.inverse());
+
+  EMorphism::for_each_basic_morphism(3, [] (const EMorphism& e) {
+    AutomorphismDescription<> a(e);
+    EXPECT_EQ(e, a());
+    EXPECT_EQ(e.inverse(), a.inverse());
+  });
+
+  for (auto rank : {3, 5, 10}) {
+    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    for (auto size : {5, 10}) {
+      for (int i = 0; i < 10; ++i) {
+        AutomorphismDescription<> a(size, rnd);
+        EXPECT_TRUE((a() * a.inverse()).is_identity());
+
+        auto a_inverse = a.inverse_description();
+        EXPECT_EQ(a.inverse(), a_inverse());
+        EXPECT_EQ(a(), a_inverse.inverse());
+      }
+    }
+  }
+}
+
+TEST_F(EndomorphismSLPTest, AutomorphismDescriptionComposition) {
+  EMorphism::for_each_basic_morphism(3, [] (const EMorphism& e) {
+    EMorphism::for_each_basic_morphism(3, [&e] (const EMorphism& e1) {
+      AutomorphismDescription<> a(e);
+      AutomorphismDescription<> a1(e1);
+      auto prod = (e * e1).free_reduction();
+      auto inv_prod = (e1.inverse() * e.inverse()).free_reduction();
+
+      EXPECT_EQ(prod, (a * a1)());
+      EXPECT_EQ(inv_prod, (a * a1).inverse());
+
+      a *= a1;
+      EXPECT_EQ(prod, a());
+      EXPECT_EQ(inv_prod, a.inverse());
+
+    });
+  });
+}
+
 
 
 } /* namespace crag */
