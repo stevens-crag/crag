@@ -20,20 +20,10 @@ namespace crag {
 
 namespace fga_crypto {
 
+// uncomment for debugging info
 //#define CRAG_FGA_CRYPTO_DEBUG_OUTPUT
 
   struct SchemeParameters {
-      static const SchemeParameters canonical() {
-        static SchemeParameters params = SchemeParameters(3, 5, 4, 25, 25, 50);
-//        N = 3;
-//        A_SIZE = 5;
-//        B_SIZE = 4;
-//        U_LENGTH = 25;
-//        V_LENGTH = 25;
-//        C_SIZE = 50;
-        return params;
-      }
-
 
       SchemeParameters(int n, int u, int v, int c)
         : N(n), A_SIZE(5), B_SIZE(4), U_LENGTH(u), V_LENGTH(v), C_SIZE(c) {}
@@ -42,12 +32,12 @@ namespace fga_crypto {
         : N(n), A_SIZE(a), B_SIZE(b), U_LENGTH(u), V_LENGTH(v), C_SIZE(c) {}
 
 
-      const unsigned int N;
-      const unsigned int A_SIZE;
-      const unsigned int B_SIZE;
-      const unsigned int U_LENGTH;
-      const unsigned int V_LENGTH;
-      const unsigned int C_SIZE;
+      const unsigned int N = 3;
+      const unsigned int A_SIZE = 5;
+      const unsigned int B_SIZE = 4;
+      const unsigned int U_LENGTH = 25;
+      const unsigned int V_LENGTH = 25;
+      const unsigned int C_SIZE = 50;
   };
 
   typedef EndomorphismSLP<int> Aut;
@@ -360,7 +350,6 @@ namespace fga_crypto {
         }
         return value;
       }
-
    };
 } // namespace fga_crypto
 } // namespace crag

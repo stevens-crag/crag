@@ -221,30 +221,23 @@ public:
   template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakReducedVertexHashAlgorithms>
   EndomorphismSLP free_reduction() const {
     typename VertexHashAlgorithms::Cache vertex_hashes;
-    EndomorphismSLP result;
-    std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
+    auto reducer = [&vertex_hashes] (const slp::Vertex& vertex,
+        std::unordered_map<slp::Vertex, slp::Vertex>* p_reduced_vertices) {
+      return VertexHashAlgorithms::reduce_narrow_slp(vertex, &vertex_hashes, p_reduced_vertices);
+    };
 
-    for_each_non_trivial_image([&result, &vertex_hashes, &reduced_vertices] (const symbol_image_pair_type& pair) {
-      auto reduced = VertexHashAlgorithms::reduce_narrow_slp(pair.second, &vertex_hashes, &reduced_vertices);
-      //insert if it is not an identity map
-      if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
-        result.images_.insert(std::make_pair(pair.first, reduced));
-    });
-    return result;
+    return free_reduction_internal(&reducer);
   }
 
   //! Returns the automorphisms with freely reduced images. It uses matching tables.
   EndomorphismSLP free_reduction_precise() const {
-    EndomorphismSLP result;
     slp::MatchingTable mt;
-    std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
-    for_each_non_trivial_image([&result, &mt, &reduced_vertices] (const symbol_image_pair_type& pair) {
-      auto reduced = slp::reduce(pair.second, &mt, &reduced_vertices);
-      //insert if it is not an identity map
-      if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
-        result.images_.insert(std::make_pair(pair.first, reduced));
-    });
-    return result;
+    auto reducer = [&mt] (const slp::Vertex& vertex,
+        std::unordered_map<slp::Vertex, slp::Vertex>* p_reduced_vertices) {
+      return slp::reduce(vertex, &mt, p_reduced_vertices);
+    };
+
+    return free_reduction_internal(&reducer);
   }
 
   //! Returns the automorphisms, which contains no vertices with the same hash given by template parameter.
@@ -387,6 +380,19 @@ private:
       TerminalVertex(inverted).negate()));
   }
 
+  template<typename Reducer>
+  EndomorphismSLP free_reduction_internal(Reducer* p_reducer) const {
+    EndomorphismSLP result;
+    std::unordered_map<slp::Vertex, slp::Vertex> reduced_vertices;
+    for_each_non_trivial_image([&result, &reduced_vertices, p_reducer] (const symbol_image_pair_type& pair) {
+      auto reduced = p_reducer->operator()(pair.second, &reduced_vertices);
+      //insert if it is not an identity map
+      if (reduced.height() != 1 || TerminalVertex(reduced) != pair.first)
+        result.images_.insert(std::make_pair(pair.first, reduced));
+    });
+    return result;
+  }
+
   //! The representation of images of terminal symbols by straight-line programs
   /**
    * If there is no entry for a given terminal symbol, then its image is the terminal itself.
@@ -401,9 +407,6 @@ private:
 // Helper functions.
 
 //! Compose given endomorphisms.
-/**
- * Returns const to behave consistently with built-in types.
- */
 template<typename TerminalSymbol>
 EndomorphismSLP<TerminalSymbol> operator*(const EndomorphismSLP<TerminalSymbol>& e1, const EndomorphismSLP<TerminalSymbol>& e2) {
   return EndomorphismSLP<TerminalSymbol>(e1) *= e2;
@@ -455,7 +458,7 @@ public:
    * @param rank free group rank > 0
    * @param seed random engine seed for creation of a new one
    */
-  explicit UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
+  UniformAutomorphismSLPGenerator(index_type rank, typename RandomEngine::result_type seed)
     : UniformAutomorphismSLPGenerator(1, rank, ::std::make_shared<RandomEngine>(seed), nullptr)
   {}
 
@@ -464,7 +467,7 @@ public:
    * @param rank free group rank > 0
    * @param random_engine random engine
    */
-  explicit UniformAutomorphismSLPGenerator(index_type rank, RandomEngine* random_engine)
+  UniformAutomorphismSLPGenerator(index_type rank, RandomEngine* random_engine)
     : UniformAutomorphismSLPGenerator(1, rank, nullptr, random_engine)
   {}
 
@@ -599,6 +602,11 @@ class AutomorphismDescription {
 
     //! Returns the automorphism itself.
     const Automorphism& operator()() const {
+      return a_;
+    }
+
+    //! Returns the automorphism itself.
+    const Automorphism& aut() const {
       return a_;
     }
 

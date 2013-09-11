@@ -22,7 +22,9 @@ namespace aag_crypto {
           alice_private_key_(k_gen_.generate_private_key(alice_public_key_)),
           bob_private_key_(k_gen_.generate_private_key(bob_public_key_)),
           alice_ti_(bob_public_key_, alice_private_key_),
-          bob_ti_(alice_public_key_, bob_private_key_) {
+          bob_ti_(alice_public_key_, bob_private_key_),
+          shared_key_(alice_private_key_().aut() * bob_private_key_().aut() * alice_private_key_().inverse() * bob_private_key_().inverse()) {
+        shared_key_ = shared_key_.free_reduction().normal_form();
 //        k_gen_ = make_keys_generator(params, &rand);
 
 //        alice_public_key_ = k_gen_.generate_public_key(Participant::Alice);
@@ -43,8 +45,12 @@ namespace aag_crypto {
         return k_gen_.make_shared_key(bob_private_key_, alice_ti_, Participant::Bob, calc_type);
       }
 
+      Aut real_key() const {
+        return shared_key_;
+      }
+
     private:
-      KeysGenerator k_gen_;
+      KeysGenerator<> k_gen_;
       PublicKey alice_public_key_;
       PublicKey bob_public_key_;
 
@@ -53,6 +59,8 @@ namespace aag_crypto {
 
       TransmittedInfo alice_ti_;
       TransmittedInfo bob_ti_;
+
+      Aut shared_key_;
   };
 
   const int sizes[] = {5};
@@ -65,7 +73,11 @@ namespace aag_crypto {
 
       for (int i = 0; i < ITERATIONS_NUM; ++i) {
         Generator g(params, rand);
-        EXPECT_EQ(g.alice_key(calc_type), g.bob_key(calc_type));
+        auto alice_key = g.alice_key(calc_type);
+        auto bob_key = g.bob_key(calc_type);
+        auto real_key = g.real_key();
+        EXPECT_EQ(real_key, alice_key);
+        EXPECT_EQ(real_key, bob_key);
       }
     }
   }
@@ -82,7 +94,7 @@ namespace aag_crypto {
     }
   }
 
-  TEST(AAGCryptoTest, SinleReductionCorrectnessTest) {
+  TEST(AAGCryptoTest, SingleReductionCorrectnessTest) {
     test_calc_type(CalculationType::SingleReduction);
   }
 
@@ -94,11 +106,11 @@ namespace aag_crypto {
     test_calc_type(CalculationType::BlockReduction);
   }
 
-  TEST(AAGCryptoTest, SinleToIterativeCorrectnessTest) {
+  TEST(AAGCryptoTest, SingleToIterativeCorrectnessTest) {
     compare_calc_types(CalculationType::SingleReduction, CalculationType::IterativeReduction);
   }
 
-  TEST(AAGCryptoTest, SinleToBlockCorrectnessTest) {
+  TEST(AAGCryptoTest, SingleToBlockCorrectnessTest) {
     compare_calc_types(CalculationType::SingleReduction, CalculationType::BlockReduction);
   }
 
