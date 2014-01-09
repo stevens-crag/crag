@@ -23,8 +23,7 @@
 using crag::slp::Vertex;
 using crag::slp::VertexWord;
 using crag::slp::PreorderInspector;
-using crag::slp::TerminalVertexTemplate;
-typedef crag::slp::TerminalVertexTemplate<int> TerminalVertex;
+using crag::slp::TerminalVertex;
 using crag::slp::NonterminalVertex;
 using crag::slp::MatchingTable;
 using crag::UniformAutomorphismSLPGenerator;
@@ -257,14 +256,14 @@ int main() {
   constexpr size_t RANK = 6;
   constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+  UniformAutomorphismSLPGenerator<> generator(RANK, seed);
 
   typedef crag::slp::TVertexHashAlgorithms<
       crag::slp::hashers::SinglePowerHash,
       crag::slp::hashers::PermutationHash<crag::Permutation16>
   > VertexHashAlgorithms;
 
-  auto slp = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+  auto slp = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
   std::unordered_map<Vertex, Vertex> reduced_vertices;
   VertexHashAlgorithms::Cache hash_cache;

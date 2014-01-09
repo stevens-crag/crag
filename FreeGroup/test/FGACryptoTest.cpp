@@ -38,7 +38,7 @@ namespace fga_crypto {
 //    gmp_pool_setup();
     std::default_random_engine rnd(2235);
     for (int i = 0; i < 10; ++i) {
-      UniformAutomorphismSLPGenerator<int> aut_random(3, &rnd);
+      UniformAutomorphismSLPGenerator<> aut_random(3, &rnd);
       AutDescription a_private_key(3, aut_random);
       AutDescription b_private_key(3, aut_random);
 
@@ -59,7 +59,7 @@ namespace fga_crypto {
 
     for (int i = 0; i < 5; ++i) {
       KeysGenerator real(params, rnd);
-      UniformAutomorphismSLPGenerator<int> aut_random(3, &rnd);
+      UniformAutomorphismSLPGenerator<> aut_random(3, &rnd);
       AutDescription mock_private_key(3, aut_random);
 
       MockParticipant mock(mock_private_key, real.private_key());

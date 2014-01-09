@@ -16,13 +16,16 @@ namespace crag {
 namespace slp {
 namespace {
 
-typedef TerminalVertexTemplate<char> TerminalVertex;
+constexpr TerminalSymbol terminal_a = TerminalSymbol{} + 100;
+constexpr TerminalSymbol terminal_b = TerminalSymbol{} + 200;
+constexpr TerminalSymbol terminal_c = TerminalSymbol{} + 300;
+
 class VertexTest : public ::testing::Test {
   protected:
     VertexTest()
-      : a(TerminalVertex('a'))
-      , b(TerminalVertex('b'))
-      , c(TerminalVertex('c'))
+      : a(TerminalVertex(terminal_a))
+      , b(TerminalVertex(terminal_b))
+      , c(TerminalVertex(terminal_c))
     { }
 
     Vertex a;
@@ -62,12 +65,12 @@ TEST_F(VertexTest, TerminalVertex) {
   EXPECT_NE(a, a.negate());
   EXPECT_EQ(a, a);
   EXPECT_EQ(a, a.negate().negate());
-  EXPECT_EQ('a', TerminalVertex(a));
-  EXPECT_EQ(-'a', TerminalVertex(a.negate()).terminal_symbol());
+  EXPECT_EQ(terminal_a, TerminalVertex(a));
+  EXPECT_EQ(-terminal_a, TerminalVertex(a.negate()).terminal_symbol());
 
   TerminalVertex typed_a(a);
-  EXPECT_EQ('a', typed_a);
-  EXPECT_EQ(-'a', TerminalVertex(typed_a.negate()));
+  EXPECT_EQ(terminal_a, typed_a);
+  EXPECT_EQ(-terminal_a, TerminalVertex(typed_a.negate()));
 
   EXPECT_EQ(hash(a), hash(a.negate().negate()));
   EXPECT_NE(hash(a), hash(a.negate()));

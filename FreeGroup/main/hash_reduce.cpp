@@ -23,8 +23,7 @@
 using crag::slp::Vertex;
 using crag::slp::VertexWord;
 using crag::slp::PreorderInspector;
-using crag::slp::TerminalVertexTemplate;
-typedef crag::slp::TerminalVertexTemplate<int> TerminalVertex;
+using crag::slp::TerminalVertex;
 using crag::slp::NonterminalVertex;
 using crag::slp::MatchingTable;
 using crag::UniformAutomorphismSLPGenerator;
@@ -65,7 +64,7 @@ int main() {
   constexpr size_t RANK = 6;
   constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+  UniformAutomorphismSLPGenerator<> generator(RANK, seed);
   auto begin = std::chrono::system_clock::now();
   int count = REPEAT;
 
@@ -87,7 +86,7 @@ int main() {
   size_t reduce_different = 0;
 
   while (--count >= 0) {
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+    auto image = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
     crag::slp::MatchingTable matching_table;
     std::unordered_map<Vertex, Vertex> reduced_vertices;
     WeakVertexHashAlgorithms::Cache vertex_hashes;

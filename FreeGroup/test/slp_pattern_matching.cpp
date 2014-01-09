@@ -20,8 +20,6 @@
 namespace crag {
 namespace slp {
 namespace {
-typedef TerminalVertexTemplate<char> TerminalVertex;
-
 typedef ::std::tuple<int, int, int, int, ::std::vector<int>> BoundedTaskAcceptorTestParam;
 
 class BoundedTaskAcceptorTest : public ::testing::TestWithParam<BoundedTaskAcceptorTestParam>
@@ -36,7 +34,7 @@ TEST_P(BoundedTaskAcceptorTest, CheckOrder) {
 
   ::std::tie(pattern_code, text_code, lookup_from_int, lookup_length_int, correct_path) = GetParam();
 
-  TerminalVertex t('t');
+  TerminalVertex t(TerminalSymbol{} + 1);
   NonterminalVertex t2(t, t);
   NonterminalVertex t4(t2, t2);
 
@@ -115,7 +113,7 @@ class FilledMatchingTable : public MatchingTable {
       PostorderInspector text_inspector(text);
 
       while (!text_inspector.stopped()) {
-        VertexWord<char> current_text_word(text_inspector.vertex());
+        VertexWord current_text_word(text_inspector.vertex());
         std::string current_text(current_text_word.begin(), current_text_word.end());
 
         PostorderInspector pattern_inspector(pattern);
@@ -124,7 +122,7 @@ class FilledMatchingTable : public MatchingTable {
 
           if (pattern_inspector.vertex().length() <= text_inspector.vertex().length() &&
               match_table_->find(::std::make_pair(pattern_inspector.vertex(), text_inspector.vertex())) == match_table_->end()) {
-            VertexWord<char> current_pattern_word(pattern_inspector.vertex());
+            VertexWord current_pattern_word(pattern_inspector.vertex());
             std::string current_pattern(current_pattern_word.begin(), current_pattern_word.end());
             size_t current_match = text_inspector.vertex().split_point().get_ui() -
                 pattern_inspector.vertex().length().get_ui();
@@ -384,8 +382,8 @@ TEST(LocalSearch, RandomWord) {
     auto pattern_tree_string = print_tree_preorder(pattern);
     auto text_tree_string = print_tree_preorder(text);
 
-    ::std::string pattern_string(VertexWord<char>(pattern).begin(), VertexWord<char>(pattern).end());
-    ::std::string text_string(VertexWord<char>(text).begin(), VertexWord<char>(text).end());
+    ::std::string pattern_string(VertexWord(pattern).begin(), VertexWord(pattern).end());
+    ::std::string text_string(VertexWord(text).begin(), VertexWord(text).end());
 
     unsigned int last_match_position = left_boundary;
 
@@ -601,8 +599,8 @@ TEST(SLPMatchingTable, StressTest) {
       while (!pattern.stopped()) {
         ++pattern_vertex_number;
         ASSERT_EQ(computed_matching_table.matches(pattern.vertex(), text.vertex()), real_matching_table.matches(pattern.vertex(), text.vertex()))
-          << "pattern " << VertexWord<char>(pattern.vertex()) << ::std::endl << print_tree_preorder(pattern.vertex()) << ::std::endl << ::std::endl
-          << "text " << VertexWord<char>(text.vertex()) << ::std::endl << print_tree_preorder(text.vertex()) << ::std::endl << ::std::endl;
+          << "pattern " << VertexWord(pattern.vertex()) << ::std::endl << print_tree_preorder(pattern.vertex()) << ::std::endl << ::std::endl
+          << "text " << VertexWord(text.vertex()) << ::std::endl << print_tree_preorder(text.vertex()) << ::std::endl << ::std::endl;
         pattern.next();
       }
       text.next();

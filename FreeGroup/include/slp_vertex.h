@@ -21,6 +21,9 @@ typedef mpz_class LongInteger;
 namespace crag {
 namespace slp {
 
+//! Type of the basic character
+typedef int64_t TerminalSymbol;
+
 namespace internal {
 class BasicVertex;
 struct BasicVertexAllocatorTag{};
@@ -190,21 +193,19 @@ inline void Vertex::debug_print(::std::ostream* out) const {
   }
 }
 
-
 //! Terminal vertex in a SLP. Produces word of length 1.
-template <typename TerminalSymbol>
-class TerminalVertexTemplate : public Vertex {
+class TerminalVertex : public Vertex {
   public:
-    TerminalVertexTemplate() = delete;
+    TerminalVertex() = delete;
 
-    explicit TerminalVertexTemplate(TerminalSymbol terminal_symbol)
+    explicit TerminalVertex(TerminalSymbol terminal_symbol)
       : Vertex(static_cast<typename Vertex::VertexSignedId>(terminal_symbol), nullptr)
       , terminal_symbol_(terminal_symbol)
     {
       assert(height() == 1 && length() == 1);
     }
 
-    explicit TerminalVertexTemplate(const Vertex& vertex)
+    explicit TerminalVertex(const Vertex& vertex)
       : Vertex(vertex)
       , terminal_symbol_()
     {
@@ -229,8 +230,7 @@ class TerminalVertexTemplate : public Vertex {
     TerminalSymbol terminal_symbol_;
 };
 
-template <typename TerminalSymbol>
-::std::ostream& operator << (::std::ostream& stream, const TerminalVertexTemplate<TerminalSymbol>& vertex) {
+inline ::std::ostream& operator << (::std::ostream& stream, const TerminalVertex& vertex) {
   return stream << vertex.terminal_symbol();
 }
 

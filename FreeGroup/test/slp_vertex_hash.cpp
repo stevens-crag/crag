@@ -23,7 +23,7 @@ namespace {
 template <typename T>
 class HasherTest : public ::testing::Test {
   protected:
-    typedef TerminalVertexTemplate<int> TerminalVertex;
+    typedef slp::TerminalVertex TerminalVertex;
     TerminalVertex a;
     TerminalVertex b;
 
@@ -134,13 +134,13 @@ TEST(HashedReduce, StressTest) {
   typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
   size_t seed = 0;
   while (++seed <= REPEAT) {
-    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+    UniformAutomorphismSLPGenerator<> generator(RANK, seed);
+    auto image = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
     Vertex reduced = VertexHashAlgorithms::reduce(image);
 
     std::vector<int> reduced_image;
-    for (auto symbol : VertexWord<int>(image)) {
+    for (auto symbol : VertexWord(image)) {
       if (!reduced_image.empty() && symbol == -reduced_image.back()) {
         reduced_image.pop_back();
       } else {
@@ -150,12 +150,12 @@ TEST(HashedReduce, StressTest) {
     std::ostringstream reduced_image_string;
     std::copy(reduced_image.begin(), reduced_image.end(), std::ostream_iterator<int>(reduced_image_string, ""));
     auto correct_symbol = reduced_image.begin();
-    for (auto symbol : VertexWord<int>(reduced)) {
+    for (auto symbol : VertexWord(reduced)) {
       ASSERT_EQ(*correct_symbol, symbol) << seed << std::endl
           << print_tree_preorder_single(image) << std::endl
           << print_tree_preorder(reduced) << std::endl
-          << VertexWord<int>(image) << std::endl
-          << VertexWord<int>(reduced) << std::endl
+          << VertexWord(image) << std::endl
+          << VertexWord(reduced) << std::endl
           << reduced_image_string.str() << std::endl;
       ++correct_symbol;
     }
@@ -170,13 +170,13 @@ TEST(HashedReduceNarrow, StressTest) {
   typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
   size_t seed = 0;
   while (++seed <= REPEAT) {
-    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+    UniformAutomorphismSLPGenerator<> generator(RANK, seed);
+    auto image = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
     Vertex reduced = VertexHashAlgorithms::reduce_narrow_slp(image);
 
     std::vector<int> reduced_image;
-    for (auto symbol : VertexWord<int>(image)) {
+    for (auto symbol : VertexWord(image)) {
       if (!reduced_image.empty() && symbol == -reduced_image.back()) {
         reduced_image.pop_back();
       } else {
@@ -186,12 +186,12 @@ TEST(HashedReduceNarrow, StressTest) {
     std::ostringstream reduced_image_string;
     std::copy(reduced_image.begin(), reduced_image.end(), std::ostream_iterator<int>(reduced_image_string, ""));
     auto correct_symbol = reduced_image.begin();
-    for (auto symbol : VertexWord<int>(reduced)) {
+    for (auto symbol : VertexWord(reduced)) {
       ASSERT_EQ(*correct_symbol, symbol) << seed << std::endl
           << print_tree_preorder_single(image) << std::endl
           << print_tree_preorder(reduced) << std::endl
-          << VertexWord<int>(image) << std::endl
-          << VertexWord<int>(reduced) << std::endl
+          << VertexWord(image) << std::endl
+          << VertexWord(reduced) << std::endl
           << reduced_image_string.str() << std::endl;
       ++correct_symbol;
     }
@@ -212,8 +212,8 @@ TEST(HashedReduce, RemoveDuplicatesStressTest) {
   size_t seed = 0;
   size_t n_errors = 0;
   while (++seed <= REPEAT) {
-    UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
-    auto image = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+    UniformAutomorphismSLPGenerator<> generator(RANK, seed);
+    auto image = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
     ASSERT_EQ(VertexHashAlgorithms::get_vertex_hash(image), VertexHashAlgorithms::get_vertex_hash(image));
 
@@ -224,8 +224,8 @@ TEST(HashedReduce, RemoveDuplicatesStressTest) {
     ASSERT_EQ(image.length(), rd_mage.length());
 
     slp::MatchingTable mt;
-    VertexWord<int> image_word(image);
-    VertexWord<int> rd_word(rd_mage);
+    VertexWord image_word(image);
+    VertexWord rd_word(rd_mage);
     if(!image_word.is_equal_to(rd_word, &mt)) {
       ++n_errors;
     }
