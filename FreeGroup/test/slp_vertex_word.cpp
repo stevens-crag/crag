@@ -17,90 +17,92 @@
 namespace crag {
 namespace slp {
 namespace {
-  typedef VertexWord<char> VertexCharWord;
-  typedef TerminalVertexTemplate<char> TerminalVertex;
+
+constexpr TerminalSymbol terminal_a = TerminalSymbol{} + 1;
+constexpr TerminalSymbol terminal_b = TerminalSymbol{} + 2;
+constexpr TerminalSymbol terminal_c = TerminalSymbol{} + 3;
 
   TEST(VertexWord, size) {
-    TerminalVertex a('a');
-    TerminalVertex b('a');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_a);
     NonterminalVertex ab(a, b);
 
-    EXPECT_EQ(0, VertexCharWord().size());
-    EXPECT_EQ(1, VertexCharWord(a).size());
-    EXPECT_EQ(2, VertexCharWord(ab).size());
+    EXPECT_EQ(0, VertexWord().size());
+    EXPECT_EQ(1, VertexWord(a).size());
+    EXPECT_EQ(2, VertexWord(ab).size());
   }
 
   TEST(VertexWord, IndexLeftTree) {
-    TerminalVertex a('a');
-    TerminalVertex b('b');
-    TerminalVertex c('c');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_b);
+    TerminalVertex c(terminal_c);
 
     NonterminalVertex ab(a, b);
     NonterminalVertex abc(ab, c);
 
-    VertexCharWord w(abc);
+    VertexWord w(abc);
 
     ASSERT_EQ(3, w.size());
-    EXPECT_EQ('a', w[0]);
-    EXPECT_EQ('b', w[1]);
-    EXPECT_EQ('c', w[2]);
+    EXPECT_EQ(terminal_a, w[0]);
+    EXPECT_EQ(terminal_b, w[1]);
+    EXPECT_EQ(terminal_c, w[2]);
   }
 
   TEST(VertexWord, IndexRightTree) {
-    TerminalVertex a('a');
-    TerminalVertex b('b');
-    TerminalVertex c('c');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_b);
+    TerminalVertex c(terminal_c);
 
     NonterminalVertex bc(b, c);
     NonterminalVertex abc(a, bc);
 
-    VertexCharWord w(abc);
+    VertexWord w(abc);
 
     ASSERT_EQ(3, w.size());
-    EXPECT_EQ('a', w[0]);
-    EXPECT_EQ('b', w[1]);
-    EXPECT_EQ('c', w[2]);
+    EXPECT_EQ(terminal_a, w[0]);
+    EXPECT_EQ(terminal_b, w[1]);
+    EXPECT_EQ(terminal_c, w[2]);
   }
 
   TEST(VertexWord, IndexCrossedTree) {
-    TerminalVertex a('a');
-    TerminalVertex b('b');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_b);
 
     NonterminalVertex ab(a, b);
     NonterminalVertex ba_1(b, a.negate());
 
     NonterminalVertex abab_1(ab, ba_1.negate());
 
-    VertexCharWord w(abab_1);
+    VertexWord w(abab_1);
 
     ASSERT_EQ(w.size(), 4);
-    EXPECT_EQ('a', w[0]);
-    EXPECT_EQ('b', w[1]);
-    EXPECT_EQ('a', w[2]);
-    EXPECT_EQ(-'b', w[3]);
+    EXPECT_EQ(terminal_a, w[0]);
+    EXPECT_EQ(terminal_b, w[1]);
+    EXPECT_EQ(terminal_a, w[2]);
+    EXPECT_EQ(-terminal_b, w[3]);
   }
 
   TEST(VertexWord, Iterator) {
-    TerminalVertex a('a');
-    TerminalVertex b('b');
-    TerminalVertex c('c');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_b);
+    TerminalVertex c(terminal_c);
 
     NonterminalVertex ab(a, b);
     NonterminalVertex abc(ab, c);
 
-    VertexCharWord w(abc);
+    VertexWord w(abc);
 
-    EXPECT_EQ("abc", ::std::string(w.begin(), w.end()));
-    EXPECT_EQ('a', *(w.begin() + 0));
-    EXPECT_EQ('b', *(w.begin() + 1));
-    EXPECT_EQ('c', *(w.begin() + 2));
+    EXPECT_EQ(::std::string({terminal_a, terminal_b, terminal_c}), ::std::string(w.begin(), w.end()));
+    EXPECT_EQ(terminal_a, *(w.begin() + 0));
+    EXPECT_EQ(terminal_b, *(w.begin() + 1));
+    EXPECT_EQ(terminal_c, *(w.begin() + 2));
   }
 
 
   TEST(VertexWord, StressTest) {
     const unsigned int word_size = 6;
-    TerminalVertex a('a');
-    TerminalVertex b('b');
+    TerminalVertex a(terminal_a);
+    TerminalVertex b(terminal_b);
 
     unsigned int current_word = 0;
     while (current_word < (1 << word_size)) {
@@ -108,7 +110,7 @@ namespace {
       std::string current_word_string;
 
       for (size_t i = 0; i < word_size; ++i) {
-        current_word_string.push_back((current_word & (1 << i)) ? 'b' : 'a');
+        current_word_string.push_back((current_word & (1 << i)) ? terminal_b : terminal_a);
       }
 
       for (unsigned int i = 1; i < word_size; ++i) {
@@ -118,7 +120,7 @@ namespace {
       do {
         std::vector<Vertex> word_presentation;
         for (char letter : current_word_string) {
-          word_presentation.push_back(letter == 'a' ? a : b);
+          word_presentation.push_back(letter == terminal_a ? a : b);
         }
 
         for (unsigned int split : current_word_split) {
@@ -132,7 +134,7 @@ namespace {
         const Vertex& current_slp = word_presentation.front();
         ASSERT_EQ(current_word_split.back(), current_slp.left_child().length().get_ui());
 
-        VertexCharWord word(current_slp);
+        VertexWord word(current_slp);
         ASSERT_EQ(current_word_string, std::string(word.begin(), word.end()));
 
         for (size_t i = 0; i < current_word_string.size(); ++i) {

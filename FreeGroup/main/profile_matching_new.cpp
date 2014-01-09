@@ -20,13 +20,14 @@
 
 using crag::slp::Vertex;
 using crag::slp::PreorderInspector;
-typedef crag::slp::TerminalVertexTemplate<char> TerminalVertex;
+using crag::slp::TerminalVertex;
+using crag::slp::TerminalSymbol;
 using crag::slp::NonterminalVertex;
 using crag::slp::MatchingTable;
 
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
-  TerminalVertex a('a');
-  TerminalVertex b('b');
+  TerminalVertex a(TerminalSymbol{} + 1);
+  TerminalVertex b(TerminalSymbol{} + 2);
 
   int random_word = rand() % (1 << WORD_SIZE);
   std::vector<unsigned int> random_word_split;

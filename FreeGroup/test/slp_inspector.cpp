@@ -18,8 +18,6 @@
 namespace crag {
 namespace slp {
 namespace {
-  typedef TerminalVertexTemplate<char> TerminalVertex;
-
   template <typename InspectorType>
   void check_inspector_path(InspectorType&& inspector, const ::std::vector<Vertex>& correct_path, const ::std::vector<LongInteger>& correct_length) {
     auto length = correct_length.begin();
@@ -40,16 +38,16 @@ namespace {
   }
 
   TEST(PostorderInspector, SameChildren) {
-    auto a = TerminalVertex('a');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
     auto a2 = NonterminalVertex(a, a);
 
     EXPECT_NO_FATAL_FAILURE(check_inspector_path(PostorderInspector(a2), ::std::vector<Vertex>({a, a, a2}), ::std::vector<LongInteger>({0, 1, 0})));
   }
 
   TEST(PostorderInspector, LeftTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto ab = NonterminalVertex(a, b);
     auto abc = NonterminalVertex(ab, c);
@@ -58,9 +56,9 @@ namespace {
   }
 
   TEST(PostorderInspector, RightTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto bc = NonterminalVertex(b, c);
     auto abc = NonterminalVertex(a, bc);
@@ -69,8 +67,8 @@ namespace {
   }
 
   TEST(PostorderInspector, CrossedTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
 
     auto ab = NonterminalVertex(a, b);
     auto ba_1 = NonterminalVertex(b, a.negate());
@@ -90,16 +88,16 @@ namespace {
   }
 
   TEST(InorderInspector, SameChildren) {
-    auto a = TerminalVertex('a');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
     auto a2 = NonterminalVertex(a, a);
 
     EXPECT_NO_FATAL_FAILURE(check_inspector_path(InorderInspector(a2), ::std::vector<Vertex>({a, a2, a}), ::std::vector<LongInteger>({0, 0, 1})));
   }
 
   TEST(InorderInspector, LeftTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto ab = NonterminalVertex(a, b);
     auto abc = NonterminalVertex(ab, c);
@@ -108,9 +106,9 @@ namespace {
   }
 
   TEST(InorderInspector, RightTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto bc = NonterminalVertex(b, c);
     auto abc = NonterminalVertex(a, bc);
@@ -119,8 +117,8 @@ namespace {
   }
 
   TEST(InorderInspector, CrossedTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
 
     auto ab = NonterminalVertex(a, b);
     auto ba_1 = NonterminalVertex(b, a.negate());
@@ -140,16 +138,16 @@ namespace {
   }
 
   TEST(PreorderInspector, SameChildren) {
-    auto a = TerminalVertex('a');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
     auto a2 = NonterminalVertex(a, a);
 
     EXPECT_NO_FATAL_FAILURE(check_inspector_path(PreorderInspector(a2), ::std::vector<Vertex>({a2, a, a}), ::std::vector<LongInteger>({0, 0, 1})));
   }
 
   TEST(PreorderInspector, LeftTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto ab = NonterminalVertex(a, b);
     auto abc = NonterminalVertex(ab, c);
@@ -158,9 +156,9 @@ namespace {
   }
 
   TEST(PreorderInspector, RightTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
-    auto c = TerminalVertex('c');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
+    auto c = TerminalVertex(TerminalSymbol() + 3);
 
     auto bc = NonterminalVertex(b, c);
     auto abc = NonterminalVertex(a, bc);
@@ -169,8 +167,8 @@ namespace {
   }
 
   TEST(PreorderInspector, CrossedTree) {
-    auto a = TerminalVertex('a');
-    auto b = TerminalVertex('b');
+    auto a = TerminalVertex(TerminalSymbol() + 1);
+    auto b = TerminalVertex(TerminalSymbol() + 2);
 
     auto ab = NonterminalVertex(a, b);
     auto ba_1 = NonterminalVertex(b, a.negate());

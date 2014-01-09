@@ -38,8 +38,8 @@ namespace aag_crypto {
   };
 
 
-  typedef EndomorphismSLP<int> Aut;
-  typedef AutomorphismDescription<Aut > AutDescription;
+  typedef EndomorphismSLP Aut;
+  typedef AutomorphismDescription<Aut> AutDescription;
 
 
   class PublicKey {
@@ -284,7 +284,7 @@ namespace aag_crypto {
       const SchemeParameters params_;
       RandomEngine* p_rand_;
       std::uniform_int_distribution<typename RandomEngine::result_type> length_distr_;
-      UniformAutomorphismSLPGenerator<int, RandomEngine> aut_generator_;
+      UniformAutomorphismSLPGenerator<RandomEngine> aut_generator_;
 
 //      template<typename Iterator>
 //      Aut combine_keys()

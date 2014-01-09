@@ -40,7 +40,7 @@ namespace fga_crypto {
       const unsigned int C_SIZE = 50;
   };
 
-  typedef EndomorphismSLP<int> Aut;
+  typedef EndomorphismSLP Aut;
   typedef AutomorphismDescription<Aut> AutDescription;
   typedef CommutatorSet<AutDescription> CommSet;
 
@@ -148,9 +148,9 @@ namespace fga_crypto {
           shared_key_() {
 
         //generating alphas, betas
-        UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_alphas(params.N, &rand);
-        UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_betas(params.N + 1, 2 * params.N, &rand);
-        UniformAutomorphismSLPGenerator<int, RandomEngine> random_for_c(2 * params.N, &rand);
+        UniformAutomorphismSLPGenerator<RandomEngine> random_for_alphas(params.N, &rand);
+        UniformAutomorphismSLPGenerator<RandomEngine> random_for_betas(params.N + 1, 2 * params.N, &rand);
+        UniformAutomorphismSLPGenerator<RandomEngine> random_for_c(2 * params.N, &rand);
 
         alphas_.reserve(4);
         betas_.reserve(4);

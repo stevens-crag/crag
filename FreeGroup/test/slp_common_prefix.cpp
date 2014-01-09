@@ -21,10 +21,8 @@ namespace crag {
 namespace slp {
 namespace {
 
-typedef TerminalVertexTemplate<char> TerminalVertex;
-
 TEST(CommonPrefix, Trivial) {
-  TerminalVertex a('a');
+  TerminalVertex a(TerminalSymbol() + 1);
   NonterminalVertex aa(a, a);
 
   EXPECT_EQ(1, longest_common_prefix(a, a));
@@ -33,7 +31,7 @@ TEST(CommonPrefix, Trivial) {
 }
 
 TEST(CommonPrefix, Example1) {
-  TerminalVertex a('a');
+  TerminalVertex a(TerminalSymbol() + 1);
   NonterminalVertex aa(a, a);
   NonterminalVertex a3left(aa, a);
   NonterminalVertex a3right(a, aa);
@@ -46,8 +44,8 @@ TEST(CommonPrefix, Example1) {
 }
 
 TEST(CommonPrefix, Example2) {
-  TerminalVertex a('a');
-  TerminalVertex b('b');
+  TerminalVertex a(TerminalSymbol() + 1);
+  TerminalVertex b(TerminalSymbol() + 2);
   NonterminalVertex aa(a, a);
   NonterminalVertex ab(a, b);
   MatchingTable matching_table;
@@ -58,8 +56,8 @@ TEST(CommonPrefix, Example2) {
 }
 
 TEST(CommonPrefix, Example3) {
-  TerminalVertex a('a');
-  TerminalVertex b('b');
+  TerminalVertex a(TerminalSymbol() + 1);
+  TerminalVertex b(TerminalSymbol() + 2);
   NonterminalVertex ab(a, b);
   NonterminalVertex b1ab(ab.negate(), b);
   NonterminalVertex bb1ab(b, b1ab);
@@ -77,8 +75,8 @@ TEST(CommonPrefix, Example3) {
 
 
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
-  TerminalVertex a('a');
-  TerminalVertex b('b');
+  TerminalVertex a(TerminalSymbol() + 1);
+  TerminalVertex b(TerminalSymbol() + 2);
 
   int random_word = rand() % (1 << WORD_SIZE);
   std::vector<unsigned int> random_word_split;
@@ -120,11 +118,11 @@ TEST(GetPrefix, StressTest) {
   int repeat = 10000;
   while (--repeat >= 0) {
     Vertex slp = get_random_slp_on_2_letters(size);
-    std::string slp_string(VertexWord<char>(slp).begin(), VertexWord<char>(slp).end());
+    std::string slp_string(VertexWord(slp).begin(), VertexWord(slp).end());
     for (size_t prefix_length = 1; prefix_length < size; ++prefix_length) {
       Vertex prefix = get_prefix(slp, prefix_length);
       ASSERT_EQ(prefix_length, prefix.length());
-      std::string prefix_string(VertexWord<char>(prefix).begin(), VertexWord<char>(prefix).end());
+      std::string prefix_string(VertexWord(prefix).begin(), VertexWord(prefix).end());
       ASSERT_EQ(slp_string.substr(0, prefix_length), prefix_string);
     }
   }

@@ -15,14 +15,14 @@ int main() {
   constexpr size_t RANK = 6;
   constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
-  crag::UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+  crag::UniformAutomorphismSLPGenerator<> generator(RANK, seed);
 
   typedef crag::slp::TVertexHashAlgorithms<
       crag::slp::hashers::SinglePowerHash,
       crag::slp::hashers::PermutationHash<crag::Permutation16>
   > VertexHashAlgorithms;
 
-  auto slp = crag::EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+  auto slp = crag::EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
 
   VertexHashAlgorithms::Cache calculated_hashes;
   std::unordered_map<crag::slp::Vertex, crag::slp::Vertex> reduced_vertices;

@@ -16,7 +16,6 @@ namespace slp {
 namespace recompression {
 namespace {
 
-typedef TerminalVertexTemplate<int> TerminalVertex;
 std::string print_tree_preorder_single(const Vertex& vertex) {
   std::ostringstream out;
   std::unordered_set<slp::Vertex> printed;
@@ -123,28 +122,28 @@ TEST(Recompression, NormalForm) {
   Vertex normal_form_ab = normal_form(ab);
   EXPECT_EQ(a, normal_form_ab.left_child());
   EXPECT_EQ(b, normal_form_ab.right_child());
-  EXPECT_EQ(VertexWord<int>(ab), VertexWord<int>(normal_form_ab));
+  EXPECT_EQ(VertexWord(ab), VertexWord(normal_form_ab));
 
   Vertex normal_form_aa = normal_form(aa);
   EXPECT_EQ(a, normal_form_aa.left_child());
   EXPECT_EQ(a, normal_form_aa.right_child());
-  EXPECT_EQ(VertexWord<int>(aa), VertexWord<int>(normal_form_aa));
+  EXPECT_EQ(VertexWord(aa), VertexWord(normal_form_aa));
 
   Vertex normal_form_aab = normal_form(aab);
   EXPECT_EQ(a, normal_form_aab.left_child().left_child());
   EXPECT_EQ(a, normal_form_aab.left_child().right_child());
   EXPECT_EQ(b, normal_form_aab.right_child());
-  EXPECT_EQ(VertexWord<int>(aab), VertexWord<int>(normal_form_aab));
+  EXPECT_EQ(VertexWord(aab), VertexWord(normal_form_aab));
 
   Vertex normal_form_aabaa = normal_form(aabaa);
   EXPECT_EQ(normal_form_aabaa.right_child().right_child(), normal_form_aabaa.left_child());
   EXPECT_EQ(a, normal_form_aabaa.left_child().left_child());
   EXPECT_EQ(a, normal_form_aabaa.left_child().right_child());
   EXPECT_EQ(b, normal_form_aabaa.right_child().left_child());
-  EXPECT_EQ(VertexWord<int>(aabaa), VertexWord<int>(normal_form_aabaa));
+  EXPECT_EQ(VertexWord(aabaa), VertexWord(normal_form_aabaa));
 
   Vertex normal_form_aaba = normal_form(aaba);
-  EXPECT_EQ(VertexWord<int>(aaba), VertexWord<int>(normal_form_aaba));
+  EXPECT_EQ(VertexWord(aaba), VertexWord(normal_form_aaba));
 }
 
 Vertex vertex_power(Vertex base, size_t power) {
@@ -239,7 +238,7 @@ greedy_pairs(std::set<std::pair<int, int>> pairs) {
 
 std::tuple<std::vector<Vertex>, std::vector<int>>
 get_initial_rule(const Vertex& slp) {
-  VertexWord<int> vertex_word(slp);
+  VertexWord vertex_word(slp);
 
   std::vector<Vertex> terminal_vertex;
   terminal_vertex.emplace_back();
@@ -394,7 +393,7 @@ std::vector<int> compress_pairs(
 }
 
 Vertex normal_form(const Vertex& slp) {
-  VertexWord<int> vertex_word(slp);
+  VertexWord vertex_word(slp);
 
   std::vector<Vertex> terminal_vertex;
   std::vector<int> word;
@@ -441,10 +440,10 @@ void debug_print_exposed(const std::vector<int>& word, ::std::ostream* os, int s
 } //namespace naive_Jez
 
 ::testing::AssertionResult is_normal_form(Vertex slp, Vertex normal_form) {
-  if (VertexWord<int>(slp) != VertexWord<int>(normal_form)) {
+  if (VertexWord(slp) != VertexWord(normal_form)) {
     return ::testing::AssertionFailure() <<
         "Represented words are different" << std::endl <<
-        VertexWord<int>(slp) << " != " << VertexWord<int>(normal_form) << std::endl;
+        VertexWord(slp) << " != " << VertexWord(normal_form) << std::endl;
   }
   Vertex naive_normal = naive_Jez::normal_form(slp);
 
@@ -456,8 +455,8 @@ void debug_print_exposed(const std::vector<int>& word, ::std::ostream* os, int s
       return testing::AssertionFailure();
     }
 
-    VertexWord<int> correct_word(second_inspector.vertex());
-    VertexWord<int> computed_word(first_inspector.vertex());
+    VertexWord correct_word(second_inspector.vertex());
+    VertexWord computed_word(first_inspector.vertex());
 
     if (correct_word != computed_word) {
       return ::testing::AssertionFailure() << "Different normal forms" <<
@@ -1099,10 +1098,10 @@ TEST(Recompression, StressNormalForm) {
 
       auto inserted = hashes.insert(hash);
 
-      ASSERT_TRUE(inserted.second) << VertexWord<int>(inspector.vertex());
+      ASSERT_TRUE(inserted.second) << VertexWord(inspector.vertex());
 
 //      if (!inserted.second) {
-//        VertexWord<int> word(inspector.vertex());
+//        VertexWord word(inspector.vertex());
 //        auto terminal = word[0];
 //
 //        for (auto& symbol : word) {
@@ -1127,7 +1126,7 @@ TEST(Recompression, StressEndomorphismNormal) {
   int REPEAT = 1000;
   size_t seed = 112233;
   srand(seed);
-  UniformAutomorphismSLPGenerator<int> generator(RANK, seed);
+  UniformAutomorphismSLPGenerator<> generator(RANK, seed);
   generator.set_inverters_probability(0);
 
   typedef crag::slp::TVertexHashAlgorithms<
@@ -1136,7 +1135,7 @@ TEST(Recompression, StressEndomorphismNormal) {
   > VertexHashAlgorithms;
 
   while (--REPEAT >= 0) {
-    Vertex slp = EndomorphismSLP<int>::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
+    Vertex slp = EndomorphismSLP::composition(ENDOMORPHISMS_NUMBER, generator).image(1);
     //std::cout << print_rules(slp) << std::endl;
     Vertex normal_slp = normal_form(slp);
 
@@ -1179,9 +1178,9 @@ TEST(Recompression, StressEndomorphismNormal) {
           << print_rules(slp) << "\n\n"
           << print_tree_preorder_single(inserted.first->second) << "\n"
           << print_tree_preorder_single(inspector.vertex()) << "\n"
-          << VertexWord<int>(inspector.vertex());
+          << VertexWord(inspector.vertex());
 //      if (!inserted.second) {
-//        VertexWord<int> word(inspector.vertex());
+//        VertexWord word(inspector.vertex());
 //        auto terminal = word[0];
 //
 //        for (auto& symbol : word) {
@@ -1190,7 +1189,7 @@ TEST(Recompression, StressEndomorphismNormal) {
 //              << print_rules(slp) << "\n\n"
 //              << print_tree_preorder_single(inserted.first->second) << "\n"
 //              << print_tree_preorder_single(inspector.vertex()) << "\n"
-//              << VertexWord<int>(inspector.vertex());
+//              << VertexWord(inspector.vertex());
 //        }
 //      }
 

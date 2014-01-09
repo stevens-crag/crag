@@ -106,7 +106,6 @@ class TerminalVertexInspector : public Inspector<TerminalVertexPath, AcceptFunct
  * in all standard algorithms this distance can not be achieved, because it takes too long to move
  * this iterator so far.
  */
-template <typename TerminalSymbol>
 class VertexWordIterator : public std::iterator <
         std::forward_iterator_tag,      //iterator_category
         const TerminalSymbol            //value_type
@@ -127,14 +126,14 @@ class VertexWordIterator : public std::iterator <
     explicit VertexWordIterator(const Vertex& root)
       : inspector_(root)
       , root_(&root)
-      , current_symbol_(TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol())
+      , current_symbol_(TerminalVertex(inspector_.vertex()).terminal_symbol())
     { }
 
     //use default copy/move constructors/assignments
 
     VertexWordIterator& operator++() {   //!< Preincrement
       ++inspector_;
-      current_symbol_ = TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
+      current_symbol_ = TerminalVertex(inspector_.vertex()).terminal_symbol();
       return *this;
     }
 
@@ -154,7 +153,7 @@ class VertexWordIterator : public std::iterator <
 
     VertexWordIterator& operator+=(const LongInteger& shift) {
       inspector_.go_to_position(shift);
-      current_symbol_ = TerminalVertexTemplate<TerminalSymbol>(inspector_.vertex()).terminal_symbol();
+      current_symbol_ = TerminalVertex(inspector_.vertex()).terminal_symbol();
       return *this;
     }
 
@@ -182,11 +181,10 @@ class VertexWordIterator : public std::iterator <
 };
 
 //! Word produced by some #slp::Vertex
-template <typename TerminalSymbol>
 class VertexWord {
   public:
     typedef TerminalSymbol value_type;
-    typedef VertexWordIterator<TerminalSymbol> const_iterator; //no iterator, only const
+    typedef VertexWordIterator const_iterator; //no iterator, only const
     typedef const TerminalSymbol& const_reference;
     //we do not define size_type, because size() should return LongInteger, which is not integral
 
@@ -218,7 +216,7 @@ class VertexWord {
       return static_cast<bool>(matching_table->matches(root_, other.root_));
     }
 
-    TerminalSymbol operator[](LongInteger index) const; //!< Get one letter from the word
+    inline TerminalSymbol operator[](LongInteger index) const; //!< Get one letter from the word
 
     const_iterator begin() const { //!< Get the iterator to the first symbol
       return const_iterator(root_);
@@ -240,8 +238,7 @@ class VertexWord {
     Vertex root_; //!< The root vertex producing this word
 };
 
-template <typename TerminalSymbol>
-::std::ostream& operator<<(::std::ostream& out, const VertexWord<TerminalSymbol>& word) {
+inline ::std::ostream& operator<<(::std::ostream& out, const VertexWord& word) {
   for(auto symbol : word) {
     out << symbol;
   }
@@ -249,8 +246,7 @@ template <typename TerminalSymbol>
   return out;
 }
 
-template <typename TerminalSymbol>
-TerminalSymbol VertexWord<TerminalSymbol>::operator[](LongInteger index) const {
+inline TerminalSymbol VertexWord::operator[](LongInteger index) const {
   Vertex current_vertex = root_;
 
   while (current_vertex.height() > 1) {
@@ -262,7 +258,7 @@ TerminalSymbol VertexWord<TerminalSymbol>::operator[](LongInteger index) const {
     }
   }
 
-  return TerminalVertexTemplate<TerminalSymbol>(current_vertex).terminal_symbol();
+  return TerminalVertex(current_vertex).terminal_symbol();
 }
 
 } // namespace slp
