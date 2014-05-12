@@ -13,7 +13,7 @@ namespace fga_csp_attack {
 
 Statistic<LongInteger> get_endomorphism_images_lengths_stat(const Aut& e) {
   Statistic<LongInteger> length_stat;
-  std::map<int, LongInteger> lengths = images_length(e);
+  std::map<Aut::TerminalSymbol, LongInteger> lengths = images_length(e);
   for (const auto& pair: lengths) {
     length_stat(pair.second);
   }
@@ -30,7 +30,7 @@ LongInteger max_images_length(const Aut& em) {
 
 LongInteger sqrt_of_sq_of_img_lengths_sum(const Aut& aut) {
   LongInteger sum(0);
-  std::map<int, LongInteger> lengths = images_length(aut);
+  std::map<Aut::TerminalSymbol, LongInteger> lengths = images_length(aut);
   for (const auto& pair: lengths) {
     sum += pair.second * pair.second;
   }
@@ -39,9 +39,9 @@ LongInteger sqrt_of_sq_of_img_lengths_sum(const Aut& aut) {
 
 LongInteger sqrt_of_sq_dif_of_lengths(const Aut& aut, const Aut& aut1) {
   LongInteger sum(0);
-  std::map<int, LongInteger> lengths = images_length(aut);
-  std::map<int, LongInteger> lengths1 = images_length(aut1);
-  std::set<int> parsed_keys;
+  std::map<Aut::TerminalSymbol, LongInteger> lengths = images_length(aut);
+  std::map<Aut::TerminalSymbol, LongInteger> lengths1 = images_length(aut1);
+  std::set<Aut::TerminalSymbol> parsed_keys;
   for (const auto& pair: lengths) {
     auto key = pair.first;
     auto val = pair.second;
@@ -117,12 +117,12 @@ void print_basic_morphism(std::ostream* p_out, const Aut& e) {
     *p_out << pair.first << " -> ";
     slp::Vertex v = pair.second;
     if (v.height() <= 1)
-      *p_out << slp::TerminalVertexTemplate<int>(v).terminal_symbol();
+      *p_out << slp::TerminalVertex(v).terminal_symbol();
     else {
       auto l = v.left_child();
       auto r = v.right_child();
-      *p_out << slp::TerminalVertexTemplate<int>(l).terminal_symbol() << " "
-                << slp::TerminalVertexTemplate<int>(r).terminal_symbol();
+      *p_out << slp::TerminalVertex(l).terminal_symbol() << " "
+                << slp::TerminalVertex(r).terminal_symbol();
     }
     *p_out << std::endl;
   });
@@ -133,7 +133,7 @@ void print_explicit_images(std::ostream* p_out, const Aut& aut) {
   aut.for_each_non_trivial_image([&out] (const Aut::symbol_image_pair_type& pair) {
     out << "<div>" << std::endl;
     out << pair.first << " -> ";
-    slp::VertexWord<int> image(pair.second);
+    slp::VertexWord image(pair.second);
     std::for_each(image.begin(), image.end(), [&out] (int symbol) {out << symbol;});
     out << std::endl;
     out << "</div>" << std::endl;

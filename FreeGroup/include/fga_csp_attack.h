@@ -79,7 +79,7 @@ std::ostream& operator<<(std::ostream& out, const Statistic<T>& stat) {
 // Helper methods
 
 //using Endomorphism with alphabet represented by integers.
-typedef EndomorphismSLP<int> Aut;
+typedef EndomorphismSLP Aut;
 
 //! Accumulates statistics for images lengths
 Statistic<LongInteger> get_endomorphism_images_lengths_stat(const Aut& e);

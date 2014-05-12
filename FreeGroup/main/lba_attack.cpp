@@ -36,7 +36,7 @@ void conjugation_length_based_attack_statistics(const std::string& filename, uns
 
 
   MultiplicationsEnumerator enumerator(rank);
-  UniformAutomorphismSLPGenerator<int> rnd(rank);
+  UniformAutomorphismSLPGenerator<> rnd(rank);
 
   int eq_num = 0;
   auto start_time = our_clock::now();
@@ -137,7 +137,7 @@ void conjugation_lba_kick_attempt(const std::string& filename, const Result& res
   auto min_conjs_ = result.min_conjugations_.min_morphisms_;
 
   AllNielsenGeneratorsEnumerator enumerator(rank);
-  UniformAutomorphismSLPGenerator<int> rnd(rank);
+  UniformAutomorphismSLPGenerator<> rnd(rank);
 
   auto start_time = our_clock::now();
   for (int i = 0; i < iterations_num; ++i) {

@@ -19,7 +19,7 @@
 using namespace crag;
 
 typedef std::chrono::high_resolution_clock our_clock;
-typedef EndomorphismSLP<int> Aut;
+typedef EndomorphismSLP Aut;
 
 void normal_form_statistics(const std::string& filename) {
   std::ofstream out(filename);
@@ -33,7 +33,7 @@ void normal_form_statistics(const std::string& filename) {
   };
 
   for (auto rank : {3, 5}) {
-    UniformAutomorphismSLPGenerator<int> rnd(rank);
+    UniformAutomorphismSLPGenerator<> rnd(rank);
     for (auto size : {640, 1280}) {
       const uint iterations_num = 10;
 
