@@ -230,7 +230,6 @@ class SinglePowerHash {
 template <class TPermutation>
 class PermutationHash {
   private:
-    constexpr static size_t PERMUTATION_RANK = 16;
     TPermutation permutation_;
     constexpr static std::hash<TPermutation> permutation_hasher_ = std::hash<TPermutation>();
     static TPermutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
@@ -243,7 +242,7 @@ class PermutationHash {
       size_t terminal = terminal_id < 0 ? -terminal_id : terminal_id;
 
       while (permutations.size() <= terminal) {
-        permutations.push_back(TPermutation::random(PERMUTATION_RANK));
+        permutations.push_back(TPermutation::random(TPermutation::RANK));
       }
 
       if (terminal_id >= 0) {
