@@ -87,10 +87,150 @@ void normal_form_statistics(const std::string& filename) {
   }
 }
 
+template <class TPermutation>
+class AlternativeBasePermutations {
+  public:
+    static const std::vector<TPermutation>& permutations() {
+      static std::vector<TPermutation> permutations = {
+        TPermutation(), //for null terminal
+        TPermutation({1, 0, 3, 11, 12, 6, 7, 13, 9, 8, 15, 2, 4, 5, 10, 14}), //permutation of the maximal order in S16
+        TPermutation({8, 3, 9, 15, 7, 0, 1, 12, 5, 13, 10, 14, 2, 6, 4, 11}), //combined with the previous, it can give the whole group
+      };
+      return permutations;
+    }
+};
+
+typedef crag::slp::TVertexHashAlgorithms<
+  crag::slp::hashers::ImageLengthHash,
+  crag::slp::hashers::SinglePowerHash,
+  crag::slp::hashers::PermutationHashBase<crag::Permutation16, AlternativeBasePermutations<crag::Permutation16>>
+> AlternativeVertexHashAlgorithms;
+
+
+//! Difference between the vertices number and the number of hashes of vertices (hash given by the template parameter).
+template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakVertexHashAlgorithms>
+uint v_num_h_num_gap(const EndomorphismSLP& e) {
+  typename VertexHashAlgorithms::Cache cache;
+  std::unordered_set<slp::Vertex> visited_vertices;
+  std::unordered_set<typename VertexHashAlgorithms::VertexHash> visited_hashes;
+
+  auto acceptor = [&visited_vertices] (const slp::inspector::InspectorTask& task) {
+    return visited_vertices.count(task.vertex) == 0
+        && visited_vertices.count(task.vertex.negate()) == 0;
+  };
+
+  auto inspect_root =[&acceptor,&visited_vertices,&visited_hashes,&cache] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+    slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
+    while (!inspector.stopped()) {
+      auto v = inspector.vertex();
+      visited_vertices.insert(v);
+      visited_hashes.insert(VertexHashAlgorithms::get_vertex_hash(v, &cache));
+      inspector.next();
+    }
+  };
+
+  e.for_each_non_trivial_image(inspect_root);
+  return visited_vertices.size() - visited_hashes.size();
+}
+
+
+void hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint size, const uint iterations) {
+  std::ostream& out = *p_out;
+  UniformAutomorphismSLPGenerator<> rnd(rank);
+  uint total_collisions_num = 0;
+  uint collisions_num = 0;
+  uint gap_num = 0;
+  uint total_gap = 0;
+  auto time = our_clock::now();
+  for (uint i = 0; i < iterations; ++i) {
+    const auto e = Aut::composition(size, rnd);
+    const auto regular = v_num_h_num_gap(e);
+    if (regular > 0) {
+      ++gap_num;
+      total_gap += regular;
+    }
+    const auto alt = v_num_h_num_gap<AlternativeVertexHashAlgorithms>(e);
+    auto n = regular - alt;
+    if (n != 0) {
+      n = n > 0 ? n : -n;
+      total_collisions_num += n;
+      ++collisions_num;
+      out << "Automorphism with collisions:" << std::endl;
+      e.save_to(&out);
+      out << std::endl;
+    }
+  }
+  auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - time);
+  out << "rank=" << rank
+      << ",size=" << size
+      << ",iterations=" << iterations
+      << ",collisions=" << collisions_num
+      << ",total collisions=" << total_collisions_num
+      << ",gap num=" << gap_num
+      << ",total gap=" << total_gap
+      << ",time=" << time_in_ms.count() << std::endl;
+}
+
+const std::string TAB("    ");
+const std::string MODE("--mode=");
+const std::string NF("nf");
+const std::string COLLISIONS("collisions");
+
+const std::string RANK("--rank=");
+const std::string SIZE("--size=");
+const std::string ITERATIONS("--iter=");
+
+void print_usage() {
+  std::cout << "Options:" << std::endl;
+  std::cout << MODE << " : mode of calculations." << std::endl;
+  std::cout << TAB << "Possible values:" << std::endl;
+  std::cout << TAB << NF << " : calculating normal form statistics." << std::endl;
+  std::cout << TAB << COLLISIONS << " : calculating hash collisions statistics." << std::endl;
+  std::cout << RANK << " : automorphisms rank." << std::endl;
+  std::cout << SIZE << " : automorphisms composition size." << std::endl;
+  std::cout << ITERATIONS << " : iterations num." << std::endl;
+}
+
+
+
+
 int main(int argc, char* argv[]) {
-  auto myuid = getuid();
-  auto mypasswd = getpwuid(myuid);
-  std::string dir(mypasswd->pw_dir);
-  dir += "/Documents/exp_results/";
-  normal_form_statistics(dir + "normal_form_stat_large.csv");
+  if (argc < 2) {
+    std::cout << "Not enough parameters." << std::endl;
+    print_usage();
+  }
+  std::string mode;
+  uint rank = 0;
+  uint size = 0;
+  uint iterations = 0;
+  for (int i = 1; i < argc; ++i) {
+    std::string option(argv[i]);
+    if (option.find(MODE) == 0) {
+      mode = option.substr(MODE.size());
+    } else if (option.find(RANK) == 0) {
+      rank = std::stoi(option.substr(RANK.size()));
+    } else if (option.find(SIZE) == 0) {
+      size = std::stoi(option.substr(SIZE.size()));
+    } else if (option.find(ITERATIONS) == 0) {
+      iterations = std::stoi(option.substr(ITERATIONS.size()));
+    }
+  }
+
+  if (mode == NF) {
+    auto myuid = getuid();
+    auto mypasswd = getpwuid(myuid);
+    std::string dir(mypasswd->pw_dir);
+    dir += "/Documents/exp_results/";
+    //TODO refactor normal_form_statistics to accept
+    normal_form_statistics(dir + "normal_form_stat_large.csv");
+  } else if (mode == COLLISIONS) {
+    if(rank == 0 || size == 0 || iterations == 0) {
+      print_usage();
+      return 0;
+    }
+    hash_collisions_statistics(&std::cout, rank, size, iterations);
+  } else {
+    print_usage();
+  }
+
 }
