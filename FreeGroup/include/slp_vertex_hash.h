@@ -227,17 +227,13 @@ class SinglePowerHash {
 
 
 //! Assign some random permutations to each of the terminals and work in the group of substitutions.
-template <class TPermutation>
-class PermutationHash {
+template <class TPermutation, class BasePermutations>
+class PermutationHashBase {
   private:
     TPermutation permutation_;
     constexpr static std::hash<TPermutation> permutation_hasher_ = std::hash<TPermutation>();
     static TPermutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
-      static std::vector<TPermutation> permutations = {
-        TPermutation(), //for null terminal
-        TPermutation({11, 4, 5, 13, 15, 0, 12, 8, 3, 1, 6, 14, 9, 7, 2, 10}), //permutation of the maximal order in S16
-        TPermutation({6, 14, 0, 4, 13, 7, 11, 12, 1, 10, 15, 9, 5, 8, 2, 3}), //combined with the previous, it can give the whole group
-      };
+      static std::vector<TPermutation> permutations(BasePermutations::permutations());
 
       size_t terminal = terminal_id < 0 ? -terminal_id : terminal_id;
 
@@ -253,19 +249,19 @@ class PermutationHash {
     }
 
   public:
-    PermutationHash(Vertex::VertexSignedId terminal_id)
+    PermutationHashBase(Vertex::VertexSignedId terminal_id)
       : permutation_(GetTerminalPermutation(terminal_id))
     { }
 
-    PermutationHash()
+    PermutationHashBase()
       : permutation_(GetTerminalPermutation(0))
     { }
 
-    PermutationHash(const PermutationHash& other)
+    PermutationHashBase(const PermutationHashBase& other)
       : permutation_(other.permutation_)
     { }
 
-    void concatenate_with(const PermutationHash& other) {
+    void concatenate_with(const PermutationHashBase& other) {
       permutation_ *= other.permutation_;
     }
 
@@ -273,7 +269,7 @@ class PermutationHash {
       permutation_ = permutation_.inverse();
     }
 
-    bool is_equal_to(const PermutationHash& other) const {
+    bool is_equal_to(const PermutationHashBase& other) const {
       return permutation_ == other.permutation_;
     }
 
@@ -283,10 +279,27 @@ class PermutationHash {
 
 };
 
-template <typename TPermutation>
+template <typename TPermutation, class BasePermutations>
 constexpr std::hash<TPermutation>
-PermutationHash<TPermutation>::permutation_hasher_;
+PermutationHashBase<TPermutation, BasePermutations>::permutation_hasher_;
 
+template <class TPermutation>
+class DefaultBasePermutations {
+  public:
+    static const std::vector<TPermutation>& permutations() {
+      static std::vector<TPermutation> permutations = {
+        TPermutation(), //for null terminal
+        TPermutation({11, 4, 5, 13, 15, 0, 12, 8, 3, 1, 6, 14, 9, 7, 2, 10}), //permutation of the maximal order in S16
+        TPermutation({6, 14, 0, 4, 13, 7, 11, 12, 1, 10, 15, 9, 5, 8, 2, 3}), //combined with the previous, it can give the whole group
+      };
+      return permutations;
+    }
+};
+
+
+//! The hash with the given default permutations.
+template <class TPermutation>
+using PermutationHash = PermutationHashBase<TPermutation, DefaultBasePermutations<TPermutation>>;
 
 class ImageLengthHash {
   private:
