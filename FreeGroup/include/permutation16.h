@@ -14,6 +14,7 @@ namespace crag {
 //! This class represents the permutation of 16 elements
 class Permutation16 {
   public:
+    constexpr static size_t RANK = 16;
     //!Trivial permutation
     constexpr Permutation16()
       : permutation_(TRIVIAL_PERMUTATION_REPRESENTATION)
