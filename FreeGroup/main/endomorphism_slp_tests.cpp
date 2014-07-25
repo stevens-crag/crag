@@ -109,7 +109,7 @@ typedef crag::slp::TVertexHashAlgorithms<
 
 //! Difference between the vertices number and the number of hashes of vertices (hash given by the template parameter).
 template<typename VertexHashAlgorithms = endomorphism_default_parameters::WeakVertexHashAlgorithms>
-uint v_num_h_num_gap(const EndomorphismSLP& e) {
+std::size_t v_num_h_num_gap(const EndomorphismSLP& e) {
   typename VertexHashAlgorithms::Cache cache;
   std::unordered_set<slp::Vertex> visited_vertices;
   std::unordered_set<typename VertexHashAlgorithms::VertexHash> visited_hashes;
@@ -144,20 +144,32 @@ void hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint
   auto time = our_clock::now();
   for (uint i = 0; i < iterations; ++i) {
     const auto e = Aut::composition(size, rnd);
+    out << "iteration " << i << std::endl;
+    out.flush();
     const auto regular = v_num_h_num_gap(e);
     if (regular > 0) {
       ++gap_num;
       total_gap += regular;
     }
-    const auto alt = v_num_h_num_gap<AlternativeVertexHashAlgorithms>(e);
+    std::size_t alt = 0;
+    try {
+      alt = v_num_h_num_gap<AlternativeVertexHashAlgorithms>(e);
+
+    } catch(const std::exception& exception) {
+      std::cerr << "Exception!"  << std::endl;
+      throw exception;
+    } catch(...) {
+      std::cerr << "Unidentified error!" << std::endl;
+      throw std::exception();
+    }
+
     auto n = regular - alt;
     if (n != 0) {
       n = n > 0 ? n : -n;
       total_collisions_num += n;
       ++collisions_num;
-      out << "Automorphism with collisions:" << std::endl;
-      e.save_to(&out);
-      out << std::endl;
+      e.save_to(p_out);
+      out << "Collision!" << std::endl;
     }
   }
   auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - time);
