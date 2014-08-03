@@ -656,7 +656,7 @@ string SubgroupFG::graphviz_format( ) const
     
     COLOR c = GDA.getNodeColor( (*v_it).first );
     NODESHAPE s = GDA.getNodeShape( (*v_it).first );
-    string shape = nodeShapeNames[s];
+    string shape = nodeShapeNames.at(s);
     
     // Vertex:
     ostr << setbase(10) << (*v_it).first;

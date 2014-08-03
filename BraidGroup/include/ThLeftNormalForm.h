@@ -126,6 +126,7 @@ public:
     theRank = rep.theRank;
     theOmegaPower = rep.theOmegaPower;
     theDecomposition = rep.theDecomposition;
+    return *this;
   }
   
   
@@ -134,6 +135,7 @@ public:
     theRank = pr.first;
     theOmegaPower = pr.second;
     theDecomposition = pr.third;
+    return *this;
   }
   
   

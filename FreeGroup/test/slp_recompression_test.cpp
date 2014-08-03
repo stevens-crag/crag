@@ -408,7 +408,7 @@ Vertex normal_form(const Vertex& slp) {
       std::set<int> left_letters;
       std::set<int> right_letters;
 
-      std:tie(left_letters, right_letters) = greedy_pairs(pairs);
+      std::tie(left_letters, right_letters) = greedy_pairs(pairs);
 
       word = compress_pairs(
           std::move(word),
@@ -591,7 +591,7 @@ void normalization_steps_check(const Vertex& root) {
     while (!left_letters.empty()) {
       ASSERT_TRUE(!naive_pairs.empty());
 
-      std:tie(naive_left_letters, naive_right_letters) =
+      std::tie(naive_left_letters, naive_right_letters) =
           naive_Jez::greedy_pairs(naive_pairs);
 
       ASSERT_EQ(naive_left_letters.size(), count(left_letters.begin(), left_letters.end(), 1));

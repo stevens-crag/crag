@@ -47,6 +47,7 @@ bool EndomorphismSLP::operator==(const EndomorphismSLP& a) const {
     return false;
   auto images = non_trivial_images_range();
   auto a_images = a.non_trivial_images_range();
+  (void) images; (void) a_images; //TODO:check this place
 
   //checking that the same letters have non-trivial images
   auto img_iterator = images_.begin();
@@ -210,7 +211,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
   *in >> roots_num >> terminals_num >> non_terminals_num;
 
   std::unordered_map<long, slp::Vertex> vertices;
-  for (int i = 0; i < terminals_num; ++i) {
+  for (size_t i = 0; i < terminals_num; ++i) {
     long index;
     TerminalSymbol image;
     *in >> index >> image;
@@ -225,7 +226,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
     return is_positive ? v : v.negate();
   };
 
-  for (int i = 0; i < non_terminals_num; ++i) {
+  for (size_t i = 0; i < non_terminals_num; ++i) {
     long index;
     long l_index;
     long r_index;
@@ -237,7 +238,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
   }
 
   EndomorphismSLP e;
-  for (int i = 0; i < roots_num; ++i) {
+  for (size_t i = 0; i < roots_num; ++i) {
     TerminalSymbol key;
     size_t index;
     *in >> key >> index;

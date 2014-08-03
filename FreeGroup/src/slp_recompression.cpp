@@ -249,7 +249,7 @@ void Rule::insert_popped_letter_right(
     return;
   }
 
-  iterator inserted = letters_.emplace(position_after, popped_letter);
+  letters_.emplace(position_after, popped_letter);
 
   //assert(!std::prev(end())->is_empty_nonterminal());
 }
@@ -270,7 +270,7 @@ void Rule::insert_popped_letter_left(
     return;
   }
 
-  iterator inserted = letters_.emplace(letter_position, popped_letter);
+  letters_.emplace(letter_position, popped_letter);
 
   //assert(!begin()->is_empty_nonterminal());
 }
@@ -678,6 +678,10 @@ void OneStepPairs::remove_crossing(
     auto next = std::next(current);
     while (current != rule.end() && next != rule.end()) {
       assert(!next->is_empty_nonterminal());
+
+      assert(current->last_terminal_letter_id() >= 0);
+      assert(next->first_terminal_letter_id() >= 0);
+
 
       if (current->last_terminal_letter_id() < left_letters.size() &&
           left_letters.at(current->last_terminal_letter_id()) &&

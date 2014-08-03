@@ -656,7 +656,7 @@ Permutation::prepare_pairs
   
   set< pair<int,int> >::reverse_iterator it = pairs1.rbegin( );
   int len = 1;
-  int beg = (*it).second;
+  //int beg = (*it).second;
   pair< int , int > prev_pair = (*it);
   it++;
   for( ; it!=pairs1.rend( ) ; ++it ) {
@@ -667,7 +667,7 @@ Permutation::prepare_pairs
       // cout << prev_pair.second << "," << (*it).second << endl;
     } else {
       len = 0;
-      beg = (*it).second;
+      //beg = (*it).second;
     }
     len++;
     prev_pair = (*it);

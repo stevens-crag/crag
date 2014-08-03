@@ -16,7 +16,7 @@
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
 
-#include "boost/pool/pool_alloc.hpp"
+//#include "boost/pool/pool_alloc.hpp"
 
 namespace crag {
 namespace slp {
@@ -26,8 +26,8 @@ typedef int64_t TerminalSymbol;
 
 namespace internal {
 class BasicVertex;
-struct BasicVertexAllocatorTag{};
-typedef boost::fast_pool_allocator<BasicVertex, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex, 1, 0> BasicVertexPoolAllocator;
+//struct BasicVertexAllocatorTag{};
+//typedef boost::fast_pool_allocator<BasicVertex, boost::default_user_allocator_malloc_free, boost::details::pool::null_mutex, 1, 0> BasicVertexPoolAllocator;
 }
 
 //! Basic interface for vertex. Also represents empty vertex, use Vertex() as empty vertex

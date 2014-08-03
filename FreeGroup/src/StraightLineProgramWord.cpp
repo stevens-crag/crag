@@ -15,20 +15,11 @@
 using namespace std;
 
 
-LongInteger gcd( const LongInteger& a , const LongInteger& b ) 
+LongInteger gcd(const LongInteger& a , const LongInteger& b )
 {
-  if( a==0 || b==0 )
-    return 0;
-
-  a = abs(a);
-  b = abs(b);
-  if( b>a )
-    swap( a , b );
-  while( b>0 ) {
-    a %= b;
-    swap( a , b );
-  }
-  return a;
+  LongInteger result;
+  mpz_gcd(result.get_mpz_t(), a.get_mpz_t(), b.get_mpz_t());
+  return result;
 }
 
 

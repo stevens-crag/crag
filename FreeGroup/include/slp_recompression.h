@@ -148,16 +148,18 @@ class RuleLetter {
         { }
     };
 
+    unsigned char status_; //bitset, #0 - is_nonterminal, #1 - is_invalid
+
+    static const unsigned char TERMINAL = 0u;
+    static const unsigned char NON_TERMINAL = 1u;
+    static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
+    static const unsigned char FLAG_INVALID = (1u << 1);
+
     union {
       Terminal terminal_;
       Rule* nonterminal_rule_;
     };
 
-   unsigned char status_; //bitset, #0 - is_nonterminal, #1 - is_invalid
-   static const unsigned char TERMINAL = 0u;
-   static const unsigned char NON_TERMINAL = 1u;
-   static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
-   static const unsigned char FLAG_INVALID = (1u << 1);
 };
 
 struct LetterPosition;
@@ -505,11 +507,10 @@ inline T reverse_bits(T value) {
 #define PTR(x) ((x)->_mp_d)
 #define ABS(x) ((x) >= 0 ? (x) : -(x))
 inline bool reverse_bit_mpz_less(const LetterPower& first, const LetterPower& second) {
-  mp_size_t  usize, vsize, msize, dsize, asize;
+  mp_size_t  usize, vsize, msize, dsize;
   mpz_srcptr u = first.get_mpz_t();
   mpz_srcptr v = second.get_mpz_t();
   mp_srcptr  up, vp;
-  int        cmp;
 
   usize = SIZ(u);
   vsize = SIZ(v);

@@ -18,7 +18,7 @@
 #include "EndomorphismSLP.h"
 #include "Permutation.h"
 #include "gmp_boost_pool_allocator.h"
-#include "boost/functional/hash/extensions.hpp"
+//#include "boost/functional/hash/extensions.hpp"
 
 using crag::slp::Vertex;
 using crag::slp::VertexWord;

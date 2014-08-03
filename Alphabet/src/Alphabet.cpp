@@ -63,7 +63,7 @@ Word Alphabet::readWord( istream& in )const {
 void Alphabet::printVector( ostream& out, const vector<Word>& v )const
 {
   out << "{ ";
-  for (int i=0;i<v.size()-1;i++){
+  for (size_t i=0;i<v.size()-1;i++){
     printWord(out,v[i]); out << ", ";
   }
   printWord(out,v[v.size()-1]); out << " }" << flush;
@@ -109,7 +109,7 @@ vector<Word> Alphabet::readVector( istream& in )const
 
 
 int FiniteAlphabet::getNum( const string& letter ) const {
-  for (int i=0;i<theLetters.size();i++)
+  for (size_t i=0;i<theLetters.size();i++)
     if ( theLetters[i] == letter ) return i+1;
   
   return 0;
@@ -117,7 +117,7 @@ int FiniteAlphabet::getNum( const string& letter ) const {
 
 
 string FiniteAlphabet::getLetter( int index ) const {
-  if (abs(index) == 0 || abs(index) > theLetters.size() ){
+  if (index == 0 || static_cast<uint>(abs(index)) > theLetters.size() ){
     cout << "Index " << index << " is out of bounds" << endl;
     exit(0);
   }
@@ -138,7 +138,7 @@ const vector<string>& FiniteAlphabet::getLetters( ) const {
 int InfiniteAlphabet::getNum( const string& letter ) const {
   // match the letter prefix first
   if ( thePrefix.size() >= letter.size() ) return 0;
-  for (int i=0;i<thePrefix.size();i++)
+  for (size_t i=0;i<thePrefix.size();i++)
     if ( thePrefix[i] != letter[i] ) return 0;
   
   // extract the index

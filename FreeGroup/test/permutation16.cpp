@@ -118,12 +118,14 @@ TEST(Permutation16, ComposeAndInverseCheck) {
 //            composition16_string << composition16[i] << ',';
 //          }
 
-          for (size_t i = 0; i < composition.size(); ++i) {
+          ASSERT_EQ(static_cast<size_t>(composition.size()), composition16.size());
+
+          for (size_t i = 0; i < composition16.size(); ++i) {
             ASSERT_EQ(composition[i], composition16[i]);// << first_string.str() << " * " << second_string.str() << std::endl
                 //<< composition_string.str() << " or " << composition16_string.str();
           }
 
-          for (size_t i = composition.size(); i < 16; ++i) {
+          for (size_t i = composition16.size(); i < 16; ++i) {
             ASSERT_EQ(i, composition16[i]);// << composition16.permutation_;
           }
         } while (std::next_permutation(second_permutation.begin(), second_permutation.end()));

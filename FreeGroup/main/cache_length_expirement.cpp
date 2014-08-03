@@ -18,7 +18,7 @@
 #include "EndomorphismSLP.h"
 #include "Permutation.h"
 #include "gmp_boost_pool_allocator.h"
-#include "boost/functional/hash/extensions.hpp"
+//#include "boost/functional/hash/extensions.hpp"
 
 using crag::slp::Vertex;
 using crag::slp::VertexWord;
@@ -243,8 +243,6 @@ int main() {
       auto begin = std::chrono::system_clock::now();
 
       while (!inspector.stopped()) {
-        auto& vertex = inspector.vertex();
-
         auto img = reduce(inspector.vertex(), reduced_vertices, inspector.vertex_left_siblings_length(), &last_reductions, ++reduce_count, &hash_cache);
         auto new_entry = std::make_pair(inspector.vertex(), img);
 

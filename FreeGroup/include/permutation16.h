@@ -51,6 +51,10 @@ class Permutation16 {
       return permutation_ != other.permutation_;
     }
 
+    constexpr static size_t size() {
+      return RANK;
+    }
+
     //! Get the image of i
     uint64_t get_image(size_t i) const {
       i = i << 2; //multiple by 4
