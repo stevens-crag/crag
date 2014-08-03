@@ -117,7 +117,7 @@ int FiniteAlphabet::getNum( const string& letter ) const {
 
 
 string FiniteAlphabet::getLetter( int index ) const {
-  if (index == 0 || static_cast<uint>(abs(index)) > theLetters.size() ){
+  if (index == 0 || static_cast<unsigned int>(abs(index)) > theLetters.size() ){
     cout << "Index " << index << " is out of bounds" << endl;
     exit(0);
   }

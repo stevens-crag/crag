@@ -6,37 +6,27 @@
 #include "Map.h"
 #include "Word.h"
 
-#include <ext/hash_set>
+#include <unordered_set>
 //#include <ext/stl_hash_fun.h>
 
 
 // --------------------- structures to create a set of maps2
 //! Implements a comparison operator of two maps.
-struct compMaps
+struct map_hash
 {
-  bool operator()(  Map m1,  Map m2 ) const
+  size_t operator()(const Map& m) const
   {
-    return (m1 == m2);
+    int h = 0;
+    const vector<Word>& is =  m.generatingImages( );
+    for (int i=0;i<is.size();i++)
+h+=is[i].length();
+      
+    return h;
   }
 };
 
-namespace __gnu_cxx {
-  struct map_hash
-  {
-    size_t operator()(Map m) const
-    {
-      int h = 0;
-      const vector<Word>& is =  m.generatingImages( );
-      for (int i=0;i<is.size();i++)
-	h+=is[i].length();
-      
-      return h;
-    }
-  };
-}
-
 //! Implements a set fo Map objects
-typedef __gnu_cxx::hash_set<Map, __gnu_cxx::map_hash, compMaps> SetOfMaps;
+typedef std::unordered_set<Map, map_hash> SetOfMaps;
 
 
 //! Abstract interface for a set of Maps (Automorphisms)

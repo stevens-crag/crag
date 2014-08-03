@@ -273,6 +273,11 @@ std::set<std::pair<int, int>> get_pairs_list(const std::vector<int>& word) {
   return pairs;
 }
 
+bool compare_blocks(const std::pair<int, size_t>& first, const std::pair<int, size_t>& second) {
+    return first.first < second.first ||
+        (first.first == second.first && mad_sorts::reverse_bits(first.second) < mad_sorts::reverse_bits(second.second));
+}
+
 std::vector<int> compress_blocks(
     const std::vector<int>& word,
     std::vector<Vertex>* terminal_vertex
@@ -286,16 +291,8 @@ std::vector<int> compress_blocks(
     ++blocks.back().second;
   }
 
-  auto compare_blocks = [](
-      const std::pair<int, size_t>& first,
-      const std::pair<int, size_t>& second
-  ) -> bool {
-    return first.first < second.first ||
-        (first.first == second.first && mad_sorts::reverse_bits(first.second) < mad_sorts::reverse_bits(second.second));
-  };
-
-  std::map<std::pair<int, size_t>, int, decltype(compare_blocks)>
-  block_terminal (compare_blocks);
+  typedef bool(*PairsCompare)(const std::pair<int, size_t>&, const std::pair<int, size_t>&);
+  std::map<std::pair<int, size_t>, int, PairsCompare> block_terminal(compare_blocks);
 
   for (auto& block : blocks) {
     if (block_terminal.count(block) == 0) {
@@ -1121,8 +1118,8 @@ TEST(Recompression, StressNormalForm) {
 }
 
 TEST(Recompression, StressEndomorphismNormal) {
-  constexpr size_t RANK = 3;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 50;
+  CONSTEXPR_OR_CONST size_t RANK = 3;
+  CONSTEXPR_OR_CONST size_t ENDOMORPHISMS_NUMBER = 50;
   int REPEAT = 1000;
   size_t seed = 112233;
   srand(seed);

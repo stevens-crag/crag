@@ -118,9 +118,9 @@ TEST(Permutation16, ComposeAndInverseCheck) {
 //            composition16_string << composition16[i] << ',';
 //          }
 
-          ASSERT_EQ(static_cast<size_t>(composition.size()), composition16.size());
+          ASSERT_LE(static_cast<size_t>(composition.size()), composition16.size());
 
-          for (size_t i = 0; i < composition16.size(); ++i) {
+          for (size_t i = 0; i < composition.size(); ++i) {
             ASSERT_EQ(composition[i], composition16[i]);// << first_string.str() << " * " << second_string.str() << std::endl
                 //<< composition_string.str() << " or " << composition16_string.str();
           }
@@ -134,7 +134,7 @@ TEST(Permutation16, ComposeAndInverseCheck) {
   }
 }
 
-constexpr uint64_t factorial(uint64_t n)
+CONSTEXPR uint64_t factorial(uint64_t n)
 {
     return n > 0? factorial(n-1) * n : 1;
 }

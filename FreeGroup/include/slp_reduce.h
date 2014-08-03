@@ -22,10 +22,9 @@ namespace std {
 
 template<>
 struct hash<LongInteger> {
-  private:
-    constexpr static hash<mp_limb_t> limb_hasher_ = hash<mp_limb_t>();
   public:
     size_t operator()(const LongInteger& obj) const {
+      CONSTEXPR_OR_CONST static hash<mp_limb_t> limb_hasher_ = hash<mp_limb_t>();
       return limb_hasher_(*obj.get_mpz_t()->_mp_d);
     }
 };
@@ -35,10 +34,10 @@ namespace tuple_hash_detail {
 template <std::size_t I, typename Tuple>
 class TupleHasher {
   private:
-    constexpr static hash<typename std::tuple_element<I - 1, Tuple>::type> element_hasher_ = hash<typename std::tuple_element<I - 1, Tuple>::type>();
-    constexpr static TupleHasher<I - 1, Tuple> prefix_hasher_ = TupleHasher<I - 1, Tuple>();
   public:
     size_t operator()(const Tuple& obj) const {
+      CONSTEXPR_OR_CONST static hash<typename std::tuple_element<I - 1, Tuple>::type> element_hasher_ = hash<typename std::tuple_element<I - 1, Tuple>::type>();
+      CONSTEXPR_OR_CONST static TupleHasher<I - 1, Tuple> prefix_hasher_ = TupleHasher<I - 1, Tuple>();
       size_t prefix_hash_value = prefix_hasher_(obj);
       //Taken from boost/functional/hash
       return element_hasher_(std::get<I - 1>(obj)) + 0x9e3779b9 + (prefix_hash_value << 6) + (prefix_hash_value >> 2);
@@ -48,16 +47,12 @@ class TupleHasher {
 template <typename Tuple>
 class TupleHasher<0, Tuple> {
   public:
-    constexpr size_t operator()(const Tuple& obj) const {
+    size_t operator()(const Tuple& obj) const {
       //Taken from boost/functional/hash
       return 0;
     }
 };
 
-template <std::size_t I, typename Tuple>
-constexpr hash<typename std::tuple_element<I - 1, Tuple>::type> TupleHasher<I, Tuple>::element_hasher_;
-template <std::size_t I, typename Tuple>
-constexpr TupleHasher<I - 1, Tuple> TupleHasher<I, Tuple>::prefix_hasher_;
 //template <typename Tuple>
 //hash<typename std::tuple_element<0, Tuple>::type> TupleHasher<0, Tuple>::element_hasher_;
 
@@ -96,15 +91,12 @@ constexpr TupleHasher<I - 1, Tuple> TupleHasher<I, Tuple>::prefix_hasher_;
 template<typename... T>
 struct hash<tuple<T...>> {
   private:
-    constexpr static tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tuple<T...>> tuple_haser_ = tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tuple<T...>>();
   public:
     size_t operator()(const tuple<T...>& obj) const {
+      CONSTEXPR_OR_CONST static tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tuple<T...>> tuple_haser_ = tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tuple<T...>>();
       return tuple_haser_(obj);
     }
 };
-
-template<typename... T>
-constexpr tuple_hash_detail::TupleHasher<std::tuple_size<tuple<T...>>::value, tuple<T...>> hash<tuple<T...>>::tuple_haser_;
 
 }//namespace std
 

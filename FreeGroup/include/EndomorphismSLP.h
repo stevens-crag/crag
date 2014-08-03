@@ -47,10 +47,10 @@ public:
   typedef slp::TerminalSymbol TerminalSymbol;
   typedef slp::TerminalVertex TerminalVertex;
 
-  typedef typename std::map<TerminalSymbol, slp::Vertex>::size_type size_type;
-  typedef typename std::map<TerminalSymbol, slp::Vertex>::iterator iterator;
-  typedef typename std::map<TerminalSymbol, slp::Vertex>::const_iterator const_iterator;
-  typedef typename std::map<TerminalSymbol, slp::Vertex>::value_type symbol_image_pair_type;
+  typedef std::map<TerminalSymbol, slp::Vertex>::size_type size_type;
+  typedef std::map<TerminalSymbol, slp::Vertex>::iterator iterator;
+  typedef std::map<TerminalSymbol, slp::Vertex>::const_iterator const_iterator;
+  typedef std::map<TerminalSymbol, slp::Vertex>::value_type symbol_image_pair_type;
 
 
   //! Creates an identity automorphism.
@@ -432,7 +432,7 @@ template <
 >
 class UniformAutomorphismSLPGenerator {
 public:
-  typedef int index_type;
+  typedef size_t index_type;
   typedef slp::TerminalSymbol TerminalSymbol;
 
   //! Constructs a generator of automorphisms of the free group of the given rank.
@@ -466,9 +466,9 @@ public:
    * @param min_symbol_index min index of free group generator > 0
    * @param max_symbol_index min index of free group generator > 0
    */
-  UniformAutomorphismSLPGenerator(index_type min_symbol_index, index_type max_symbol_index)
-    : UniformAutomorphismSLPGenerator(min_symbol_index, max_symbol_index, std::make_shared<RandomEngine>(), nullptr)
-  {}
+  //UniformAutomorphismSLPGenerator(index_type min_symbol_index, index_type max_symbol_index)
+  //  : UniformAutomorphismSLPGenerator(min_symbol_index, max_symbol_index, std::make_shared<RandomEngine>(), nullptr)
+  //{}
 
   //! Constructs a generator of automorphisms of the free group with generators from the interval [min_symbol_index, max_symbol_index].
   /**

@@ -1,6 +1,6 @@
 #Specify the version being used aswell as the language
-cmake_minimum_required(VERSION 3.0.0)
-cmake_policy(VERSION 3.0.0)
+cmake_minimum_required(VERSION 2.8.12)
+cmake_policy(VERSION 2.8.12)
 IF(UNIX)
   #add -std=c++11 for all subprojects to make ABI fully compatible
   #also enables eclipse c++11 features

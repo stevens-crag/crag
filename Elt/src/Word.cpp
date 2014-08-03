@@ -155,7 +155,7 @@ Word Word::replaceGenerators( const vector<Word>& images ) const
 	for ( ConstWordIterator I = this->begin(); I!=this->end(); I++){
     	Generator g = *I;
 //    	cout << abs(g)-1  << " " << images.size() << endl;
-		if (static_cast<uint>(abs(g)) >= images.size() + 1){
+		if (static_cast<unsigned int>(abs(g)) >= images.size() + 1){
 	  cout <<"Word::replaceGenerators() : image vector index overflow." <<endl; 
 	  exit(1);
 	}

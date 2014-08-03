@@ -9,14 +9,13 @@
 
 #ifndef _StraightLineProgramWord_H_
 #define _StraightLineProgramWord_H_
-
+#include <gmpxx.h>
 
 #include "map"
 #include "list"
 using namespace std;
 
 
-#include "gmpxx.h"
 typedef mpz_class LongInteger;
 #include "Map.h"
 

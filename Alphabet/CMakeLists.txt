@@ -17,4 +17,6 @@ target_link_libraries(Alphabet
   PUBLIC Elt
 )
 
+target_compile_definitions(Alphabet PRIVATE "YY_NO_UNISTD_H")
+
 crag_main(mainParser Alphabet Elt)

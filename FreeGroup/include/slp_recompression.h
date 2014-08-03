@@ -38,18 +38,18 @@ class RuleLetter {
       return status_ & TERMINAL_NONTERMINAL_MASK;
     }
 
-    RuleLetter(const RuleLetter& other)
-      : status_(0)
-    {
-      if (other.is_nonterminal()) {
-        nonterminal_rule_ = other.nonterminal_rule_;
-        status_ = NON_TERMINAL;
-      } else {
-        new (&terminal_) Terminal(other.terminal_.id, LetterPower(other.terminal_.power));
-        status_ = TERMINAL;
-      }
-      assert(is_valid());
-    }
+    //RuleLetter(const RuleLetter& other)
+    //  : status_(
+    //{
+    //  if (other.is_nonterminal()) {
+    //    nonterminal_rule_ = other.nonterminal_rule_;
+    //    status_ = NON_TERMINAL;
+    //  } else {
+    //    new (&terminal_) Terminal(other.terminal_.id, LetterPower(other.terminal_.power));
+    //    status_ = TERMINAL;
+    //  }
+    //  assert(is_valid());
+    //}
 
     bool is_valid() const {
       return !(status_ & FLAG_INVALID);
@@ -87,6 +87,7 @@ class RuleLetter {
 
     explicit RuleLetter(Rule* vertex_rule)
       : status_(NON_TERMINAL)
+      , terminal_(0, 0)
       , nonterminal_rule_(vertex_rule)
     {
       assert(vertex_rule);
@@ -96,19 +97,20 @@ class RuleLetter {
 
     RuleLetter(TerminalId terminal, LetterPower power)
       : status_(TERMINAL)
+      , terminal_(terminal, std::move(power))
     {
       assert(!is_nonterminal());
       assert(status_ == 0);
       assert(terminal != 0);
       assert(is_valid());
 
-      new (&terminal_) Terminal(terminal, std::move(power));
+      //new (&terminal_) Terminal();
     }
 
     ~RuleLetter() {
-      if (!is_nonterminal()) {
-        terminal_.~Terminal();
-      }
+      //if (!is_nonterminal()) {
+      //  terminal_.~Terminal();
+      //}
     }
 
     void debug_print(std::ostream* os) const;
@@ -155,10 +157,8 @@ class RuleLetter {
     static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
     static const unsigned char FLAG_INVALID = (1u << 1);
 
-    union {
-      Terminal terminal_;
-      Rule* nonterminal_rule_;
-    };
+    Terminal terminal_;
+    Rule* nonterminal_rule_ = nullptr;
 
 };
 

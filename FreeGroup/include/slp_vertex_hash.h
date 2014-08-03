@@ -195,7 +195,6 @@ class PowerCountHash {
 class SinglePowerHash {
   private:
     int64_t terminals_power_;
-    constexpr static std::hash<int64_t> int64_t_hasher_ = std::hash<int64_t>();
   public:
     SinglePowerHash()
       : terminals_power_(0)
@@ -221,6 +220,7 @@ class SinglePowerHash {
     }
 
     size_t get_std_hash() const {
+      CONSTEXPR_OR_CONST static std::hash<int64_t> int64_t_hasher_ = std::hash<int64_t>();
       return int64_t_hasher_(terminals_power_);
     }
 };
@@ -231,7 +231,7 @@ template <class TPermutation, class BasePermutations>
 class PermutationHashBase {
   private:
     TPermutation permutation_;
-    constexpr static std::hash<TPermutation> permutation_hasher_ = std::hash<TPermutation>();
+  
     static TPermutation GetTerminalPermutation(Vertex::VertexSignedId terminal_id) {
       static std::vector<TPermutation> permutations(BasePermutations::permutations());
 
@@ -274,14 +274,11 @@ class PermutationHashBase {
     }
 
     size_t get_std_hash() const {
+      CONSTEXPR_OR_CONST static std::hash<TPermutation> permutation_hasher_ = std::hash<TPermutation>();
       return permutation_hasher_(permutation_);
     }
 
 };
-
-template <typename TPermutation, class BasePermutations>
-constexpr std::hash<TPermutation>
-PermutationHashBase<TPermutation, BasePermutations>::permutation_hasher_;
 
 template <class TPermutation>
 class DefaultBasePermutations {
@@ -304,7 +301,6 @@ using PermutationHash = PermutationHashBase<TPermutation, DefaultBasePermutation
 class ImageLengthHash {
   private:
     LongInteger length_;
-    constexpr static std::hash<LongInteger> long_integer_hasher_ = std::hash<LongInteger>();
   public:
     ImageLengthHash()
       : length_(0)
@@ -329,6 +325,7 @@ class ImageLengthHash {
     }
 
     size_t get_std_hash() const {
+      CONSTEXPR_OR_CONST static std::hash<LongInteger> long_integer_hasher_ = std::hash<LongInteger>();
       return long_integer_hasher_(length_);
     }
 };
@@ -595,7 +592,7 @@ class TVertexHashAlgorithms {
       assert(p_hash_cache);
 
       //returning the canonical vertex corresponding to the vertex hash
-      auto map_vertex = [&] (const Vertex& v, const std::unordered_map<Vertex, Vertex>& new_vertices) {
+      auto map_vertex = [&] (const Vertex& v, const std::unordered_map<Vertex, Vertex>& new_vertices) -> Vertex {
         //side effect of this call is the cache filling for all the subvertices
         auto hash = get_vertex_hash(v, p_cache);
         auto item = p_hash_cache->find(hash);

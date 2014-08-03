@@ -16,9 +16,9 @@ namespace crag {
 namespace slp {
 namespace {
 
-constexpr TerminalSymbol terminal_a = TerminalSymbol{} + 100;
-constexpr TerminalSymbol terminal_b = TerminalSymbol{} + 200;
-constexpr TerminalSymbol terminal_c = TerminalSymbol{} + 300;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_a = TerminalSymbol{} + 100;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_b = TerminalSymbol{} + 200;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_c = TerminalSymbol{} + 300;
 
 class VertexTest : public ::testing::Test {
   protected:
@@ -44,8 +44,8 @@ TEST_F(VertexTest, NullVertex) {
   EXPECT_EQ(Vertex(), Vertex().left_child());
   EXPECT_EQ(Vertex(), Vertex().right_child());
 
-  EXPECT_EQ(0, hash(Vertex()));
-  EXPECT_EQ(0, hash(Vertex().negate()));
+  EXPECT_EQ(std::hash<Vertex::VertexSignedId>()(0), hash(Vertex()));
+  EXPECT_EQ(std::hash<Vertex::VertexSignedId>()(0), hash(Vertex().negate()));
 }
 
 TEST_F(VertexTest, TerminalVertex) {

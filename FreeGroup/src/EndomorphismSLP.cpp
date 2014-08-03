@@ -499,7 +499,7 @@ EndomorphismSLP EndomorphismSLP::normal_form() const {
 
 unsigned int height(const EndomorphismSLP& e) {
   unsigned int h = 0;
-  auto pick_max_height = [&h] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto pick_max_height = [&h] (const EndomorphismSLP::symbol_image_pair_type& v) {
     const unsigned int v_h = v.second.height();
     if (v_h > h)
       h = v_h;
@@ -517,7 +517,7 @@ unsigned int slp_vertices_num(const EndomorphismSLP& e) {
         && visited_vertices.count(task.vertex.negate()) == 0;
   };
 
-  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto inspect_root =[&acceptor,&visited_vertices] (const EndomorphismSLP::symbol_image_pair_type& v) {
     slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
     while (!inspector.stopped()) {
       visited_vertices.insert(inspector.vertex());
@@ -536,7 +536,7 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP& e) {
     return visited_vertices.find(task.vertex.length()) == visited_vertices.end();
   };
 
-  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto inspect_root =[&acceptor,&visited_vertices] (const EndomorphismSLP::symbol_image_pair_type& v) {
     slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
     while (!inspector.stopped()) {
       visited_vertices.insert(inspector.vertex().length());
@@ -551,7 +551,7 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP& e) {
 
 std::map<slp::TerminalSymbol, LongInteger> images_length(const EndomorphismSLP& e) {
   std::map<slp::TerminalSymbol, LongInteger> key_to_lengths;
-  auto add_length = [&key_to_lengths] (const typename EndomorphismSLP::symbol_image_pair_type& pair) {
+  auto add_length = [&key_to_lengths] (const EndomorphismSLP::symbol_image_pair_type& pair) {
    auto key = pair.first;
    slp::Vertex v = pair.second;
    key_to_lengths.insert(std::make_pair(key, v.length()));

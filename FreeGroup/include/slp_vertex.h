@@ -9,12 +9,15 @@
 #ifndef CRAG_FREEGROUP_SLP_VERTEX_H_
 #define CRAG_FREEGROUP_SLP_VERTEX_H_
 
+#include <algorithm>
 #include <memory>
 #include <iostream>
 #include <cassert>
 
 #include <gmpxx.h>
 typedef mpz_class LongInteger;
+
+#include "common.h"
 
 //#include "boost/pool/pool_alloc.hpp"
 
@@ -34,7 +37,7 @@ class BasicVertex;
 class Vertex {
   public:
     //! Default constructor generating empty vertex.
-    constexpr Vertex()
+    CONSTEXPR Vertex()
       : vertex_signed_id_(0)
       , vertex_(nullptr)
     {}
@@ -66,6 +69,7 @@ class Vertex {
     unsigned int height() const;
 
     size_t vertex_hash() const {
+      static CONSTEXPR_OR_CONST std::hash<VertexSignedId> vertex_id_hash_;
       return vertex_id_hash_(vertex_signed_id_);
     }
 
@@ -85,7 +89,6 @@ class Vertex {
     //typedef internal::BasicVertexPoolAllocator VertexAllocator;
     VertexSignedId vertex_signed_id_;
     std::shared_ptr<internal::BasicVertex> vertex_;
-    static constexpr std::hash<VertexSignedId> vertex_id_hash_ = std::hash<VertexSignedId>();
 
     Vertex(VertexSignedId vertex_signed_id, std::shared_ptr<internal::BasicVertex>&& vertex)
       : vertex_signed_id_(vertex_signed_id)
@@ -199,7 +202,7 @@ class TerminalVertex : public Vertex {
     TerminalVertex() = delete;
 
     explicit TerminalVertex(TerminalSymbol terminal_symbol)
-      : Vertex(static_cast<typename Vertex::VertexSignedId>(terminal_symbol), nullptr)
+      : Vertex(static_cast<Vertex::VertexSignedId>(terminal_symbol), nullptr)
       , terminal_symbol_(terminal_symbol)
     {
       assert(height() == 1 && length() == 1);
@@ -275,21 +278,20 @@ namespace std {
 //! Definition of the hash for std::pair
 template<typename TFirst, typename TSecond>
 struct hash<pair<TFirst, TSecond>> {
-private:
-  constexpr static hash<TFirst> first_hash_ = hash<TFirst>();
-  constexpr static hash<TSecond> second_hash_ = hash<TSecond>();
 public:
   size_t operator()(const pair<TFirst, TSecond>& obj) const {
+    static CONSTEXPR_OR_CONST auto first_hash_ = hash<TFirst>();
+    static CONSTEXPR_OR_CONST auto second_hash_ = hash<TSecond>();
     size_t first_hash_value = first_hash_(obj.first);
     //Taken from boost/functional/hash
     return second_hash_(obj.second) + 0x9e3779b9 + (first_hash_value << 6) + (first_hash_value >> 2);
   }
 };
 
-template<typename TFirst, typename TSecond>
-constexpr hash<TFirst> hash<pair<TFirst, TSecond>>::first_hash_;
-template<typename TFirst, typename TSecond>
-constexpr hash<TSecond> hash<pair<TFirst, TSecond>>::second_hash_;
+//template<typename TFirst, typename TSecond>
+//constexpr hash<TFirst> hash<pair<TFirst, TSecond>>::first_hash_;
+//template<typename TFirst, typename TSecond>
+//constexpr hash<TSecond> hash<pair<TFirst, TSecond>>::second_hash_;
 
 
 //! Definition of the hash for SignedVertex

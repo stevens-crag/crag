@@ -64,7 +64,7 @@ typedef crag::slp::TVertexHashAlgorithms<
 > VertexHashAlgorithms;
 
 //const size_t LAST_REDUCTIONS_LIMIT = 7;
-long int max_distance = 0;
+long long int max_distance = 0;
 
 std::map<long int, size_t> distances(long int distance = -1) {
   static std::map<long int, size_t> distances;
