@@ -143,17 +143,26 @@ void hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint
   uint total_gap = 0;
   auto time = our_clock::now();
   for (uint i = 0; i < iterations; ++i) {
+    out << i << ":";
+    out.flush();
     const auto e = Aut::composition(size, rnd);
-    out << "iteration " << i << std::endl;
+    out << "gen,";
     out.flush();
     const auto regular = v_num_h_num_gap(e);
-    if (regular > 0) {
-      ++gap_num;
-      total_gap += regular;
-    }
+
     std::size_t alt = 0;
     try {
+      out << "h1,";
+      out.flush();
+      if (regular > 0) {
+        out << "pos gap, ";
+        out.flush();
+        ++gap_num;
+        total_gap += regular;
+      }
       alt = v_num_h_num_gap<AlternativeVertexHashAlgorithms>(e);
+      out << "h2,";
+      out.flush();
 
     } catch(const std::exception& exception) {
       std::cerr << "Exception!"  << std::endl;
@@ -169,11 +178,16 @@ void hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint
       total_collisions_num += n;
       ++collisions_num;
       e.save_to(p_out);
-      out << "Collision!" << std::endl;
+      out << " Collision! ";
+      out.flush();
     }
+    out << "done. ";
+    if (i % 4 == 3)
+      out << std::endl;
+    out.flush();
   }
   auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - time);
-  out << "rank=" << rank
+  out << std::endl << "Summary: rank=" << rank
       << ",size=" << size
       << ",iterations=" << iterations
       << ",collisions=" << collisions_num
