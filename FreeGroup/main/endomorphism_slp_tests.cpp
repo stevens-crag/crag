@@ -197,10 +197,52 @@ void hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint
       << ",time=" << time_in_ms.count() << std::endl;
 }
 
+void free_reduction_hash_collisions_statistics(std::ostream* p_out, const uint rank, const uint size, const uint iterations) {
+  std::ostream& out = *p_out;
+  UniformAutomorphismSLPGenerator<> rnd(rank);
+  uint collisions_num = 0;
+  auto time = our_clock::now();
+  for (uint i = 0; i < iterations; ++i) {
+    out << i << ":";
+    out.flush();
+    const auto e = Aut::composition(size, rnd);
+    out << "gen,";
+    out.flush();
+    const auto regular = e.free_reduction();
+    out << "f1";
+    out.flush();
+    const auto n = slp_vertices_num(regular);
+    out << "(" << n << "),";
+    out.flush();
+    const auto alt = e.free_reduction<AlternativeVertexHashAlgorithms>();
+    out << "f2,";
+    out.flush();
+    if (n != slp_vertices_num(alt)) {
+      out << "Collision!";
+      out.flush();
+      ++collisions_num;
+      e.save_to(p_out);
+    }
+    out << "done! ";
+    if (i % 3 == 2)
+      out << std::endl;
+    out.flush();
+  }
+
+  auto time_in_ms = std::chrono::duration_cast<std::chrono::milliseconds>(our_clock::now() - time);
+  out << std::endl << "Summary: rank=" << rank
+      << ",size=" << size
+      << ",iterations=" << iterations
+      << ",collisions=" << collisions_num
+      << ",time=" << time_in_ms.count() << std::endl;
+}
+
+
 const std::string TAB("    ");
 const std::string MODE("--mode=");
 const std::string NF("nf");
 const std::string COLLISIONS("collisions");
+const std::string FR_COLLISIONS("frc");
 
 const std::string RANK("--rank=");
 const std::string SIZE("--size=");
@@ -212,6 +254,7 @@ void print_usage() {
   std::cout << TAB << "Possible values:" << std::endl;
   std::cout << TAB << NF << " : calculating normal form statistics." << std::endl;
   std::cout << TAB << COLLISIONS << " : calculating hash collisions statistics." << std::endl;
+  std::cout << TAB << FR_COLLISIONS << " : calculating hash collisions with free reduction statistics." << std::endl;
   std::cout << RANK << " : automorphisms rank." << std::endl;
   std::cout << SIZE << " : automorphisms composition size." << std::endl;
   std::cout << ITERATIONS << " : iterations num." << std::endl;
@@ -255,6 +298,12 @@ int main(int argc, char* argv[]) {
       return 0;
     }
     hash_collisions_statistics(&std::cout, rank, size, iterations);
+  } else if (mode == FR_COLLISIONS) {
+    if(rank == 0 || size == 0 || iterations == 0) {
+      print_usage();
+      return 0;
+    }
+    free_reduction_hash_collisions_statistics(&std::cout, rank, size, iterations);
   } else {
     print_usage();
   }
