@@ -217,7 +217,19 @@ void free_reduction_hash_collisions_statistics(std::ostream* p_out, const uint r
     const auto alt = e.free_reduction<AlternativeVertexHashAlgorithms>();
     out << "f2,";
     out.flush();
-    if (n != slp_vertices_num(alt)) {
+    const std::map<slp::TerminalSymbol, LongInteger> l1 = images_length(regular);
+    const std::map<slp::TerminalSymbol, LongInteger> l2 = images_length(alt);
+    bool same = n == slp_vertices_num(alt);
+    if (same) {
+      for (const auto& pair: l1) {
+        auto it = l2.find(pair.first);
+        if (it->second != pair.second) {
+          same = false;
+          break;
+        }
+      }
+    }
+    if (!same) {
       out << "Collision!";
       out.flush();
       ++collisions_num;
