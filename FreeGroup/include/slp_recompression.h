@@ -38,18 +38,18 @@ class RuleLetter {
       return status_ & TERMINAL_NONTERMINAL_MASK;
     }
 
-    //RuleLetter(const RuleLetter& other)
-    //  : status_(
-    //{
-    //  if (other.is_nonterminal()) {
-    //    nonterminal_rule_ = other.nonterminal_rule_;
-    //    status_ = NON_TERMINAL;
-    //  } else {
-    //    new (&terminal_) Terminal(other.terminal_.id, LetterPower(other.terminal_.power));
-    //    status_ = TERMINAL;
-    //  }
-    //  assert(is_valid());
-    //}
+    RuleLetter(const RuleLetter& other)
+      : status_(0)
+      , terminal_(other.terminal_)
+      , nonterminal_rule_(other.nonterminal_rule_)
+    {
+      if (other.is_nonterminal()) {
+        status_ = NON_TERMINAL;
+      } else {
+        status_ = TERMINAL;
+      }
+      assert(is_valid());
+    }
 
     bool is_valid() const {
       return !(status_ & FLAG_INVALID);
@@ -478,23 +478,24 @@ Vertex normal_form(Vertex root);
 
 namespace mad_sorts {
 inline unsigned char reverse_bits_in_byte(unsigned char byte) {
-  return ((byte * 0x80200802ULL) & 0x0884422110ULL) * 0x0101010101ULL >> 32;
+  return static_cast<unsigned char>(((byte * 0x80200802ULL) & 0x0884422110ULL) * 0x0101010101ULL >> 32);
 }
 
 template <size_t N>
 struct bits_reverse {
-    template <typename T>
-    inline static T reverse_N_bits(T value) {
-      auto res = ((static_cast<T>(reverse_bits_in_byte(value))) << (8 * (N-1))) | (bits_reverse<N-1>::reverse_N_bits(value >> 8));
-      return res;
-    }
+  static_assert(N <= 8, "Supports only integral types");
+  template <typename T>
+  inline static T reverse_N_bits(T value) {
+    auto res = ((static_cast<T>(reverse_bits_in_byte(static_cast<unsigned char>(value)))) << (8 * (N-1))) | (bits_reverse<N-1>::reverse_N_bits(value >> 8));
+    return res;
+  }
 };
 
 template <>
 struct bits_reverse<1> {
     template <typename T>
     inline static T reverse_N_bits(T value) {
-      return reverse_bits_in_byte(value);
+      return reverse_bits_in_byte(static_cast<unsigned char>(value));
     }
 };
 

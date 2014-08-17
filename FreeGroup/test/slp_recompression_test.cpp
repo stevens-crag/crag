@@ -197,7 +197,7 @@ greedy_pairs(std::set<std::pair<int, int>> pairs) {
 
     size_t new_pairs_if_left = 0;
 
-    if (right_pair->first == id) {
+    if (right_pair != right_pairs.end() && right_pair->first == id) {
 
       std::tie(right_range_begin, right_range_end) =
           right_pairs.equal_range(right_pair->first);
@@ -213,7 +213,7 @@ greedy_pairs(std::set<std::pair<int, int>> pairs) {
 
     size_t new_pairs_if_right = 0;
 
-    if (left_pair->first == id) {
+    if (left_pair != left_pairs.end() && left_pair->first == id) {
 
       std::tie(left_range_begin, left_range_end) =
           left_pairs.equal_range(left_pair->first);
@@ -282,6 +282,10 @@ std::vector<int> compress_blocks(
     const std::vector<int>& word,
     std::vector<Vertex>* terminal_vertex
 ) {
+  if (word.empty()) {
+    return word;
+  }
+
   std::vector<std::pair<int, size_t>> blocks;
 
   for (auto& letter : word) {
@@ -316,15 +320,17 @@ std::vector<int> compress_blocks(
   }
 
   auto current_block = blocks.begin();
-  auto current_block_terminal = block_terminal[*current_block];
-  std::vector<int> without_blocks;
+  assert(current_block != blocks.end());
+
+  std::vector<int> without_blocks = { block_terminal.at(*current_block) };
   for (auto& letter : word) {
     assert(current_block->first == letter);
     --current_block->second;
     if (current_block->second == 0) {
-      without_blocks.push_back(current_block_terminal);
       ++current_block;
-      current_block_terminal = block_terminal[*current_block];
+      if (current_block != blocks.end()) {
+        without_blocks.push_back(block_terminal.at(*current_block));
+      }
     }
   }
   return without_blocks;
@@ -348,20 +354,18 @@ std::vector<int> compress_pairs(
     if (left_letters.count(current_pair->first) &&
         right_letters.count(current_pair->second)) {
 
-      NonterminalVertex pair_vertex(
-          terminal_vertex->at(current_pair->first),
-          terminal_vertex->at(current_pair->second)
-      );
-
       std::vector<int> new_word;
 
       auto current = word.begin();
       auto next = std::next(current);
 
+      bool pair_used = false;
+
       while (next != word.end()) {
         if (*current == current_pair->first &&
             *next == current_pair->second) {
           new_word.push_back(terminal_vertex->size());
+          pair_used = true;
           current += 2;
           if (current == word.end()) {
             break;
@@ -379,8 +383,14 @@ std::vector<int> compress_pairs(
 
       word = std::move(new_word);
 
+      if (pair_used) {
+        terminal_vertex->push_back(NonterminalVertex(
+          terminal_vertex->at(current_pair->first),
+          terminal_vertex->at(current_pair->second)
+        ));
+      }
+
       pairs->erase(current_pair);
-      terminal_vertex->push_back(pair_vertex);
     }
 
     current_pair = next_pair;

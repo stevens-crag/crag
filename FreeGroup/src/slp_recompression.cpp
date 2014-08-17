@@ -61,7 +61,7 @@ Rule::iterator Rule::pop_first_from_letter(Rule::iterator letter_position) {
     letter_rule->first_terminal_letter_ = letter_rule->begin()->first_terminal_ptr();
   } else {
     letter_rule->first_terminal_letter_ = nullptr;
-    letter_rule->first_terminal_letter_ = nullptr;
+    letter_rule->last_terminal_letter_ = nullptr;
   }
 
   iterator inserted_letter;
@@ -119,7 +119,7 @@ Rule::iterator Rule::pop_last_from_letter(Rule::iterator letter_position) {
     letter_rule->last_terminal_letter_ = std::prev(letter_rule->end())->last_terminal_ptr();
   } else {
     letter_rule->first_terminal_letter_ = nullptr;
-    letter_rule->first_terminal_letter_ = nullptr;
+    letter_rule->last_terminal_letter_ = nullptr;
   }
 
   iterator inserted_letter;
@@ -153,8 +153,12 @@ std::pair<Rule::iterator, Rule::iterator> Rule::remove_empty_letter(Rule::iterat
   assert(!empty());
   assert(position->is_empty_nonterminal());
 
+  auto position_before = letters_.end();
+  if (position != letters_.begin()) {
+    position_before = std::prev(position);
+  }
+
   auto position_after = std::next(position);
-  auto position_before = std::prev(position);
 
   delete_letter(position);
 
@@ -164,8 +168,8 @@ std::pair<Rule::iterator, Rule::iterator> Rule::remove_empty_letter(Rule::iterat
     return std::make_pair(end(), end());
   }
 
-  if (position_after != letters_.begin() &&
-      position_after != letters_.end() &&
+  if (position_after != letters_.end() &&
+      position_after != letters_.begin() &&
       !position_before->is_nonterminal() &&
       position_after->is_power_of(position_before->terminal_id())) {
     position_before->terminal_.power += position_after->terminal_power();
@@ -218,10 +222,10 @@ Rule::iterator Rule::compress_pair(
   first->terminal_.id = new_terminal;
   delete_letter(second); //we have to delete the second letter after we have introduced new terminal
 
-  auto prev = std::prev(first);
+  auto prev = first;
 
   if (first != letters_.begin() &&
-      prev->is_power_of(new_terminal)) {
+      (--prev)->is_power_of(new_terminal)) {
     prev->terminal_.power += 1;
     delete_letter(first);
     first = prev;
@@ -262,9 +266,9 @@ void Rule::insert_popped_letter_left(
   assert(!popped_letter.is_valid());
   assert(letter_position->is_nonterminal());
 
-  auto position_before = std::prev(letter_position);
+  auto position_before = letter_position;
   if (letter_position != letters_.begin() &&
-      position_before->is_power_of(popped_letter.terminal_id())) {
+      (--position_before)->is_power_of(popped_letter.terminal_id())) {
 
     position_before->terminal_.power += popped_letter.terminal_power();
     return;
@@ -474,6 +478,10 @@ OneStepPairs::OneStepPairs(JezRules* rules)
       LetterPosition>> all_pairs; //reference to position
 
   for (auto& rule : rules->rules_) {
+    if (rule.empty()) {
+      continue;
+    }
+
     for (
         auto current = rule.begin(), next = std::next(rule.begin());
         next != rule.end();
@@ -520,17 +528,15 @@ OneStepPairs::OneStepPairs(JezRules* rules)
     ) {
       ++left_letter_iterator;
       right_letter_iterator = pairs_.begin(); //TODO:optimize this
-      right_list_current_letter = left_letter_iterator->right_letters_.begin();
-      left_list_current_letter = right_letter_iterator->left_letters_.begin();
     }
     if (left_letter_iterator == pairs_.end() ||
         left_letter_iterator->id_ != std::get<0>(pair)
     ) {
       left_letter_iterator = pairs_.emplace(left_letter_iterator, std::get<0>(pair));
       right_letter_iterator = pairs_.begin();
-      right_list_current_letter = left_letter_iterator->right_letters_.begin();
-      left_list_current_letter = right_letter_iterator->left_letters_.begin();
     }
+
+    right_list_current_letter = left_letter_iterator->right_letters_.begin();
 
     while (
         right_list_current_letter != left_letter_iterator->right_letters_.end() &&
@@ -556,7 +562,6 @@ OneStepPairs::OneStepPairs(JezRules* rules)
         right_letter_iterator->id_ < std::get<1>(pair)
     ) {
       ++right_letter_iterator;
-      left_list_current_letter = right_letter_iterator->left_letters_.begin();
     }
 
     if (right_letter_iterator == pairs_.end() ||
@@ -566,9 +571,9 @@ OneStepPairs::OneStepPairs(JezRules* rules)
           right_letter_iterator,
           std::get<1>(pair)
       );
-
-      left_list_current_letter = right_letter_iterator->left_letters_.begin();
     }
+
+    left_list_current_letter = right_letter_iterator->left_letters_.begin();
 
     while (
         left_list_current_letter != right_letter_iterator->left_letters_.end() &&
@@ -636,6 +641,10 @@ TerminalId OneStepPairs::compress_pair(
     TerminalId second,
     const std::vector<LetterPosition>& occurencies
 ) {
+  if (occurencies.empty()) {
+    return 0;
+  }
+
   TerminalId pair_terminal_id = rules_->next_fresh_terminal();
 
   for (auto& occurence : occurencies) {
@@ -780,13 +789,15 @@ void OneStepPairs::compress_pairs_from_letter_lists(
               right_letter->occurencies
           );
 
-          rules_->terminal_vertices_.insert(std::make_pair(
-              terminal,
-              NonterminalVertex(
-                  rules_->terminal_vertices_[pair.id_],
-                  rules_->terminal_vertices_[right_letter->id_]
-              )
-          ));
+          if (terminal) {
+            rules_->terminal_vertices_.insert(std::make_pair(
+                terminal,
+                NonterminalVertex(
+                    rules_->terminal_vertices_[pair.id_],
+                    rules_->terminal_vertices_[right_letter->id_]
+                )
+            ));
+          }
 
           right_letter = pair.right_letters_.erase(right_letter);
         } else {
@@ -868,6 +879,8 @@ void JezRules::debug_print(std::ostream* os) const {
   }
 }
 
+//#define DEBUG_OUTPUT
+
 Vertex normal_form(Vertex root) {
   if (root.height() < 2) {
     return root;
@@ -882,70 +895,87 @@ Vertex normal_form(Vertex root) {
            )
         )) {
 
-//    std::cout << "\n=================\n\nCurrent rules:" << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "\n=================\n\nCurrent rules:" << std::endl;
+    rules.debug_print(&std::cout);
+#endif DEBUG_OUPUT
     OneStepPairs pairs(&rules);
 
     rules.remove_crossing_blocks();
 
-//
-//    std::cout << "Rules after RemCrBlocks: " << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "Rules after RemCrBlocks: " << std::endl;
+    rules.debug_print(&std::cout);
+#endif DEBUG_OUPUT
 
     auto blocks = rules.list_blocks();
-//    std::cout << "\nFound blocks: " << std::endl;
-//    for (auto& block : blocks) {
-//      std::cout << block.rule_->debug_id << ':';
-//      block.letter_->debug_print(&std::cout);
-//      std::cout << std::endl;
-//    }
+
+#ifdef DEBUG_OUTPUT
+    std::cout << "\nFound blocks: " << std::endl;
+    for (auto& block : blocks) {
+      std::cout << block.rule_->debug_id << ':';
+      block.letter_->debug_print(&std::cout);
+      std::cout << std::endl;
+    }
+#endif DEBUG_OUPUT
 
     rules.compress_blocks(blocks);
 
-//    std::cout << "Rules after CompressBlocks: " << std::endl;
-//    rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+    std::cout << "Rules after CompressBlocks: " << std::endl;
+    rules.debug_print(&std::cout);
+#endif DEBUG_OUPUT
 
     std::vector<unsigned char> left_letters, right_letters;
 
     std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-//    std::cout << "\nGreedyPairs:\nLeft: ";
-//
-//    for (auto& terminal : left_letters) {
-//      std::cout << terminal << ',';
-//    }
-//    std::cout << "\nRight: ";
-//    for (auto& terminal : right_letters) {
-//      std::cout << terminal << ',';
-//    }
-//    std::cout << std::endl;
+#ifdef DEBUG_OUTPUT
+    std::cout << "\nGreedyPairs:\nLeft: ";
+
+    for (auto& terminal : left_letters) {
+      std::cout << terminal << ',';
+    }
+    std::cout << "\nRight: ";
+    for (auto& terminal : right_letters) {
+      std::cout << terminal << ',';
+    }
+    std::cout << std::endl;
+#endif DEBUG_OUPUT
 
     while (!left_letters.empty()) {
       pairs.remove_crossing(left_letters, right_letters);
       pairs.compress_pairs_from_letter_lists(left_letters, right_letters);
-//      std::cout << "Rules after first compression: " << std::endl;
-//      rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+      std::cout << "Rules after first compression: " << std::endl;
+      rules.debug_print(&std::cout);
+#endif DEBUG_OUPUT
       pairs.remove_crossing(right_letters, left_letters);
       pairs.compress_pairs_from_letter_lists(right_letters, left_letters);
-//      std::cout << "Rules after second compression: " << std::endl;
-//      rules.debug_print(&std::cout);
+#ifdef DEBUG_OUTPUT
+      std::cout << "Rules after second compression: " << std::endl;
+      rules.debug_print(&std::cout);
+#endif DEBUG_OUPUT
       std::tie(left_letters, right_letters) = pairs.greedy_pairs();
-//      std::cout << "\nGreedyPairs:\nLeft: ";
-//
-//      for (auto& terminal : left_letters) {
-//        std::cout << terminal << ',';
-//      }
-//      std::cout << "\nRight: ";
-//      for (auto& terminal : right_letters) {
-//        std::cout << terminal << ',';
-//      }
-//      std::cout << std::endl;
+#ifdef DEBUG_OUTPUT
+      std::cout << "\nGreedyPairs:\nLeft: ";
+
+      for (auto& terminal : left_letters) {
+        std::cout << terminal << ',';
+      }
+      std::cout << "\nRight: ";
+      for (auto& terminal : right_letters) {
+        std::cout << terminal << ',';
+      }
+      std::cout << std::endl;
+#endif DEBUG_OUPUT
     }
 
     rules.empty_cleanup();
   }
-
+  
+  auto result = rules.terminal_vertices_[root_rule.first_terminal_id()];
   Rule::collect_garbage();
-  return rules.terminal_vertices_[root_rule.first_terminal_id()];
+  return result;
 }
 
 }

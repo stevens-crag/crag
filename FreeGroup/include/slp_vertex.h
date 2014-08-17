@@ -74,7 +74,7 @@ class Vertex {
     }
 
     explicit operator bool() const {
-      return vertex_signed_id_;
+      return vertex_signed_id_ != 0;
     }
 
     inline void debug_print(::std::ostream* out) const;
