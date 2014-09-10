@@ -47,6 +47,7 @@ bool EndomorphismSLP::operator==(const EndomorphismSLP& a) const {
     return false;
   auto images = non_trivial_images_range();
   auto a_images = a.non_trivial_images_range();
+  (void) images; (void) a_images; //TODO:check this place
 
   //checking that the same letters have non-trivial images
   auto img_iterator = images_.begin();
@@ -210,7 +211,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
   *in >> roots_num >> terminals_num >> non_terminals_num;
 
   std::unordered_map<long, slp::Vertex> vertices;
-  for (int i = 0; i < terminals_num; ++i) {
+  for (size_t i = 0; i < terminals_num; ++i) {
     long index;
     TerminalSymbol image;
     *in >> index >> image;
@@ -225,7 +226,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
     return is_positive ? v : v.negate();
   };
 
-  for (int i = 0; i < non_terminals_num; ++i) {
+  for (size_t i = 0; i < non_terminals_num; ++i) {
     long index;
     long l_index;
     long r_index;
@@ -237,7 +238,7 @@ EndomorphismSLP EndomorphismSLP::load_from(std::istream* in) {
   }
 
   EndomorphismSLP e;
-  for (int i = 0; i < roots_num; ++i) {
+  for (size_t i = 0; i < roots_num; ++i) {
     TerminalSymbol key;
     size_t index;
     *in >> key >> index;
@@ -498,7 +499,7 @@ EndomorphismSLP EndomorphismSLP::normal_form() const {
 
 unsigned int height(const EndomorphismSLP& e) {
   unsigned int h = 0;
-  auto pick_max_height = [&h] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto pick_max_height = [&h] (const EndomorphismSLP::symbol_image_pair_type& v) {
     const unsigned int v_h = v.second.height();
     if (v_h > h)
       h = v_h;
@@ -516,7 +517,7 @@ unsigned int slp_vertices_num(const EndomorphismSLP& e) {
         && visited_vertices.count(task.vertex.negate()) == 0;
   };
 
-  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto inspect_root =[&acceptor,&visited_vertices] (const EndomorphismSLP::symbol_image_pair_type& v) {
     slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
     while (!inspector.stopped()) {
       visited_vertices.insert(inspector.vertex());
@@ -535,7 +536,7 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP& e) {
     return visited_vertices.find(task.vertex.length()) == visited_vertices.end();
   };
 
-  auto inspect_root =[&acceptor,&visited_vertices] (const typename EndomorphismSLP::symbol_image_pair_type& v) {
+  auto inspect_root =[&acceptor,&visited_vertices] (const EndomorphismSLP::symbol_image_pair_type& v) {
     slp::Inspector<slp::inspector::Postorder, decltype(acceptor)> inspector(v.second, acceptor);
     while (!inspector.stopped()) {
       visited_vertices.insert(inspector.vertex().length());
@@ -550,7 +551,7 @@ unsigned int slp_unique_images_length_num(const EndomorphismSLP& e) {
 
 std::map<slp::TerminalSymbol, LongInteger> images_length(const EndomorphismSLP& e) {
   std::map<slp::TerminalSymbol, LongInteger> key_to_lengths;
-  auto add_length = [&key_to_lengths] (const typename EndomorphismSLP::symbol_image_pair_type& pair) {
+  auto add_length = [&key_to_lengths] (const EndomorphismSLP::symbol_image_pair_type& pair) {
    auto key = pair.first;
    slp::Vertex v = pair.second;
    key_to_lengths.insert(std::make_pair(key, v.length()));

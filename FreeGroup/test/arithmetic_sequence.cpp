@@ -211,7 +211,7 @@ TEST(IntersectArithmeticSequences, StressTest) {
       }
     }
 
-    if (current_intersection_steps) {
+    if (current_intersection_steps != 0) {
       ASSERT_EQ(intersection.last() + intersection.step(), current_intersection) <<
           "Intersection " << intersection << " of " << first << " and " << second << " is too long";
     }

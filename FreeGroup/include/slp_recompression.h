@@ -40,12 +40,12 @@ class RuleLetter {
 
     RuleLetter(const RuleLetter& other)
       : status_(0)
+      , terminal_(other.terminal_)
+      , nonterminal_rule_(other.nonterminal_rule_)
     {
       if (other.is_nonterminal()) {
-        nonterminal_rule_ = other.nonterminal_rule_;
         status_ = NON_TERMINAL;
       } else {
-        new (&terminal_) Terminal(other.terminal_.id, LetterPower(other.terminal_.power));
         status_ = TERMINAL;
       }
       assert(is_valid());
@@ -87,6 +87,7 @@ class RuleLetter {
 
     explicit RuleLetter(Rule* vertex_rule)
       : status_(NON_TERMINAL)
+      , terminal_(0, 0)
       , nonterminal_rule_(vertex_rule)
     {
       assert(vertex_rule);
@@ -96,19 +97,20 @@ class RuleLetter {
 
     RuleLetter(TerminalId terminal, LetterPower power)
       : status_(TERMINAL)
+      , terminal_(terminal, std::move(power))
     {
       assert(!is_nonterminal());
       assert(status_ == 0);
       assert(terminal != 0);
       assert(is_valid());
 
-      new (&terminal_) Terminal(terminal, std::move(power));
+      //new (&terminal_) Terminal();
     }
 
     ~RuleLetter() {
-      if (!is_nonterminal()) {
-        terminal_.~Terminal();
-      }
+      //if (!is_nonterminal()) {
+      //  terminal_.~Terminal();
+      //}
     }
 
     void debug_print(std::ostream* os) const;
@@ -148,16 +150,16 @@ class RuleLetter {
         { }
     };
 
-    union {
-      Terminal terminal_;
-      Rule* nonterminal_rule_;
-    };
+    unsigned char status_; //bitset, #0 - is_nonterminal, #1 - is_invalid
 
-   unsigned char status_; //bitset, #0 - is_nonterminal, #1 - is_invalid
-   static const unsigned char TERMINAL = 0u;
-   static const unsigned char NON_TERMINAL = 1u;
-   static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
-   static const unsigned char FLAG_INVALID = (1u << 1);
+    static const unsigned char TERMINAL = 0u;
+    static const unsigned char NON_TERMINAL = 1u;
+    static const unsigned char TERMINAL_NONTERMINAL_MASK = 1u;
+    static const unsigned char FLAG_INVALID = (1u << 1);
+
+    Terminal terminal_;
+    Rule* nonterminal_rule_ = nullptr;
+
 };
 
 struct LetterPosition;
@@ -476,23 +478,24 @@ Vertex normal_form(Vertex root);
 
 namespace mad_sorts {
 inline unsigned char reverse_bits_in_byte(unsigned char byte) {
-  return ((byte * 0x80200802ULL) & 0x0884422110ULL) * 0x0101010101ULL >> 32;
+  return static_cast<unsigned char>(((byte * 0x80200802ULL) & 0x0884422110ULL) * 0x0101010101ULL >> 32);
 }
 
 template <size_t N>
 struct bits_reverse {
-    template <typename T>
-    inline static T reverse_N_bits(T value) {
-      auto res = ((static_cast<T>(reverse_bits_in_byte(value))) << (8 * (N-1))) | (bits_reverse<N-1>::reverse_N_bits(value >> 8));
-      return res;
-    }
+  static_assert(N <= 8, "Supports only integral types");
+  template <typename T>
+  inline static T reverse_N_bits(T value) {
+    auto res = ((static_cast<T>(reverse_bits_in_byte(static_cast<unsigned char>(value)))) << (8 * (N-1))) | (bits_reverse<N-1>::reverse_N_bits(value >> 8));
+    return res;
+  }
 };
 
 template <>
 struct bits_reverse<1> {
     template <typename T>
     inline static T reverse_N_bits(T value) {
-      return reverse_bits_in_byte(value);
+      return reverse_bits_in_byte(static_cast<unsigned char>(value));
     }
 };
 
@@ -505,11 +508,10 @@ inline T reverse_bits(T value) {
 #define PTR(x) ((x)->_mp_d)
 #define ABS(x) ((x) >= 0 ? (x) : -(x))
 inline bool reverse_bit_mpz_less(const LetterPower& first, const LetterPower& second) {
-  mp_size_t  usize, vsize, msize, dsize, asize;
+  mp_size_t  usize, vsize, msize, dsize;
   mpz_srcptr u = first.get_mpz_t();
   mpz_srcptr v = second.get_mpz_t();
   mp_srcptr  up, vp;
-  int        cmp;
 
   usize = SIZ(u);
   vsize = SIZ(v);

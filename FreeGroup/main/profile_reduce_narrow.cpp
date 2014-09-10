@@ -12,8 +12,8 @@ typedef crag::slp::TVertexHashAlgorithms<
 
 int main() {
   gmp_pool_setup();
-  constexpr size_t RANK = 6;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
+  CONSTEXPR_OR_CONST size_t RANK = 6;
+  CONSTEXPR_OR_CONST size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
   crag::UniformAutomorphismSLPGenerator<> generator(RANK, seed);
 

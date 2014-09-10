@@ -390,7 +390,7 @@ TEST(LocalSearch, RandomWord) {
     auto match = generator.next_match();
     int last_approved_match = -1;
     while (match != FiniteArithmeticSequence()) {
-      int checked_matches = 0;
+      unsigned int checked_matches = 0;
       unsigned int next_match_to_check = match.first().get_ui();
       while (next_match_to_check <= match.last()) {
         if (last_approved_match != next_match_to_check) {

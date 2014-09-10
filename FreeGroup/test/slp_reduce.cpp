@@ -24,8 +24,8 @@ namespace crag {
 namespace slp {
 namespace {
 
-constexpr TerminalSymbol terminal_a = TerminalSymbol{} + 1;
-constexpr TerminalSymbol terminal_b = TerminalSymbol{} + 2;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_a = TerminalSymbol{} + 1;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_b = TerminalSymbol{} + 2;
 
 Vertex get_random_slp_on_2_letters(unsigned int WORD_SIZE) {
   TerminalVertex a(terminal_a);
@@ -215,7 +215,7 @@ TEST(Reduce, Example2) {
 
 TEST(Reduce, StressTest) {
   const size_t REPEAT = 10000;
-  const size_t RANK = 3;
+  const int RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 20;
   size_t seed = 0;
   while (++seed <= REPEAT) {

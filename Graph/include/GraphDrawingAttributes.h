@@ -61,7 +61,7 @@ class GraphDrawingAttributes
   COLOR getNodeColor( int v ) const { 
     if( nodeColor.find(v)==nodeColor.end( ) ) 
       return theDefaultNodeColor;
-    return nodeColor[v];
+    return nodeColor.at(v);
   }
 
   //! Set the shape for a node.
@@ -70,7 +70,7 @@ class GraphDrawingAttributes
   NODESHAPE getNodeShape( int v ) const {
     if( nodeShape.find(v)==nodeShape.end( ) ) 
       return theDefaultNodeShape;
-    return nodeShape[v];
+    return nodeShape.at(v);
   }
 
   void setDefaultNodeShape( const NODESHAPE& s ) { theDefaultNodeShape = s; }

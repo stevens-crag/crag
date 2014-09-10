@@ -197,7 +197,7 @@ greedy_pairs(std::set<std::pair<int, int>> pairs) {
 
     size_t new_pairs_if_left = 0;
 
-    if (right_pair->first == id) {
+    if (right_pair != right_pairs.end() && right_pair->first == id) {
 
       std::tie(right_range_begin, right_range_end) =
           right_pairs.equal_range(right_pair->first);
@@ -213,7 +213,7 @@ greedy_pairs(std::set<std::pair<int, int>> pairs) {
 
     size_t new_pairs_if_right = 0;
 
-    if (left_pair->first == id) {
+    if (left_pair != left_pairs.end() && left_pair->first == id) {
 
       std::tie(left_range_begin, left_range_end) =
           left_pairs.equal_range(left_pair->first);
@@ -273,10 +273,19 @@ std::set<std::pair<int, int>> get_pairs_list(const std::vector<int>& word) {
   return pairs;
 }
 
+bool compare_blocks(const std::pair<int, size_t>& first, const std::pair<int, size_t>& second) {
+    return first.first < second.first ||
+        (first.first == second.first && mad_sorts::reverse_bits(first.second) < mad_sorts::reverse_bits(second.second));
+}
+
 std::vector<int> compress_blocks(
     const std::vector<int>& word,
     std::vector<Vertex>* terminal_vertex
 ) {
+  if (word.empty()) {
+    return word;
+  }
+
   std::vector<std::pair<int, size_t>> blocks;
 
   for (auto& letter : word) {
@@ -286,16 +295,8 @@ std::vector<int> compress_blocks(
     ++blocks.back().second;
   }
 
-  auto compare_blocks = [](
-      const std::pair<int, size_t>& first,
-      const std::pair<int, size_t>& second
-  ) -> bool {
-    return first.first < second.first ||
-        (first.first == second.first && mad_sorts::reverse_bits(first.second) < mad_sorts::reverse_bits(second.second));
-  };
-
-  std::map<std::pair<int, size_t>, int, decltype(compare_blocks)>
-  block_terminal (compare_blocks);
+  typedef bool(*PairsCompare)(const std::pair<int, size_t>&, const std::pair<int, size_t>&);
+  std::map<std::pair<int, size_t>, int, PairsCompare> block_terminal(compare_blocks);
 
   for (auto& block : blocks) {
     if (block_terminal.count(block) == 0) {
@@ -319,15 +320,17 @@ std::vector<int> compress_blocks(
   }
 
   auto current_block = blocks.begin();
-  auto current_block_terminal = block_terminal[*current_block];
-  std::vector<int> without_blocks;
+  assert(current_block != blocks.end());
+
+  std::vector<int> without_blocks = { block_terminal.at(*current_block) };
   for (auto& letter : word) {
     assert(current_block->first == letter);
     --current_block->second;
     if (current_block->second == 0) {
-      without_blocks.push_back(current_block_terminal);
       ++current_block;
-      current_block_terminal = block_terminal[*current_block];
+      if (current_block != blocks.end()) {
+        without_blocks.push_back(block_terminal.at(*current_block));
+      }
     }
   }
   return without_blocks;
@@ -351,20 +354,18 @@ std::vector<int> compress_pairs(
     if (left_letters.count(current_pair->first) &&
         right_letters.count(current_pair->second)) {
 
-      NonterminalVertex pair_vertex(
-          terminal_vertex->at(current_pair->first),
-          terminal_vertex->at(current_pair->second)
-      );
-
       std::vector<int> new_word;
 
       auto current = word.begin();
       auto next = std::next(current);
 
+      bool pair_used = false;
+
       while (next != word.end()) {
         if (*current == current_pair->first &&
             *next == current_pair->second) {
           new_word.push_back(terminal_vertex->size());
+          pair_used = true;
           current += 2;
           if (current == word.end()) {
             break;
@@ -382,8 +383,14 @@ std::vector<int> compress_pairs(
 
       word = std::move(new_word);
 
+      if (pair_used) {
+        terminal_vertex->push_back(NonterminalVertex(
+          terminal_vertex->at(current_pair->first),
+          terminal_vertex->at(current_pair->second)
+        ));
+      }
+
       pairs->erase(current_pair);
-      terminal_vertex->push_back(pair_vertex);
     }
 
     current_pair = next_pair;
@@ -408,7 +415,7 @@ Vertex normal_form(const Vertex& slp) {
       std::set<int> left_letters;
       std::set<int> right_letters;
 
-      std:tie(left_letters, right_letters) = greedy_pairs(pairs);
+      std::tie(left_letters, right_letters) = greedy_pairs(pairs);
 
       word = compress_pairs(
           std::move(word),
@@ -591,7 +598,7 @@ void normalization_steps_check(const Vertex& root) {
     while (!left_letters.empty()) {
       ASSERT_TRUE(!naive_pairs.empty());
 
-      std:tie(naive_left_letters, naive_right_letters) =
+      std::tie(naive_left_letters, naive_right_letters) =
           naive_Jez::greedy_pairs(naive_pairs);
 
       ASSERT_EQ(naive_left_letters.size(), count(left_letters.begin(), left_letters.end(), 1));
@@ -1121,8 +1128,8 @@ TEST(Recompression, StressNormalForm) {
 }
 
 TEST(Recompression, StressEndomorphismNormal) {
-  constexpr size_t RANK = 3;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 50;
+  CONSTEXPR_OR_CONST size_t RANK = 3;
+  CONSTEXPR_OR_CONST size_t ENDOMORPHISMS_NUMBER = 50;
   int REPEAT = 1000;
   size_t seed = 112233;
   srand(seed);

@@ -21,7 +21,12 @@
 #include "ranlib.h"
 #include "cdflib.h"
 #include <time.h>
+#ifdef _MSC_VER
+//for getpid
+#include <process.h>
+#else
 #include <unistd.h>
+#endif
 #include <stdlib.h>
 #include <iostream>
 
@@ -66,7 +71,11 @@ class RandLibURG
 
   //! Set the seeds of the random number generator  using current time and process id values   
   void setSeedPID(){
-    long pid  = getpid();
+#ifdef _MSC_VER
+    long pid = _getpid();
+#else
+    long pid = getpid();
+#endif
     long low  = labs( (pid + (pid % 131) * time(NULL)) % 2147483560); // pid +  ... is to make shure that 
     long high = labs( (pid + (pid % 17)  * time(NULL)) % 2147483560); // that seed will not reduce to 0
     setall(low,high); 

@@ -18,7 +18,7 @@
 #include "EndomorphismSLP.h"
 #include "Permutation.h"
 #include "gmp_boost_pool_allocator.h"
-#include "boost/functional/hash/extensions.hpp"
+//#include "boost/functional/hash/extensions.hpp"
 
 using crag::slp::Vertex;
 using crag::slp::VertexWord;
@@ -253,8 +253,8 @@ Vertex reduce(const Vertex& vertex,
 
 int main() {
   gmp_pool_setup();
-  constexpr size_t RANK = 6;
-  constexpr size_t ENDOMORPHISMS_NUMBER = 2200;
+  CONSTEXPR_OR_CONST size_t RANK = 6;
+  CONSTEXPR_OR_CONST size_t ENDOMORPHISMS_NUMBER = 2200;
   size_t seed = 112233;
   UniformAutomorphismSLPGenerator<> generator(RANK, seed);
 

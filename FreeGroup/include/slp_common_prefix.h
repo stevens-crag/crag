@@ -29,10 +29,11 @@ class SegmentTracker {
       LongInteger left_siblings_length;
     };
 
+    const Vertex root_;
+
     std::vector<FollowState> state_history_;
     FollowState current_state_;
 
-    const Vertex root_;
   public:
     SegmentTracker(const Vertex& root)
       : root_(root)

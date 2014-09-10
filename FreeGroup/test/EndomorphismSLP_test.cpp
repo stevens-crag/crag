@@ -308,7 +308,7 @@ TEST_F(EndomorphismSLPTest, ForEachTest) {
     e *= EMorphism::inverter(i);
   }
   int i = 1;
-  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+  auto check = [&i] (const EMorphism::symbol_image_pair_type& v) {
     auto symbol = v.first;
     EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
     i += 2;
@@ -327,7 +327,7 @@ TEST_F(EndomorphismSLPTest, RangeTest) {
   }
   auto range = e.non_trivial_images_range();
   int i = 1;
-  auto check = [&i] (const typename EMorphism::symbol_image_pair_type& v) {
+  auto check = [&i] (const EMorphism::symbol_image_pair_type& v) {
     auto symbol = v.first;
     EXPECT_EQ(i, symbol) << "Wrong symbols sequence";
     i += 2;

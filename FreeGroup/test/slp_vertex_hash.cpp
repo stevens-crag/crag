@@ -128,7 +128,7 @@ std::string print_tree_preorder_single(const Vertex& vertex) {
 
 TEST(HashedReduce, StressTest) {
   const size_t REPEAT = 10000;
-  constexpr size_t RANK = 3;
+  CONSTEXPR_OR_CONST size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 20;
 
   typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
@@ -164,7 +164,7 @@ TEST(HashedReduce, StressTest) {
 
 TEST(HashedReduceNarrow, StressTest) {
   const size_t REPEAT = 10000;
-  constexpr size_t RANK = 3;
+  CONSTEXPR_OR_CONST size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 20;
 
   typedef TVertexHashAlgorithms<hashers::SinglePowerHash, hashers::PermutationHash<Permutation16> > VertexHashAlgorithms;
@@ -202,7 +202,7 @@ TEST(HashedReduceNarrow, StressTest) {
 
 TEST(HashedReduce, RemoveDuplicatesStressTest) {
   const size_t REPEAT = 1000;
-  constexpr size_t RANK = 3;
+  CONSTEXPR_OR_CONST size_t RANK = 3;
   const size_t ENDOMORPHISMS_NUMBER = 20;
 
   typedef TVertexHashAlgorithms<hashers::ImageLengthHash,

@@ -29,10 +29,13 @@ struct BraidNode
   public:
 
   BraidNode( int num=0, bool tp=true, BraidNode* l=NULL, BraidNode* a=NULL, BraidNode* r=NULL, BraidNode* bl=NULL, BraidNode* b=NULL, BraidNode* br=NULL) : 
-    theNumber( num ), type( tp ) ,
     left( l ), ahead( a ), right( r ),
     back_left( bl ), back( b ), back_right( br ) ,
-    link( NULL ) { }
+    type( tp ) ,
+    link( NULL ),
+    weight(0),
+    theNumber( num )
+  { }
 
   /////////////////////////////////////////////////////////
   //                                                     //
@@ -77,7 +80,7 @@ struct LinkedBraidStructureTransform
   enum TRANSFORM{ ERASED , ADDED , CHANGE_TYPE };
 
   LinkedBraidStructureTransform( int n , int p , TRANSFORM tr , bool t=false , int l=0 , int a=0 , int r=0 , int bl=0 , int b=0 , int br=0 ) :
-    theNumber( n ), thePosition(p), theTransform(tr), type(t), left(l), ahead(a), right(r), back_left(bl), back(b), back_right(br)
+    theTransform(tr), left(l), ahead(a), right(r), back_left(bl), back(b), back_right(br), type(t), theNumber( n ), thePosition(p)
   { }
 
   TRANSFORM theTransform;

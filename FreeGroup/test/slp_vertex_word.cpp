@@ -18,9 +18,9 @@ namespace crag {
 namespace slp {
 namespace {
 
-constexpr TerminalSymbol terminal_a = TerminalSymbol{} + 1;
-constexpr TerminalSymbol terminal_b = TerminalSymbol{} + 2;
-constexpr TerminalSymbol terminal_c = TerminalSymbol{} + 3;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_a = TerminalSymbol{} + 1;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_b = TerminalSymbol{} + 2;
+CONSTEXPR_OR_CONST TerminalSymbol terminal_c = TerminalSymbol{} + 3;
 
   TEST(VertexWord, size) {
     TerminalVertex a(terminal_a);
@@ -92,7 +92,7 @@ constexpr TerminalSymbol terminal_c = TerminalSymbol{} + 3;
 
     VertexWord w(abc);
 
-    EXPECT_EQ(::std::string({terminal_a, terminal_b, terminal_c}), ::std::string(w.begin(), w.end()));
+    EXPECT_EQ(::std::string({static_cast<char>(terminal_a), static_cast<char>(terminal_b), static_cast<char>(terminal_c)}), ::std::string(w.begin(), w.end()));
     EXPECT_EQ(terminal_a, *(w.begin() + 0));
     EXPECT_EQ(terminal_b, *(w.begin() + 1));
     EXPECT_EQ(terminal_c, *(w.begin() + 2));

@@ -304,35 +304,35 @@ namespace Graphs
 
 
     //! Get the vertex set.
-    const map< int, vertex_type >& getVertices( ) const { return look( )->getVertices( ); }
+    const map< int, vertex_type >& getVertices( ) const { return this->look( )->getVertices( ); }
 
 
     //! Create new vertex (default). Function returns the number of the new vertex.
-    int  newVertex( ) { return change( ) -> newVertex( ); }
+    int  newVertex( ) { return this->change( ) -> newVertex( ); }
     
     
     //! Add new vertex into a graph. Function returns the number of the new vertex.
-    int  newVertex( const vertex_type& V ) { return change( ) -> newVertex( V ); }
+    int  newVertex( const vertex_type& V ) { return this->change( ) -> newVertex( V ); }
 
     
     //! Erase a vertex from the graph
-    void eraseVertex( int v ) { return change( ) -> eraseVertex( v ); }
+    void eraseVertex( int v ) { return this->change( ) -> eraseVertex( v ); }
     
     
     //! Function locally changes graph by replacing the vertex with number v by the vertex V.
-    void replaceVertex( int v , const vertex_type& V ) { return change( ) -> replaceVertex( v , V ); }
+    void replaceVertex( int v , const vertex_type& V ) { return this->change( ) -> replaceVertex( v , V ); }
 
 
     //! Create new edge with the origin v1 and target [and, maybe other parameters] provided in E
-    void newEdge( int v1 , const EdgeType& E ) { change( ) -> newEdge( v1 , E ); }
+    void newEdge( int v1 , const EdgeType& E ) { this->change( ) -> newEdge( v1 , E ); }
 
 
     //! Make the graph trivial.
-    void clear( ) { change( ) -> clear( ); }
+    void clear( ) { this->change( ) -> clear( ); }
 
 
     //! Pinch two vertices v1 and v2.
-    void pinch( int v1 , int v2 ) { change( ) -> pinch( v1 , v2 ); }
+    void pinch( int v1 , int v2 ) { this->change( ) -> pinch( v1 , v2 ); }
       
   };
 

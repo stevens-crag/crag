@@ -119,8 +119,8 @@ class FiniteAlphabet : public Alphabet
       out << "{ }" << flush;
     else {
       out << "{ ";
-      for ( int i=0;i<a.theLetters.size()-1;i++)
-	out << a.theLetters[i] << ", ";
+      for ( size_t i=0;i<a.theLetters.size()-1;i++)
+        out << a.theLetters[i] << ", ";
       out << a.theLetters[a.theLetters.size()-1] << " }" << flush;
     }
     return out;

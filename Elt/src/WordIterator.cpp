@@ -32,6 +32,7 @@ ConstWordIterator& ConstWordIterator::operator= ( const WordIterator& WI )
 {
 	theList = WI.theList;
 	theIterator = WI.theIterator;
+	return *this;
 }
 
 
@@ -43,7 +44,7 @@ theIterator( begin ? w.getList( ).begin( ) : w.getList( ).end() )
 }
 
 
-const ConstWordIterator& ConstWordIterator::operator++ ( )
+ConstWordIterator& ConstWordIterator::operator++ ( )
 {
 	++theIterator;
 	return *this;
@@ -58,7 +59,7 @@ ConstWordIterator ConstWordIterator::operator++ ( int doomy )
 }
 
 
-const ConstWordIterator& ConstWordIterator::operator-- ( )
+ConstWordIterator& ConstWordIterator::operator-- ( )
 {
 	--theIterator;
 	return *this;

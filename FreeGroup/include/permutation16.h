@@ -7,16 +7,20 @@
 
 #ifndef PERMUTATION16_H_
 #define PERMUTATION16_H_
+
+#include <cstdint>
 #include <initializer_list>
 #include <random>
+
+#include "common.h"
 
 namespace crag {
 //! This class represents the permutation of 16 elements
 class Permutation16 {
   public:
-    constexpr static size_t RANK = 16;
+    CONSTEXPR_OR_CONST static size_t RANK = 16;
     //!Trivial permutation
-    constexpr Permutation16()
+    CONSTEXPR Permutation16()
       : permutation_(TRIVIAL_PERMUTATION_REPRESENTATION)
     { }
 
@@ -49,6 +53,10 @@ class Permutation16 {
     //Why always follow the pattern?
     bool operator!=(const Permutation16& other) const {
       return permutation_ != other.permutation_;
+    }
+
+    CONSTEXPR static size_t size() {
+      return RANK;
     }
 
     //! Get the image of i
@@ -140,12 +148,12 @@ class Permutation16 {
     }
 
     size_t permutation_hash() const {
+      CONSTEXPR_OR_CONST static std::hash<uint64_t> uint_hasher_ = std::hash<uint64_t>();
       return uint_hasher_(permutation_);
     }
 
   private:
     const static uint64_t TRIVIAL_PERMUTATION_REPRESENTATION = 0xfedcba9876543210ull;
-    constexpr static std::hash<uint64_t> uint_hasher_ = std::hash<uint64_t>();
     uint64_t permutation_;
 
     Permutation16(uint64_t permutation)

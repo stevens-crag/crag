@@ -159,7 +159,7 @@ string graphviz_format( const Graph& G , const GraphDrawingAttributes& GDA )
     
     COLOR c = GDA.getNodeColor( (*v_it).first );
     NODESHAPE s = GDA.getNodeShape( (*v_it).first );
-    string shape = nodeShapeNames[s];
+    string shape = nodeShapeNames.at(s);
 
     // Vertex:
     ostr << setbase(10) << (*v_it).first;
@@ -217,7 +217,7 @@ string graphviz_format( const IntLabeledGraph& G , const GraphDrawingAttributes&
     
     COLOR c = GDA.getNodeColor( (*v_it).first );
     NODESHAPE s = GDA.getNodeShape( (*v_it).first );
-    string shape = nodeShapeNames[s];
+    string shape = nodeShapeNames.at(s);
     
     // Vertex:
     ostr << setbase(10) << (*v_it).first;

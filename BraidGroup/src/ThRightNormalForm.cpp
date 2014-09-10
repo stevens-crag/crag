@@ -6,13 +6,13 @@
 // Revision History:
 //
 
-#include "fstream"
+#include <cassert>
+#include <fstream>
+
+#include "BraidGroup.h"
 #include "ShortBraidForm.h"
-
-
 #include "ThRightNormalForm.h"
 #include "ThLeftNormalForm.h"
-#include "BraidGroup.h"
 #include "Word.h"
 
 
@@ -84,7 +84,7 @@ ThRightNormalForm::ThRightNormalForm( const BraidGroup& G , const Word& w ) :
 
   // 1. compute permutation decomposition of a given braid word
   Permutation curMult( theRank );
-  bool trivialMult = true;
+  //bool trivialMult = true;
   for( Word::const_iterator w_it=w.end( ) ; w_it!=w.begin( ) ; ) {
 
     // find the current block
@@ -108,11 +108,11 @@ ThRightNormalForm::ThRightNormalForm( const BraidGroup& G , const Word& w ) :
 	  curMult = Permutation( theRank );
 	}
 	swap( curMult[gen-1] , curMult[gen] );
-	trivialMult = false;
+	//trivialMult = false;
       }
       theDecomposition.push_front( curMult );
       curMult = Permutation( theRank );
-      trivialMult = true;
+      //trivialMult = true;
       
     } else {
       
@@ -127,11 +127,11 @@ ThRightNormalForm::ThRightNormalForm( const BraidGroup& G , const Word& w ) :
 	  curMult = Permutation( theRank );
 	}
 	swap( curMult[gen-1] , curMult[gen] );
-	trivialMult = false;
+	//trivialMult = false;
       }
       mult.push_front( curMult );
       curMult = Permutation( theRank );
-      trivialMult = true;
+      //trivialMult = true;
       
       list< Permutation >::iterator it = mult.begin( );
       for( ; it!=mult.end( ) ; ++it ) {
@@ -174,6 +174,8 @@ ThRightNormalForm::adjustDecomposition
       
       transformationResult tr_res = transform( rank , *it3 , *it2 );
       switch( tr_res ) {
+      case TWO_MULTIPLIERS:
+          assert(false);
       case ONE_MULTIPLIER:
 				if( it1==it2 )
 					it1 = it2 = decomp.erase( it3 );
@@ -268,7 +270,7 @@ ThRightNormalForm::multiply( const ThRightNormalForm& rep ) const
   //    permutations of the second form
   list< Permutation >::const_iterator it = rep.theDecomposition.begin( );
   if( theOmegaPower%2 ) {
-    for( int t=0 ; t<rep.theDecomposition.size( ) ; ++t , ++it )
+    for( size_t t=0 ; t<rep.theDecomposition.size( ) ; ++t , ++it )
       blocks.push_back( omega * (*it) * omega );
   } else
     blocks.insert( blocks.end( ) , 
@@ -294,7 +296,7 @@ Word ThRightNormalForm::getWord( ) const
   list<Permutation>::const_iterator it = theDecomposition.begin( );
   for( ; it!=theDecomposition.end( ) ; ++it ) {
     geodesic = (*it).geodesic( );
-    for( int j=0 ; j<geodesic.size( ) ; ++j )
+    for( size_t j=0 ; j<geodesic.size( ) ; ++j )
       result.push_back( geodesic[j]+1 );
   }
 
@@ -304,7 +306,7 @@ Word ThRightNormalForm::getWord( ) const
   Word omegaWord;
   const Permutation omega = Permutation::getHalfTwistPermutation( theRank );
   geodesic = omega.geodesic( );
-  for( int i=0 ; i<geodesic.size( ) ; ++i )
+  for( size_t i=0 ; i<geodesic.size( ) ; ++i )
     omegaWord.push_back( geodesic[i]+1 );
   
   if( theOmegaPower<0 )
@@ -331,7 +333,7 @@ Word ThRightNormalForm::getShortWord( ) const
       int n = j - decomp.size( ) - power;
       if( n<0 ) {
 	vector< int > gd = (*it).geodesic();
-	for( int t=0 ; t<gd.size() ; ++t )
+	for( size_t t=0 ; t<gd.size() ; ++t )
 	  result.push_back( gd[t]+1 );
       } else {
 	
@@ -396,7 +398,7 @@ ThRightNormalForm::computeCentralizer( ) const
     unchecked_states = new_states;
     new_states.clear( );
     
-    int counter = 0;
+    size_t counter = 0;
     map< ThRightNormalForm , ThRightNormalForm >::const_iterator 
       it = unchecked_states.begin( );
     for( ; it!=unchecked_states.end( ) ; ++it ) {
