@@ -453,7 +453,7 @@ using namespace std;
 */
 
 extern string a_p_buf_string;
-extern bool stop_parser( AInputType t );
+extern void stop_parser( AInputType t );
 
 #line 459 "AlphabetFlex.cpp"
 

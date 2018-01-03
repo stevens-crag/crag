@@ -100,7 +100,8 @@ GTEST_DIR = ../gtest
 # All Google Test headers.  Usually you shouldn't change this
 # definition.
 GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
-                $(GTEST_DIR)/include/gtest/internal/*.h
+                $(GTEST_DIR)/include/gtest/internal/*.h \
+                ../general/include/gmp_boost_pool_allocator.h
 
 GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
 
@@ -114,7 +115,7 @@ $(GTEST_DIR)/gtest-all.o : $(GTEST_SRCS_)
             $(GTEST_DIR)/src/gtest-all.cc -o $(GTEST_DIR)/gtest-all.o
 
 $(GTEST_DIR)/gtest_main.o : $(GTEST_SRCS_)
-	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR)/include -I$(GTEST_DIR) $(CXXFLAGS) -c \
+	$(CXX) $(CPPFLAGS) -I$(GTEST_DIR)/include -I$(GTEST_DIR) -I../general/include $(CXXFLAGS) -c \
             $(GTEST_DIR)/src/gtest_main.cc -o $(GTEST_DIR)/gtest_main.o
 
 $(GTEST_DIR)/gtest_main.a : $(GTEST_DIR)/gtest-all.o $(GTEST_DIR)/gtest_main.o
@@ -123,20 +124,31 @@ $(GTEST_DIR)/gtest_main.a : $(GTEST_DIR)/gtest-all.o $(GTEST_DIR)/gtest_main.o
 ## compile object files for unit tests
 $(OBJ_DIR)/unittest_%.o : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS) 
 	$(CXX) $(CPPFLAGS) $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) -c $< -o $@
+
+$(OBJ_DIR)/unittest_%.d : $(TESTS_DIR)/%.cpp $(GTEST_HEADERS)
+	if [ ! -d $(OBJ_DIR) ]; then mkdir -p $(OBJ_DIR); fi
+	$(SHELL) -ec '$(CXX) $(CPPFLAGS) -MM $(INCLUDE) -I$(GTEST_DIR)/include $(CXXFLAGS) $< | sed "s:$*.o:$(OBJ_DIR)/unittest_& $@:g"' > $@
+
 	
 tests: $(BIN_DIR)/all_unittests
 $(BIN_DIR)/all_unittests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o) $(GTEST_DIR)/gtest_main.a \
-                      $(LIB_DIR)/lib$(THISLIB).a $(DEPENDONLIBS)
+                      $(LIB_DIR)/lib$(THISLIB).a $(DEPENDONLIBS) general
 	@echo "found tests: $(LIBTESTS:$(TESTS_DIR)/%.cpp=%)"
 	@if [ ! -d $(BIN_DIR) ]; then mkdir -p $(BIN_DIR); fi
 	$(CXX) $(CPPFLAGS) $(INCLUDE)-I$(GTEST_DIR)/include $(CXXFLAGS) $(LIBTESTS:$(TESTS_DIR)/%.cpp=$(OBJ_DIR)/unittest_%.o) $(GTEST_DIR)/gtest_main.a \
-	    $(LDFLAGS) -lpthread $(LIBS) -o $@
+	    $(LDFLAGS) -lpthread -lgeneral $(LIBS) -o $@
 	@echo
 	@echo " ./$@ : compiled sucessfully."
 	@echo
-	
+
 check: tests
+ifdef FILTER
+	$(BIN_DIR)/all_unittests --gtest_filter="$(FILTER)"
+else
 	$(BIN_DIR)/all_unittests
+endif
+	
+	
 
 # Clean target to remove backup, object, and core files
 clean:
@@ -144,4 +156,4 @@ clean:
 	
 # Include all the dependency files, this will  automatically remake them if they are
 # out of date
-include $(foreach file,$(SRC) $(MAIN),$(OBJ_DIR)/$(file).d)
+include $(foreach file,$(SRC) $(MAIN) $(LIBTESTS:$(TESTS_DIR)/%.cpp=unittest_%),$(OBJ_DIR)/$(file).d)

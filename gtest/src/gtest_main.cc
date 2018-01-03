@@ -31,7 +31,10 @@
 
 #include "gtest/gtest.h"
 
+#include "gmp_boost_pool_allocator.h"
+
 GTEST_API_ int main(int argc, char **argv) {
+  gmp_pool_setup();
   std::cout << "Running main() from gtest_main.cc\n";
 
   testing::InitGoogleTest(&argc, argv);

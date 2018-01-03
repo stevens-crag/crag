@@ -219,7 +219,7 @@ int main( )
       }
 
 
-      int filename_sz = 100;
+      const int filename_sz = 100;
       char filename[filename_sz];
       ostrstream ostr( filename , filename_sz );
       ostr << "results_N" << N << "_L" << L << ".txt" << ends;

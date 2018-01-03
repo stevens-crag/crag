@@ -493,6 +493,7 @@ namespace Graphs
   //----------------------------------- liftup --------------------------------//
   //---------------------------------------------------------------------------//
   
+  template < class edge_type > void reduce_path( int init_vertex , list< edge_type >& path );
   //! Revert the folding.
   template < class LabelledGraph , class FoldDetailsConstIterator >
     void liftup( const LabelledGraph& graph , int init_vertex , 

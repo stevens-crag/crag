@@ -110,9 +110,9 @@ public:
 	bool operator!= ( const ConstWordIterator& WI ) const;
 	bool operator== ( const ConstWordIterator& WI ) const;
 
-	const ConstWordIterator& operator++ ( );
+	ConstWordIterator& operator++ ( );
 	      ConstWordIterator  operator++ ( int doomy );
-	const ConstWordIterator& operator-- ( );
+	ConstWordIterator& operator-- ( );
 	      ConstWordIterator  operator-- ( int doomy );
 	int   operator*  ( ) const;
 

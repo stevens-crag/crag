@@ -13,7 +13,7 @@
 
 #include "WhiteheadGraph.h"
 
-#include <unistd.h>
+//#include <unistd.h>
 
 
 /*********************************************************************************/
@@ -160,6 +160,10 @@ void CutVertices::RecursiveDepthFirstSearch(int v)
     }
 }
 
+template<typename T>
+T min(const T& a, const T& b) {
+  return (a < b) ? a : b;
+}
 
 void CutVertices::RDFS_Compute_Low(int v) 
 {

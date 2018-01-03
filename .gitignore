@@ -18,4 +18,19 @@ nbproject/
 # Dependencies
 *.d
 
+# Eclipse project files
+.settings/
+.project
+.cproject
+
+#build file
+build-config.mk
+
+#qt project files
+crag.config
+crag.creator
+crag.creator.user
+crag.creator.user.2.6pre1
+crag.files
+crag.includes
 

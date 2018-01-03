@@ -2,9 +2,9 @@
 #ifndef _REF_COUNTER_H_
 #define _REF_COUNTER_H_
 
-
+#ifdef _MSC_VER
 #pragma warning(disable:4786)
-
+#endif
 
 class RefCounter {
 

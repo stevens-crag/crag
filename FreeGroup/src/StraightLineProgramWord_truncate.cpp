@@ -11,6 +11,7 @@
 
 #include "StraightLineProgramWord.h"
 
+#include <algorithm>
 #include "set"
 using namespace std;
 

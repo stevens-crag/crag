@@ -194,7 +194,7 @@ MatrixFp& MatrixFp::operator = ( const MatrixFp& m )
 	for ( int i=0;i<the_n;i++ )
 		for(int j=0;j<the_n;j++)
 			theMatrix[i][j] = m.theMatrix[i][j];
-
+  return *this;
 }
 
 void MatrixFp::init()
