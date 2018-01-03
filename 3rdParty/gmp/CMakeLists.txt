@@ -6,16 +6,17 @@ include(ExternalProject)
 
 if(UNIX)
   ExternalProject_Add(m4
-    URL http://ftp.gnu.org/gnu/m4/m4-1.4.17.tar.bz2 
-    URL_HASH MD5=8a1787edcba75ae5cd1dc40d7d8ed03a
+    URL http://ftp.gnu.org/gnu/m4/m4-1.4.18.tar.bz2 
+    URL_HASH MD5=199fff9c87f1c920dab5c8757811e146
+    PATCH_COMMAND patch -p0 -d "<SOURCE_DIR>" < "${CMAKE_CURRENT_LIST_DIR}/secure_snprintf.patch"
     CONFIGURE_COMMAND "<SOURCE_DIR>/configure" "--prefix=<INSTALL_DIR>"
   )
   
   ExternalProject_Get_Property(m4 install_dir)
   ExternalProject_Add(gmp_external
     DEPENDS m4
-    URL http://ftp.gnu.org/gnu/gmp/gmp-6.0.0a.tar.bz2
-    URL_HASH MD5=b7ff2d88cae7f8085bd5006096eed470
+    URL http://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
+    URL_HASH MD5=8ddbb26dc3bd4e2302984debba1406a5
     CONFIGURE_COMMAND M4="${install_dir}/bin/m4" "<SOURCE_DIR>/configure" --enable-shared=off "--prefix=<INSTALL_DIR>" --enable-cxx
   )
 
