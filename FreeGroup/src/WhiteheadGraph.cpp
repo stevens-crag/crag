@@ -178,10 +178,10 @@ void CutVertices::RDFS_Compute_Low(int v)
 	// Low[w] stores the
 	// lowest value it can climb up
 	// for a subtree rooted at w.
-	Low[v] = min(Low[v], Low[w]);
+	Low[v] = std::min(Low[v], Low[w]);
       } else if (w != pred[v]) {
 	// {v, w} is a back edge
-	Low[v] = min(Low[v], discover[w]);
+	Low[v] = std::min(Low[v], discover[w]);
       }
     }
   }
