@@ -782,7 +782,7 @@ void test_transport_gcd_properties( )
 int main( )
 {
   srand( time(0) );
-  // test_WordProblem( );
+  test_WordProblem( );
   // test_cast_right( );
   // test_multiplication( );
   // test_inverse( );
@@ -798,7 +798,7 @@ int main( )
 
   // test_ultra_summit_conjugators( );
   
-  test_conjugacy_uss( );
+  // test_conjugacy_uss( );
   
   return 0;
 }

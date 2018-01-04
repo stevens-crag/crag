@@ -13,11 +13,7 @@
 
 using namespace std;
 
-
-int main()
-
-{
-  
+int main() {
   RandLib::ur.reset();
   long s1, s2;
   RandLib::ur.getseed( s1, s2 );
@@ -30,10 +26,10 @@ int main()
   ttp_conf.nBL    =  6; // 5;     // # Generators in BL
   ttp_conf.nBR    =  6; // 5;     // # Generators in BR
   ttp_conf.N      = 14; // 12;    // Group rank
-  ttp_conf.nGamma = 27; // Tuple size
+  ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 50; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 10;  // Word's length
+  ttp_conf.len_z  = 150; // 18;  // Conjugator's length
+  ttp_conf.len_w  = 150;  // Word's length
   
   cout << ttp_conf << endl;
 

@@ -75,107 +75,100 @@ ThRightNormalForm::operator ThLeftNormalForm( ) const
 //--------------------------- ThRightNormalForm -----------------------------//
 //---------------------------------------------------------------------------//
 
-
-ThRightNormalForm::ThRightNormalForm( const BraidGroup& G , const Word& w ) :
-	theRank( G.getRank( ) ),
-	theOmegaPower( 0 )
-{
-  const Permutation omega = Permutation::getHalfTwistPermutation( theRank );
+ThRightNormalForm::ThRightNormalForm(const BraidGroup &G, const Word &w)
+    : theRank(G.getRank()), theOmegaPower(0) {
+  const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
 
   // 1. compute permutation decomposition of a given braid word
-  Permutation curMult( theRank );
-  //bool trivialMult = true;
-  for( Word::const_iterator w_it=w.end( ) ; w_it!=w.begin( ) ; ) {
+  Permutation curMult(theRank);
+  // bool trivialMult = true;
+  for (Word::const_iterator w_it = w.end(); w_it != w.begin();) {
 
     // find the current block
     Word::const_iterator w_it2 = --w_it;
-    for( ; (*w_it2<0)==(*w_it<0) && w_it2!=w.begin( ) ; --w_it2 );
-    if( (*w_it2<0)!=(*w_it<0) ) ++w_it2;
+    for (; (*w_it2 < 0) == (*w_it < 0) && w_it2 != w.begin(); --w_it2)
+      ;
+    if ((*w_it2 < 0) != (*w_it < 0))
+      ++w_it2;
     w_it++;
-    
+
     // cout << " ***** " << *w_it2 << endl;
     // check the sign of the block
-    if( *w_it2>0 ) {
-      
+    if (*w_it2 > 0) {
+
       // process the positive block
-      for( Word::const_iterator w_it3=w_it ; w_it3!=w_it2 ; ) {
-	
-	--w_it3;
-	int gen = *w_it3;
-	// cout << " +++++ " << gen << endl;
-	if( curMult[gen-1]>curMult[gen] ) {
-	  theDecomposition.push_front( curMult );
-	  curMult = Permutation( theRank );
-	}
-	swap( curMult[gen-1] , curMult[gen] );
-	//trivialMult = false;
+      for (Word::const_iterator w_it3 = w_it; w_it3 != w_it2;) {
+
+        --w_it3;
+        int gen = *w_it3;
+        // cout << " +++++ " << gen << endl;
+        if (curMult[gen - 1] > curMult[gen]) {
+          theDecomposition.push_front(curMult);
+          curMult = Permutation(theRank);
+        }
+        swap(curMult[gen - 1], curMult[gen]);
+        // trivialMult = false;
       }
-      theDecomposition.push_front( curMult );
-      curMult = Permutation( theRank );
-      //trivialMult = true;
-      
+      theDecomposition.push_front(curMult);
+      curMult = Permutation(theRank);
+      // trivialMult = true;
+
     } else {
-      
+
       // process the negative block
-      list< Permutation > mult;
-      for( Word::const_iterator w_it3 =w_it2 ; w_it3!=w_it ; ++w_it3 ) {
-	
-	int gen = -*w_it3;
-	// cout << " ------ " << gen << endl;
-	if( curMult[gen-1]>curMult[gen] ) {
-	  mult.push_front( curMult );
-	  curMult = Permutation( theRank );
-	}
-	swap( curMult[gen-1] , curMult[gen] );
-	//trivialMult = false;
+      list<Permutation> mult;
+      for (Word::const_iterator w_it3 = w_it2; w_it3 != w_it; ++w_it3) {
+
+        int gen = -*w_it3;
+        // cout << " ------ " << gen << endl;
+        if (curMult[gen - 1] > curMult[gen]) {
+          mult.push_front(curMult);
+          curMult = Permutation(theRank);
+        }
+        swap(curMult[gen - 1], curMult[gen]);
+        // trivialMult = false;
       }
-      mult.push_front( curMult );
-      curMult = Permutation( theRank );
-      //trivialMult = true;
-      
-      list< Permutation >::iterator it = mult.begin( );
-      for( ; it!=mult.end( ) ; ++it ) {
-	theDecomposition.push_front( omega );
-	if( !((*it).inverse( )*omega).isTrivial( ) )
-	  theDecomposition.push_front( (*it).inverse( )*omega );
-	theOmegaPower -= 2;
+      mult.push_front(curMult);
+      curMult = Permutation(theRank);
+      // trivialMult = true;
+
+      list<Permutation>::iterator it = mult.begin();
+      for (; it != mult.end(); ++it) {
+        theDecomposition.push_front(omega);
+        if (!((*it).inverse() * omega).isTrivial())
+          theDecomposition.push_front((*it).inverse() * omega);
+        theOmegaPower -= 2;
       }
     }
-    
+
     w_it = w_it2;
   }
-	
-  adjustDecomposition( theRank , theOmegaPower , theDecomposition );
-}
 
+  adjustDecomposition(theRank, theOmegaPower, theDecomposition);
+}
 
 //---------------------------------------------------------------------------//
 //--------------------------- adjustDecomposition ---------------------------//
 //---------------------------------------------------------------------------//
 
+void ThRightNormalForm::adjustDecomposition(int rank, int &power, list<Permutation> &decomp) {
 
-void 
-ThRightNormalForm::adjustDecomposition
-( int rank , int& power , list<Permutation>& decomp )
-{
-  const Permutation omega = Permutation::getHalfTwistPermutation( rank );
+  const Permutation omega = Permutation::getHalfTwistPermutation(rank);
 
   bool flip = false;
-  list< Permutation>::iterator it1 =  decomp.begin( );
-  for( ; it1!=decomp.end( ) ; it1++ ) {
-    
-    if( flip )
-      *it1 = omega*(*it1)*omega;
-		
-    list< Permutation >::iterator it2 = it1;
-    for( ; it2!=decomp.begin( ) ; it2-- ) {
-      list< Permutation >::iterator it3 = it2;
+  list<Permutation>::iterator it1 = decomp.begin();
+  for (; it1 != decomp.end(); ) {
+
+    if (flip)
+      *it1 = omega * (*it1) * omega;
+
+    list<Permutation>::iterator it2 = it1;
+    for (; it2 != decomp.begin(); it2--) {
+      list<Permutation>::iterator it3 = it2;
       it3--;
-      
+
       transformationResult tr_res = transform( rank , *it3 , *it2 );
       switch( tr_res ) {
-      case TWO_MULTIPLIERS:
-          assert(false);
       case ONE_MULTIPLIER:
 				if( it1==it2 )
 					it1 = it2 = decomp.erase( it3 );
@@ -189,14 +182,15 @@ ThRightNormalForm::adjustDecomposition
 				break;
       }
     }
-		
-    if( *it1==omega ) {
+
+    if (*it1 == omega) {
       power++;
-      it1 = decomp.erase( it1 );
-      it1--;
+      it1 = decomp.erase(it1);
       flip = !flip;
+    } else {
+      if (it1 != decomp.end())
+        it1++;
     }
-		
   }
 }
 
@@ -230,26 +224,24 @@ ThRightNormalForm::transform( int theRank , Permutation& p1 , Permutation& p2 )
 //------------------------------- inverse -----------------------------------//
 //---------------------------------------------------------------------------//
 
+ThRightNormalForm::NF ThRightNormalForm::inverse() const {
+  int dec_size = theDecomposition.size();
 
-ThRightNormalForm::NF
-ThRightNormalForm::inverse( ) const
-{
-  int dec_size = theDecomposition.size( );
-  
-  int power = -theOmegaPower-dec_size;
-  const Permutation omega = Permutation::getHalfTwistPermutation( theRank );
+  int power = -theOmegaPower - dec_size;
+  const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
   list<Permutation> result;
-  
-  list<Permutation>::const_iterator it = --theDecomposition.end( );
-  for( int i=0 ; i<dec_size ; ++i , --it )
-    if( ( i%2==0 )==( theOmegaPower%2!=0 ) )
-      result.push_back( omega * -(*it) );
-    else
-      result.push_back( -(*it) * omega );
-  
-  return NF( theRank , power , result );
-}
 
+  list<Permutation>::const_iterator it = theDecomposition.end();
+  for (int i = 0; i < dec_size; ++i) {
+    --it;
+    if ((i % 2 == 0) == (theOmegaPower % 2 != 0))
+      result.push_back(omega * -(*it));
+    else
+      result.push_back(-(*it) * omega);
+  }
+
+  return NF(theRank, power, result);
+}
 
 //---------------------------------------------------------------------------//
 //------------------------------- multiply ----------------------------------//
