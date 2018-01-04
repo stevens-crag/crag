@@ -34,3 +34,7 @@ crag.creator.user.2.6pre1
 crag.files
 crag.includes
 build
+
+#CLion default build dir
+cmake-build-debug
+cmake-build-release
