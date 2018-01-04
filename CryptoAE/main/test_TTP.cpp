@@ -23,13 +23,13 @@ int main() {
   
 
   // AE suggested parameters
-  ttp_conf.nBL    =  6; // 5;     // # Generators in BL
-  ttp_conf.nBR    =  6; // 5;     // # Generators in BR
-  ttp_conf.N      = 14; // 12;    // Group rank
+  ttp_conf.nBL    =  4; // 5;     // # Generators in BL
+  ttp_conf.nBR    =  4; // 5;     // # Generators in BR
+  ttp_conf.N      = 10; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 150; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 150;  // Word's length
+  ttp_conf.len_z  = 100; // 18;  // Conjugator's length
+  ttp_conf.len_w  = 10;  // Word's length
   
   cout << ttp_conf << endl;
 
@@ -50,6 +50,7 @@ int main() {
     
     BSets bs = BSets::generateEqual( ttp_conf.N );
     //BSets bs = BSets::generateRandom( ttp_conf.N );
+    cout << "==============================================" << endl;
     cout << "BS generated : " << bs << endl;
     TTPTuple dw = AEKeyExchange::generateTuples( ttp_conf, bs );
 
