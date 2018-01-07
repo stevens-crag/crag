@@ -901,15 +901,13 @@ bool Permutation::mixable( const Permutation& p1 , const Permutation& p2 )
 //-------------------------------- flip -------------------------------------//
 //---------------------------------------------------------------------------//
 
-
-Permutation Permutation::flip( ) const
-{
-  int sz = size( );
+Permutation Permutation::flip() const {
+  int sz = size();
   Permutation result(sz);
-  
-  for( int i=0 ; i<sz ; ++i )
-    result.theValue[sz-i-1] = sz-theValue[i]-1;
-  
+
+  for (int i = 0; i < sz; ++i)
+    result.theValue[sz - i - 1] = sz - theValue[i] - 1;
+
   return result;
 }
 

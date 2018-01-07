@@ -105,50 +105,60 @@ class BSets
 //
 //
 //! Implements tuples corresponding to the putput of TTP algorithm
-class TTPTuple
-{
- public: 
-  TTPTuple( ) {}
-  TTPTuple( const vector< Word >& L, const vector< Word >& R):
-    WL( L ),
-    WR( R ) {}
-    
-    TTPTuple( const vector< Word >& L, const vector< Word >& R, const Word& conj):
-      WL( L ),
-      WR( R ),
-      z( conj) {}
-      
-    vector<Word> WL;
-    vector<Word> WR;
-    
-    
-    //! Returns the total length of the tuples
-    int length() const; 		
-    //! Shorten words in each tuple
-    void shorten( int N );    
-    //! Test tuples for being "seprated", i.e. two nonintersecting sets of commuting generators
-    /*!
-     \param N - braid group rank
-     \param deails - if true will print verbose information
-     */
-    bool testTuples( int N, bool details )const ;
-    
-    //! Performs shorten and then test on being "separated"
-    bool shortAndTestTuples( int N, bool details=false ) {
-      shorten( N );
-      return testTuples( N,details );
-    }
-    
-    //! Tuple ordering operator
-    friend bool operator < ( const TTPTuple& t1, const TTPTuple& t2 ) {
-      return t1.WL < t2.WL && t1.WR < t2.WR;
-    }
-    
-    
-    Word z;
- private:
-    vector<Word> origWL;
-    vector<Word> origWR;	
+class TTPTuple {
+public:
+  TTPTuple() {}
+  TTPTuple(const vector<Word> &L, const vector<Word> &R)
+      : WL(L), WR(R), deltaSQL(L.size(), 0), deltaSQR(R.size(), 0) {}
+
+  TTPTuple(const vector<Word> &L, const vector<Word> &R, const Word &conj)
+      : WL(L), WR(R), deltaSQL(L.size(), 0), deltaSQR(R.size(), 0), z(conj) {}
+
+  vector<Word> WL;
+  vector<Word> WR;
+
+  //! Check if auxiliary data is correct
+  bool equivalent(int N, const TTPTuple &t) const;
+
+  //! Take modulo DeltaSQ. Normal forms (obfuscation) applies.
+  TTPTuple takeModuloDeltaSQ(int N) const;
+  //! The sum of lengths of words in the tuples
+  int length() const;
+  //! Apply shortenBraid to each word in the tuples
+  void shorten(int N);
+  //! Test tuples for being "seprated", i.e. two nonintersecting sets of
+  //! commuting generators
+  /*!
+   \param N - braid group rank
+   \param deails - if true will print verbose information
+   */
+  TTPTuple conjugate(int N, const Word& b) const;
+  bool testTuples(int N, bool details) const;
+
+  //! Performs shorten and then test on being "separated"
+  bool shortAndTestTuples(int N, bool details = false) {
+    shorten(N);
+    return testTuples(N, details);
+  }
+
+  //! Tuple ordering operator
+  friend bool operator<(const TTPTuple &t1, const TTPTuple &t2) {
+    return t1.WL < t2.WL && t1.WR < t2.WR;
+  }
+
+  void printPowers() const;
+
+  //! Auxiliary member used in TTP-attack: conjugator used to get this tuple
+  Word z;
+  //! Auxiliary member used in TTP-attack: powers of Delta^2 used to get this tuple
+  vector<int> deltaSQL;
+  vector<int> deltaSQR;
+
+  Word origZ;
+
+private:
+  vector<Word> origWL;
+  vector<Word> origWR;
 };
 
 ///////////////////////////////////////////////////////////////////////////////

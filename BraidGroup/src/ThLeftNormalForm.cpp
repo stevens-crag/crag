@@ -7,6 +7,7 @@
 //
 
 
+#include <algorithm>
 #include "ThLeftNormalForm.h"
 #include "ThRightNormalForm.h"
 #include "BraidGroup.h"
@@ -158,40 +159,96 @@ ThLeftNormalForm ThLeftNormalForm::multiply( const ThLeftNormalForm& rep ) const
 //-------------------------------- getWord ----------------------------------//
 //---------------------------------------------------------------------------//
 
-
-Word ThLeftNormalForm::getWord( ) const
-{
+Word ThLeftNormalForm::getWord() const {
   Word result;
-  vector< int > decomposition;
-  
-  vector< int > geodesic;
-
   // A. Take care of Deltas
   if( theOmegaPower!=0 ) {
-    Word omegaWord;
     const Permutation omega = Permutation::getHalfTwistPermutation( theRank );
-    geodesic = omega.geodesic( );
-    for( int i=0 ; i<geodesic.size( ) ; ++i )
-      omegaWord.push_back( geodesic[i]+1 );
-    
+    Word omegaWord = omega.geodesicWord();
     if( theOmegaPower<0 )
       omegaWord = -omegaWord;
-    
-    for( int i=0 ; i<abs(theOmegaPower) ; ++i )
-      result *= omegaWord;
+    result = omegaWord.power(abs(theOmegaPower));
   }
   
   // B. Take care of permutation braids
-  list<Permutation>::const_iterator it = theDecomposition.begin( );
-  for( ; it!=theDecomposition.end( ) ; ++it ) {
-    geodesic = (*it).geodesic( );
-    for( int j=0 ; j<geodesic.size( ) ; ++j )
-      result.push_back( geodesic[j]+1 );
+  for (const auto &d : theDecomposition) {
+    result *= d.geodesicWord();
   }
   
   return result;
 }
 
+Word ThLeftNormalForm::getReducedWord2() const {
+  if (theOmegaPower >= 0 || theDecomposition.size() == 0)
+    return getWord();
+
+  const auto p = -theOmegaPower;
+  const auto d = theDecomposition.size();
+  auto a = p < d ? p : d;
+
+  Word result;
+
+  // 1. Process omega
+  const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
+  Word omegaWord = omega.geodesicWord();
+  omegaWord = -omegaWord;
+  result = omegaWord.power(p - a);
+
+  // 2. Sort permutations and find the cut_value
+  vector<int> sizes;
+  for (const auto &perm : getDecomposition())
+    sizes.push_back(perm.geodesic().size());
+  sort(sizes.begin(), sizes.end(), [](const int &lhs, const int &rhs) { return lhs > rhs; });
+  const int cut_value = sizes[a - 1];
+
+  // 3. Cancel omega^-1 with positive permutations
+  for (auto it = theDecomposition.begin(); it != theDecomposition.end(); ++it) {
+    auto perm = *it;
+    if (a > 0 && perm.geodesic().size() >= cut_value) {
+      perm = (-perm) * omega;
+      if ((--a) % 2 != 0)
+        perm = perm.flip();
+      result *= -Word(perm.geodesicWord());
+    } else {
+      if (a % 2 != 0)
+        perm = perm.flip();
+      result *= Word(perm.geodesicWord());
+    }
+  }
+  return result;
+}
+
+Word ThLeftNormalForm::getReducedWord() const {
+  if (theOmegaPower >= 0 || theDecomposition.size() == 0)
+    return getWord();
+
+  const auto p = -theOmegaPower;
+  const auto d = theDecomposition.size();
+  const auto a = p < d ? p : d;
+
+  Word result;
+
+  // 1. Process omega
+  const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
+  Word omegaWord = omega.geodesicWord();
+  omegaWord = -omegaWord;
+  result = omegaWord.power(p - a);
+
+  // 2. Cancel omega^-1 with positive permutations
+  auto it = theDecomposition.begin();
+  for (int i = 0; i < a; ++i, ++it) {
+    auto perm = (-(*it)) * omega;
+    if ((a - i - 1) % 2 != 0)
+      perm = perm.flip();
+    result *= -Word(perm.geodesicWord());
+  }
+  // 3. process the rest of positive permutations
+  for (; it != theDecomposition.end(); ++it) {
+    result *= (*it).geodesicWord();
+  }
+
+  return result;
+}
 
 //---------------------------------------------------------------------------//
 //----------------------------------- cycle ---------------------------------//

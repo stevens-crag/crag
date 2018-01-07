@@ -228,9 +228,12 @@ public:
     For each permutation-braid computes a braid-word it represents
     and, finally, concatenate all the results.
    */
-  Word getWord( ) const;
-  
-  
+  Word getWord() const;
+  //! Attempts to cancel negative powers of Delta with positive permutations. Experimental version of getWord().
+  Word getReducedWord() const;
+  Word getReducedWord2() const;
+
+
   static void adjustDecomposition( int rank , int& power , list<Permutation>& decomp );
   
   void adjust( ) { adjustDecomposition( theRank , theOmegaPower , theDecomposition ); }

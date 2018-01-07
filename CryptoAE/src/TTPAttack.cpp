@@ -120,117 +120,123 @@ bool equalUpToCommut( int N, const BSets& bs, const TTPTuple& ttp, const Word& z
 //
 //
 
+
 void TTPLBA::addNewElt(const TTPTuple &T, const set<NODE> &checkedElements, set<NODE> &uncheckedElements) {
   int weight = T.length();
   NODE new_node(weight, T);
-
   if (checkedElements.find(new_node) != checkedElements.end())
     return;
   if (uncheckedElements.find(new_node) != uncheckedElements.end())
     return;
-
   uncheckedElements.insert(new_node);
 }
 
-void TTPLBA::tryNode(int N, NODE cur, const vector<Word> &gens,
+
+void TTPLBA::tryNode(int N, NODE cur, const vector<Word>& gens,
                      const set<NODE> &checkedElements,
-                     set<NODE> &uncheckedElements, int &min_weight) {
-  // This was used to exclude nodes that are too far from the current optimal
-  // we better vary this value, depending on parameters of A and B
-  int MAX_DELTA = 80;
+                     set<NODE> &uncheckedElements) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
 
-  for (int i = 0; i < gens.size(); ++i) {
+  // Conjugate by a long terminal segments of WL[0] and WR[0].
+  // This dramatically reduces weight on the first iterations of the process
+  vector<Word> special_gens = {
+      cur.second.WL[0].terminalSegment(9 * cur.second.WL[0].length() / 10),
+      cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10),
+      cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 3),
+      cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 3),
+  };
+  for (const auto& b : special_gens) {
+    auto new_tuple = cur.second.conjugate(N, -b);
+    new_tuple.shorten(N);
+    cout << cur.first << " -> " << new_tuple.length() << endl;
+    if (new_tuple.length() < cur.first) {
+      addNewElt(new_tuple, checkedElements, uncheckedElements);
+      return;
+    }
+  }
 
-    int new_weight = 0;
-    Word b = gens[i];
-    for (int d = 0; d < 2; ++d) {
+  // Process all conjugates
+  bool progress = false;
+  for (const auto& b : gens) {
+    auto new_tuple = cur.second.conjugate(N, b);
+    new_tuple.shorten(N);
+    addNewElt(new_tuple, checkedElements, uncheckedElements);
+    progress |= (new_tuple.length() < cur.first);
+  }
+  if (progress)
+    return;
 
-      // cout << "   #" << i+1 << "," << d+1;
-      if (d == 1)
-        b = -b;
-      bool candidate = true;
-      int delta = 0;
-      vector<Word> WL = cur.second.WL;
-      for (int t = 0; t < WL.size() && candidate; ++t) {
-        delta -= WL[t].length();
-        WL[t] = shortenBraid(N, -b * WL[t] * b);
-        new_weight += WL[t].length();
-        delta += WL[t].length();
+  // Try to fix Delta^2 power in WL
+  for (int i = 0; i < cur.second.WL.size(); ++i) {
+    const auto w = cur.second.WL[i];
+    NF nf(B, w);
+    const auto p = nf.getPower();
+    for (int d = -1; d <= 1; d += 2) {
+      nf.setPower(p + 2 * d);
+      const auto w1 = shortenBraid(N, nf.getReducedWord2());
+      if (w1.length() < w.length()) {
+        TTPTuple new_tuple = cur.second;
+        new_tuple.WL[i] = w1;
+        new_tuple.deltaSQL[i] += d;
+        // (debug)
+        //if (!cur.second.equivalent(N, new_tuple)) {
+        //  cout << "Internal check failure in tryNode" << endl;
+        //  exit(1);
+        //} else {
+        //  cout << "Internal check in tryNode works WL #" << i << ": " << cur.second.deltaSQL[i] << " -> " << new_tuple.deltaSQL[i] << endl;
+        //}
+        addNewElt(new_tuple, checkedElements, uncheckedElements);
       }
-
-      vector<Word> WR = cur.second.WR;
-      for (int t = 0; t < WR.size() && candidate; ++t) {
-        delta -= WR[t].length();
-        WR[t] = shortenBraid(N, -b * WR[t] * b);
-        new_weight += WR[t].length();
-        delta += WR[t].length();
-      }
-
-      //      if( new_weight > min_weight + MAX_DELTA ) {
-      //      if( delta>= 0 ) { // MAX_DELTA ) {
-      //	candidate = false;
-      // cout << " stopped @ " << t << endl;
-      //      }
-
-      if (new_weight < min_weight) {
-        min_weight = new_weight;
-        // cout << "New min w : " << min_weight << endl;
-      }
-
-      if (candidate) {
-        // cout << "Adding candidate " << b*cur.second.z << " : " <<  endl;
-        Word conj = cur.second.z * b;
-        for (int i = 0; i < WL.size(); i++) {
-          //  			cout << ThLeftNormalForm( BraidGroup( N )  ,
-          //  -savTuple.WL[i]*conj*WL[i]*-conj );
-          // 			cout << WL[i] << " -----> " << endl;
-          //       		cout <<
-          //       shortenBraid(N,-savTuple.WL[i]*conj*WL[i]*-conj) << endl;
-          // 			cout << ThLeftNormalForm( BraidGroup( N )  ,
-          // -savTuple.WR[i]*conj*WR[i]*-conj ); 			cout <<
-          // WR[i] << " -----> " << endl;
-          //  			cout << shortenBraid(N,-savTuple.WR[i]*conj*WR[i]*-conj) <<
-          //  endl;
-        }
-        addNewElt(TTPTuple(WL, WR, conj), checkedElements, uncheckedElements);
-        // cout << " accepted with " << delta << endl;
+    }
+  }
+  // Try to fix Delta^2 power in WR
+  for (int i = 0; i < cur.second.WR.size(); ++i) {
+    const auto w = cur.second.WR[i];
+    NF nf(B, w);
+    const auto p = nf.getPower();
+    for (int d = -1; d <= 1; d += 2) {
+      nf.setPower(p + 2 * d);
+      const auto w1 = shortenBraid(N, nf.getReducedWord2());
+      if (w1.length() < w.length()) {
+        TTPTuple new_tuple = cur.second;
+        new_tuple.WR[i] = w1;
+        new_tuple.deltaSQR[i] += d;
+        // (debug)
+        //if (!cur.second.equivalent(N, new_tuple)) {
+        //  cout << "Internal check failure in tryNode" << endl;
+        //  exit(1);
+        //} else {
+        //  cout << "Internal check in tryNode works WR #" << i << ": " << cur.second.deltaSQR[i] << " -> " << new_tuple.deltaSQR[i] << endl;
+        //}
+        addNewElt(new_tuple, checkedElements, uncheckedElements);
       }
     }
   }
 }
 
+
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
                     const vector<Word> &gens, int sec, ostream &out,
                     TTPTuple &red_T, const Word &z) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
 
+  int init_time = time(0);
   int maxIterations = 100000;
 
   set<NODE> checkedElements;
   set<NODE> uncheckedElements;
 
-  int init_time = time(0);
-
-  TTPTuple initTuple(theTuple.WL, theTuple.WR, Word());
-  //  cout << "Start LBR. Orig tuple:" << endl;
-  for (int i = 0; i < initTuple.WL.size(); i++) {
-    //  		cout << ThLeftNormalForm( BraidGroup( N )  ,
-    //  initTuple.WL[i] );
-    //    cout << shortenBraid(N,initTuple.WL[i])<< endl;
-    // 		cout << ThLeftNormalForm( BraidGroup( N )  , initTuple.WR[i] );
-    //    cout << shortenBraid(N,initTuple.WR[i]) << endl;
-  }
-
-  //  int init_weight1 = sbgpGeneratorsWeight( A1 );
-  int init_weight = initTuple.length();
-  NODE init(init_weight, initTuple);
-
-  int min_weight = init_weight;
+  // TTPTuple initTuple(theTuple.WL, theTuple.WR, Word());
+  TTPTuple initTuple = theTuple;
+  int best_result = initTuple.length();
+  NODE init(best_result, initTuple);
 
   savTuple = initTuple;
 
   uncheckedElements.insert(init);
-  out << "Initial length: " << init_weight << endl;
-  int best_result = 999999;
+  out << "Initial length: " << best_result << endl;
 
   for (int c = 0; uncheckedElements.size() && c < maxIterations; ++c) {
 
@@ -241,207 +247,28 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
     int cur_time = time(0);
     if (best_result > cur.first)
       best_result = cur.first;
-    out << "Current (best) length: " << cur.first << " (" << best_result << ")"
-        << ", tm = " << cur_time << endl;
+    out << "Current (best) length: " << cur.first << " (" << best_result << ")   ";
+    cur.second.printPowers();
+    cout << "   tm = " << cur_time << endl;
 
     if (cur_time - init_time > sec)
       return false; // TIME_EXPIRED;
 
-    //    if( equalUpToCommut(N,cur.second,z) ) {
+    // Termination condition: check that cur.second.WL and cur.second.WR are separated
+    // if (cur.second.testTuples(N, false)) {
     if (cur.second.shortAndTestTuples(N)) {
+      // (debug)
+      if (!theTuple.equivalent(N, cur.second)) {
+        cout << "Internal check failure in TTPLBA::reduce" << endl;
+        exit(1);
+      }
       red_T = cur.second;
-
-      // CHECK THAT THE Z IS ACTUALL CONJUGATOR
-      bool same_z = true;
-      for (int i = 0; i < red_T.WL.size(); i++) {
-        if (shortenBraid(N, cur.second.z * cur.second.WL[i] * -cur.second.z *
-                                -theTuple.WL[i])
-                .length() > 0) {
-          same_z = false;
-          break;
-        }
-      }
-      for (int i = 0; i < red_T.WR.size(); i++) {
-        if (shortenBraid(N, cur.second.z * cur.second.WR[i] * -cur.second.z *
-                                -theTuple.WR[i])
-                .length() > 0) {
-          same_z = false;
-          break;
-        }
-      }
-
-      if (!same_z)
-        cout << "LBA CHECK FOR Z FAILED" << endl;
-
-      // END CHECK
-
-      return simpleLBA(N, bs, cur.second, shortenBraid(N, z * cur.second.z));
-      //      return true; // SUCCESSFULL;
+      return true;
     }
-
-    tryNode(N, cur, gens, checkedElements, uncheckedElements, min_weight);
+    tryNode(N, cur, gens, checkedElements, uncheckedElements);
   }
 
   return false; // FAILED;
-}
-
-bool TTPLBA::simpleLBA( int N , const BSets& bs, const TTPTuple& theTuple, const Word& z, TTPTuple* ret_T )
-{
-  
-  TTPTuple T = theTuple;
-  
-  T.shorten( N );
-  
-  vector< Word > gens(N-1);
-  for (int i=0;i<N-1;i++)
-    gens[i] = Word(i+1);
-  
-
-  // DO THE REDUCTION HERE
-  TTPTuple red_T( T.WL,T.WR );
-  Word     z_conj;
-
-  int minLength = 999999999;
-  while ( 1) { // !red_T.shortAndTestTuples( N ) ) {
-
-    Word succGen;
-    bool lenReduced = false;
-    // int minLength = 999999999;
-    for ( int i=0;i<gens.size();i++) {
-      
-      // switch for positive negative
-      Word g = gens[i];
-      for (int s=0;s<=1;s++){
-	if (s) g = -g;
-	
-	int length=0;
-	// DO LEFT TUPLE
-	for ( int iL=0;iL<T.WL.size();iL++)
-	  length += shortenBraid(N,-g*red_T.WL[iL]*g).length();
-
-	// DO RIGTH TUPLE
-	for ( int iR=0;iR<T.WR.size();iR++)
-	  length += shortenBraid(N,-g*red_T.WR[iR]*g).length();	
-	
-
-	//	cout << "Try " << g << " Length : " << length << endl;
-
-	if ( length < minLength ){
-	  minLength = length;
-	  succGen = g;
-	  //	  cout << "New Length : " << minLength << " by " << g << endl;
-	  lenReduced = true;
-	}
-      }
-
-    }
-
-    if (!lenReduced) {
-      //      if ( !red_T.shortAndTestTuples( N ) )
-      //      else 
-      //	break;
-      //      cout << "Z : " << shortenBraid(N,z) << endl;
-      //      cout << "Z': " << shortenBraid(N,z_conj) << endl;
-     
-
-      Word z_diff = shortenBraid(N,z*z_conj);
-      cout << "Z DIST : " << z_diff.length() << endl;
-      //      if (z_diff.length() > 2)
-      //	return false;
-      //      else
-      //	return true;
-      
-      red_T.z = z_conj;
-      if ( equalUpToCommut( N, bs, red_T, z) )
-	cout << "Z COMMUTE WITH WS" << endl;
-
-//       It seems that  z can be hard to recover 
-//       because the difference z*z' may commute with both BL and BR
-//       Then |BL| + |BR| = |(z*z')^-1 BL (z*z')| + |(z*z')^-1 BR (z*z')|
-//       Check it here 
-//       int len = 0;
-//       int len_conj = 0;
-//       for ( int i=0;i<red_T.WL.size();i++){
-// 	len += red_T.WL[i].length();
-// 	len_conj += shortenBraid(N,-z_diff*red_T.WL[i]*z_diff).length();
-//       }
-//       for ( int i=0;i<red_T.WR.size();i++){
-// 	len += red_T.WR[i].length();
-// 	len_conj += shortenBraid(N,-z_diff*red_T.WR[i]*z_diff).length();
-//       }     
-      
-//       if ( len_conj <= len)
-// 	cout << "Z COMMUTE WITH WS" << endl;
-      
-      // copy reduced tuple 
-      if ( ret_T )
-	*ret_T = TTPTuple( red_T.WL, red_T.WR, z_conj );
-
-      if ( red_T.shortAndTestTuples( N ) )
-	return true;
-      else
-	return false;
-      
-    }
-      
-    // UPDATE THE TUPLE
-  
-    
-    // UPDATE LEFT TUPLE
-    for ( int iL=0;iL<T.WL.size();iL++){
-      Word redWord = shortenBraid(N,-succGen*red_T.WL[iL]*succGen);
-      red_T.WL[iL] = redWord;
-    }
-    // UPDATE RIGTH TUPLE
-    for ( int iR=0;iR<T.WR.size();iR++){
-      Word redWord = shortenBraid(N,-succGen*red_T.WR[iR]*succGen);
-      red_T.WR[iR] = redWord;
-    }
-
-    z_conj = z_conj*succGen;   // z is such that w_red = z^-1 w z.
-    
-    int conj_dist = shortenBraid(N,z*z_conj).length();
-    int stop_cond = red_T.shortAndTestTuples( N );
-  
-    cout << "DIST to Z: " << conj_dist  << " " << shortenBraid(N,z*z_conj)<< " COND : " << stop_cond << endl;
-    if ( conj_dist == 0 && stop_cond == 0 ) { // show details since it should not happen
-      red_T.shortAndTestTuples( N,true );
-    }
-
-    if ( conj_dist == 0 && stop_cond == 1 ) {
-
-      
-      //   // If success check if we have the original z by computing 
-      bool same_z = true;
-      //   if (red_res){
-      cout << "Z DIST : " << shortenBraid(N,z*z_conj).length() << endl;
-      
-      for (int i=0;i<red_T.WL.size();i++){
-	if (shortenBraid(N,z_conj*red_T.WL[i]*-z_conj*-T.WL[i]).length() > 0) {
-	  same_z = false;
-	  break;
-	}
-      }
-      for (int i=0;i<red_T.WR.size();i++){
-	if (shortenBraid(N,z_conj*red_T.WR[i]*-z_conj*-T.WR[i]).length() > 0) {
-	  same_z = false;
-	  break;
-	}      
-      }
-      
-      
-      if (same_z)
-	cout << "SOLUTION CORRECT" << endl;
-      else
-	cout << "SOLUTION IS NOT CORRECT" << endl;
-      
-      // copy reduced tuple 
-      if ( ret_T )
-	*ret_T = TTPTuple( red_T.WL, red_T.WR, z_conj );
-
-      return true;
-    }
-  }
 }
 
   
@@ -452,55 +279,35 @@ bool TTPLBA::simpleLBA( int N , const BSets& bs, const TTPTuple& theTuple, const
 //
 ///////////////////////////////////////////////////////////////////////////////////////
 
-bool TTPAttack::run(const TTPTuple &d) {
-  Word original_z = d.z;
+bool TTPAttack::run(const TTPTuple &original_tuple) {
+  BraidGroup B(N);
+  typedef ThLeftNormalForm NF;
+  const Word& original_z = original_tuple.origZ;
 
-  // Convert the tuples
-  vector<ThLeftNormalForm> theTuple(d.WL.size() + d.WR.size());
-  for (int i = 0; i < d.WL.size(); i++) {
-    theTuple[i] = ThLeftNormalForm(BraidGroup(N), d.WL[i]);
-    theTuple[i].setPower(theTuple[i].getPower() % 2);
-  }
-  for (int i = 0; i < d.WR.size(); i++) {
-    theTuple[i + d.WL.size()] = ThLeftNormalForm(BraidGroup(N), d.WR[i]);
-    theTuple[i + d.WL.size()].setPower(theTuple[i + d.WL.size()].getPower() %
-                                       2);
-  }
+  // 1. (part of generation) Take all braids modulo Delta^2 and construct a single tuple of elements
+  TTPTuple init_tuple = original_tuple.takeModuloDeltaSQ(N);
 
-  // execute attack
+  // (debug)
+  // if (!original_tuple.equivalent(N, init_tuple)) {
+  //  cout << "Internal failure in takeModuloDeltaSQ" << endl;
+  //  exit(1);
+  //}
 
-  // run LBA to restore delta values
-  reduceDeltaLBA(theTuple);
+  // 2. (attack) Attempt to restore the original delta powers
+  cout << "Attempt to restore the original delta powers" << endl;
+  const auto tuple1 = multiplyElementsByDeltaSQtoReduceLength(init_tuple);
+  // (debug)
+  // if (!original_tuple.equivalent(N, tuple1)) {
+  //  cout << "Internal failure in multiplyElementsByDeltaSQtoReduceLength" <<
+  //  endl; exit(1);
+  //}
 
-  // Test LBA
-  bool DelatLBA_succ = true;
-  for (int i = 0; i < d.WL.size(); i++) {
-    if (shortenBraid(N, theTuple[i].getWord() * -d.WL[i]).length() > 0) {
-      DelatLBA_succ = false;
-      cout << "F";
-    } else {
-      cout << "S";
-    }
-  }
-
-  for (int i = 0; i < d.WR.size(); i++) {
-    if (shortenBraid(N, theTuple[i + d.WL.size()].getWord() * -d.WR[i])
-            .length() > 0) {
-      DelatLBA_succ = false;
-      cout << "F";
-    } else {
-      cout << "S";
-    }
-  }
+  // (debug) Here we test if we found correct powers of Delta^2
+  tuple1.printPowers();
   cout << endl;
-  if (!DelatLBA_succ)
-    cout << "WARNING!!! Delta LBA FAILED!" << endl;
 
-  //  return oneOfSSSReps( d.WL.size(), d.WR.size(), theTuple );
-  //  TTPTuple red_T;
-  // return simpleLBA(d.WL.size(), d.WR.size(), theTuple, original_z );
-
-  return LBA(d.WL.size(), d.WR.size(), theTuple, original_z);
+  // 3. Apply length-based conjugacy minimization
+  return LBA(original_tuple.WL.size(), original_tuple.WR.size(), tuple1, original_z);
 }
 
 bool TTPAttack::oneOfSSSReps( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple )
@@ -537,131 +344,152 @@ bool TTPAttack::oneOfSSSReps( int NWL, int NWR, const vector<ThLeftNormalForm>& 
   return false;	
 }
 
-bool TTPAttack::LBA( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple, const Word& z )
-{ 
-  
-  TTPTuple T;
-  T.WL = vector<Word>(NWL);
-  T.WR = vector<Word>(NWR);
-  
-  for ( int j=0;j<theTuple.size();j++)
-    if ( j < NWL )
-      T.WL[j] = theTuple[j].getWord();
-    else
-      T.WR[j-NWL] = theTuple[j].getWord();
-  
-  T.shorten( N );
-  
-  vector< Word > gens(N-1);
-  for (int i=0;i<N-1;i++)
-    gens[i] = Word(i+1);
+bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
 
+  // 1. Create the initial tuple
+  TTPTuple T = t;
+  T.shorten(N);
+  T.printPowers(); cout << endl;
+
+  // 2. Prepare the generators
+  vector<Word> gens;
+  for (int i = 1; i < N; ++i) {
+    gens.push_back(Word(i));
+    gens.push_back(Word(-i));
+  }
+
+  // 3. Run LBA minimization
   TTPLBA ttpLBA;
   TTPTuple red_T;
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 600, cout, red_T, z);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 12, cout, red_T, z);
 
-  // If success check if we have the original z by computing
-  bool same_z = true;
+  // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {
-    cout << "SAME Z: " << shortenBraid(N, z * red_T.z).length() << endl;
-
-    // Checking correctness of computations?
-    for (int i = 0; i < red_T.WL.size(); i++) {
-      if (shortenBraid(N, red_T.z * red_T.WL[i] * -red_T.z * -T.WL[i])
-              .length() > 0) {
-        same_z = false;
-        break;
-      }
-    }
-    for (int i = 0; i < red_T.WR.size(); i++) {
-      if (shortenBraid(N, red_T.z * red_T.WR[i] * -red_T.z * -T.WR[i])
-              .length() > 0) {
-        same_z = false;
-        break;
-      }
+    cout << "Same z: |z*z'^-1| = " << shortenBraid(N, z * red_T.z).length() << endl;
+    // Checking correctness of computations (check if red_T.z is the conjugator)
+    if (!t.equivalent(N, red_T)) {
+      cout << "Internal LBA check failed" << endl;
+      exit(1);
     }
   }
-
-  if (same_z)
-    cout << "SOLUTION CORRECT" << endl;
-  else
-    cout << "SOLUTION IS NOT CORRECT" << endl;
   return red_res;
-  
 }
 
-bool TTPAttack::simpleLBA( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple, const Word& z )
-{ 
-  
-  TTPTuple T;
-  T.WL = vector<Word>(NWL);
-  T.WR = vector<Word>(NWR);
-  
-  for ( int j=0;j<theTuple.size();j++)
-    if ( j < NWL )
-      T.WL[j] = theTuple[j].getWord();
-    else
-      T.WR[j-NWL] = theTuple[j].getWord();
-  
-  T.shorten( N );
-  
-  vector< Word > gens(N-1);
-  for (int i=0;i<N-1;i++)
-    gens[i] = Word(i+1);
-  
-  TTPLBA ttpLBA;
-  
-  return ttpLBA.simpleLBA( N,BS,T,z );
+/*
+//! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
+static int multiplyByDeltaSQtoReduceLength(int N, Word &w) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
+
+  NF nf(B, w);
+  // -nf.getDecomposition().size()/4 is the anticipated value
+  int best_nf = -nf.getDecomposition().size()/4;
+  map<int, int> weights;
+  static const int delta = 4;
+
+  bool progress = true;
+  while (progress) {
+    progress = false;
+    for (int i = best_nf - delta; i <= best_nf + delta; ++i) {
+      if (weights.find(i) == weights.end()) {
+        ThLeftNormalForm nf2 = nf;
+        nf2.setPower(nf.getPower() + 2 * i);
+        const auto cur_w = shortenBraid(N, nf2.getReducedWord2());
+        weights[i] = cur_w.length();
+        if (weights.find(best_nf) == weights.end() || weights[i] < weights[best_nf]) {
+          progress = true;
+          best_nf = i;
+          w = cur_w;
+        }
+        cout << weights[i] << ", ";
+      }
+    }
+  }
+  nf.setPower(nf.getPower() + 2 * best_nf);
+  for (const auto&p : weights) {
+    // cout << p.second << ", ";
+    // cout << "(" << p.first << "," << p.second << "), ";
+  }
+  cout << endl;
+  return best_nf;
 }
+*/
 
-void TTPAttack::reduceDeltaLBA(vector<ThLeftNormalForm> &theTuple) {
-  for (int i = 0; i < theTuple.size(); i++) {
-    ThLeftNormalForm nf = theTuple[i];
+//! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
+static int multiplyByDeltaSQtoReduceLength(int N, Word &w) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
 
-    // HERE IS LBA
-    int len_sav = shortenBraid(N, nf.getWord()).length();
-    ThLeftNormalForm nf_sav = nf;
-    //	cout << len_sav;
+  NF nf(B, w);
+  // -nf.getDecomposition().size()/4 is the anticipated value
+  int best_nf = -nf.getDecomposition().size()/4;
+  map<int, Word> weights;
+  static const int delta = 2;
+  const Permutation omega = Permutation::getHalfTwistPermutation(N);
+  Word omegaWord = omega.geodesicWord();
 
-    nf.setPower(nf.getPower() - 2);
-    int new_len = shortenBraid(N, nf.getWord()).length();
-    while (new_len < len_sav) {
+  // initial data
+  {
+    ThLeftNormalForm nf2 = nf;
+    nf2.setPower(nf.getPower() + 2 * best_nf);
+    weights[best_nf] = shortenBraid(N, nf2.getReducedWord2());
+    w = weights[best_nf];
+    cout << weights[best_nf].length() << ", ";
+  }
 
-      //		cout << " -> " << new_len;
-      len_sav = new_len;
-      nf_sav = nf;
+  bool progress = true;
+  while (progress) {
+    progress = false;
 
-      nf.setPower(nf.getPower() - 2);
-      new_len = shortenBraid(N, nf.getWord()).length();
+    for (int i = best_nf + 1; i <= best_nf + delta; ++i) {
+      if (weights.find(i) != weights.end())
+        continue;
+      const auto &cur_w = weights[i - 1];
+      const auto new_w = shortenBraid(N, omegaWord.power(2) * cur_w);
+      weights[i] = new_w;
+      if (weights[i].length() < weights[best_nf].length()) {
+        progress = true;
+        best_nf = i;
+        w = new_w;
+        cout << "!";
+      }
+      cout << weights[i].length() << ", ";
     }
 
-    //	cout << "  ?= " << or_len << " : " <<
-    //shortenBraid(ttp_conf.N,nf_sav.getWord() * -dw.first[i]) << endl;
-    theTuple[i] = nf_sav;
+    for (int i = best_nf - 1; i >= best_nf - delta; --i) {
+      if (weights.find(i) != weights.end())
+        continue;
+      const auto &cur_w = weights[i + 1];
+      const auto new_w = shortenBraid(N, omegaWord.power(-2) * cur_w);
+      weights[i] = new_w;
+      if (weights[i].length() < weights[best_nf].length()) {
+        progress = true;
+        best_nf = i;
+        w = new_w;
+        cout << "!";
+      }
+      cout << weights[i].length() << ", ";
+    }
   }
+  for (const auto&p : weights) {
+    // cout << p.second << ", ";
+    // cout << "(" << p.first << "," << p.second << "), ";
+  }
+  cout << endl;
+  return best_nf;
 }
 
-// ThLeftNormalForm cycleDecycle(const ThLeftNormalForm& nf ){
-    
-//   pair< ThLeftNormalForm , ThLeftNormalForm > cycled_nf = nf.cycle();
-//   int inf = nf.getPower();
-  
-//   // @am How many deciclings are neccessary. 
-//   // Checck german's paper
 
-//   for (int l=0;l<????;l++)
-//     ( cycled_nf.first.getPower() < inf){
-//     inf = cycled_nf.first.getPower();
-//     cycled_nf = cycled_nf.first.cycle();
-//   }		
-  
-//   int sup = cycled_nf.first.getDecomposition().size() + cycled_nf.first.getPower();
-//   cycled_nf = cycled_nf.first.decycle();
-//   while ( cycled_nf.first.getDecomposition().size() + cycled_nf.first.getPower() > sup ){
-//     sup  = cycled_nf.first.getDecomposition().size() + cycled_nf.first.getPower();
-//     cycled_nf = cycled_nf.first.decycle();
-//   }		
-  
-//   return cycled_nf.first;
+TTPTuple TTPAttack::multiplyElementsByDeltaSQtoReduceLength(const TTPTuple &t) {
+  TTPTuple result = t;
+  for (int i = 0; i < t.WL.size(); ++i) {
+    result.deltaSQL[i] += multiplyByDeltaSQtoReduceLength(N, result.WL[i]);
+  }
+  for (int i = 0; i < t.WR.size(); ++i) {
+    result.deltaSQR[i] += multiplyByDeltaSQtoReduceLength(N, result.WR[i]);
+  }
+  return result;
+}
 
-// }

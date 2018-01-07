@@ -38,15 +38,13 @@ public:
   bool reduce(int N, const BSets &bs, const TTPTuple &theTuple,
               const vector<Word> &gens, int sec, ostream &out, TTPTuple &red_T,
               const Word &z);
-  bool simpleLBA(int N, const BSets &bs, const TTPTuple &theTuple,
-                 const Word &z, TTPTuple *ret_T = NULL);
 	
 private:												
  
   //! Add NODE(weight,T) to checked/unchecked (if it is not in one of those sets yet).
   void addNewElt(const TTPTuple &T, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
   //! Conjugate cur with each generator (and inverse). Compute Weight. Add to set checked/unchecked.
-  void tryNode(int N, NODE cur, const vector<Word> &gens, const set<NODE> &checkedElements, set<NODE> &uncheckedElements, int &min_weight);
+  void tryNode(int N, NODE cur, const vector<Word> &gens, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
 
   TTPTuple savTuple;
 };
@@ -58,50 +56,42 @@ private:
 //
 //
 
-//! This is an implementation of an attack on TTP algorithm for generating public sets of generators of the Algebraic Eraser protocol
+//! This is an implementation of an attack on TTP algorithm for generating
+//! public sets of generators of the Algebraic Eraser protocol
 class TTPAttack {
 public:
+  //! Constructor
+  /*! \param n  - group rank (number of braids
+  \param bs -the initial commuting sets of subgroup generators
+  */
+  TTPAttack(int n, BSets bs) : N(n), BS(bs) {}
 
-//! Constructor 
-/*! \param n  - group rank (number of braids
-\param bs -the initial commuting sets of subgroup generators 
-*/
-  TTPAttack( int n, BSets bs) : N( n ), BS( bs )  {}
+  enum TTP_Result {
+    TTP_FAILED,
+    //  TIME_EXPIRED,
+    TTP_NOTSURE,
+    TTP_SUCCESSFULL
+  };
 
-enum TTP_Result { 
-  TTP_FAILED, 
-//  TIME_EXPIRED,
-  TTP_NOTSURE,
-  TTP_SUCCESSFULL
-};
- 
+  //! Excutes te attack
+  /*!
+   \param d - the output of TTP algorithm
+   */
+  bool run(const TTPTuple &d);
 
-//! Excutes te attack
-/*!
- \param d - the output of TTP algorithm
- */
- bool run( const TTPTuple& d );
- 
- 
- 
- 
- private:
+private:
+  inline void printStats(const ThLeftNormalForm &nf, ostream &out) {
+    out << "inf : " << nf.getPower()
+        << " sup : " << nf.getDecomposition().size() << flush;
+  }
 
- inline void printStats(const ThLeftNormalForm& nf, ostream& out ){
-   out << "inf : " << nf.getPower() << " sup : " << nf.getDecomposition().size() << flush;
- }
- 
- 
- ThLeftNormalForm cycleDecycle(const ThLeftNormalForm& nf );
+  bool LBA(int NWL, int NWR, const TTPTuple &t, const Word &z);
+  bool oneOfSSSReps(int N1, int N2, const vector<ThLeftNormalForm> &theTuple);
+  //! Trying to reconstruct the original Delta powers
+  TTPTuple multiplyElementsByDeltaSQtoReduceLength(const TTPTuple &t);
 
- bool simpleLBA( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple, const Word& z );
- bool LBA( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple, const Word& z );
- bool oneOfSSSReps( int N1, int N2, const vector<ThLeftNormalForm>& theTuple );
- void reduceDeltaLBA( vector<ThLeftNormalForm>& theTuple );
-
-
- int N;
- BSets BS;
+  int N;
+  BSets BS;
 };
 
 #endif

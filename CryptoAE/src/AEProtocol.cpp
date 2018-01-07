@@ -106,27 +106,117 @@ BSets BSets::generateRandom(int N)
 //   TTP TUPLES
 //
 //
-int TTPTuple::length() const 
-{
-  		int result = 0;
-
-  		for( int i=0 ; i<WL.size() ; ++i )
-    		result += WL[i].length( );
-
-  		for( int i=0 ; i<WR.size() ; ++i )
-    		result += WR[i].length( );
-
-  		return result;
+int TTPTuple::length() const {
+  int result = 0;
+  for (const auto &w : WL) {
+    result += w.length();
+  }
+  for (const auto &w : WR) {
+    result += w.length();
+  }
+  return result;
 }
-		
-		
-void TTPTuple::shorten( int N ) 
-{
-  for( int i=0 ; i<WL.size() ; ++i )
-    WL[i] = shortenBraid( N , WL[i] );
-  
-  for( int i=0 ; i<WR.size() ; ++i )
-    WR[i] = shortenBraid( N , WR[i] );
+
+void TTPTuple::shorten(int N) {
+  for (auto &w : WL) {
+    w = shortenBraid(N, w);
+  }
+  for (auto &w : WR) {
+    w = shortenBraid(N, w);
+  }
+}
+
+bool TTPTuple::equivalent(int N, const TTPTuple &t) const {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
+
+  vector<NF> L1, R1, L2, R2;
+  for (int i = 0; i < WL.size(); ++i) {
+    NF nf(B, z * WL[i] * -z);
+    nf.setPower(nf.getPower() - 2 * deltaSQL[i]);
+    L1.push_back(nf);
+  }
+  for (int i = 0; i < WR.size(); ++i) {
+    NF nf(B, z * WR[i] * -z);
+    nf.setPower(nf.getPower() - 2 * deltaSQR[i]);
+    R1.push_back(nf);
+  }
+  for (int i = 0; i < t.WL.size(); ++i) {
+    NF nf(B, t.z * t.WL[i] * -t.z);
+    nf.setPower(nf.getPower() - 2 * t.deltaSQL[i]);
+    L2.push_back(nf);
+  }
+  for (int i = 0; i < t.WR.size(); ++i) {
+    NF nf(B, t.z * t.WR[i] * -t.z);
+    nf.setPower(nf.getPower() - 2 * t.deltaSQR[i]);
+    R2.push_back(nf);
+  }
+
+  for (int i = 0; i < WL.size(); ++i) {
+    if (L1[i] != L2[i])
+      return false;
+  }
+  for (int i = 0; i < WR.size(); ++i) {
+    if (R1[i] != R2[i])
+      return false;
+  }
+
+  return true; 
+}
+
+TTPTuple TTPTuple::takeModuloDeltaSQ(int N) const {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
+
+  TTPTuple result = *this;
+  for (int i = 0; i < result.WL.size(); ++i) {
+    NF nf(B, result.WL[i]);
+    const auto p = nf.getPower();
+    result.deltaSQL[i] += ((nf.getPower() % 2) - p) / 2;
+    // cout << nf.getPower() << ", " << nf.getPower() % 2 << ", " << result.deltaSQL[i] << endl;
+    nf.setPower(nf.getPower() % 2);
+    result.WL[i] = nf.getReducedWord2();
+  }
+
+  for (int i = 0; i < result.WR.size(); ++i) {
+    NF nf(B, result.WR[i]);
+    const auto p = nf.getPower();
+    result.deltaSQR[i] += ((nf.getPower() % 2) - p) / 2;
+    nf.setPower(nf.getPower() % 2);
+    result.WR[i] = nf.getReducedWord2();
+  }
+
+  return result;
+}
+
+TTPTuple TTPTuple::conjugate(int N, const Word &b) const {
+  TTPTuple result = *this;
+  for (auto &w : result.WL)
+    w = -b * w * b;
+  for (auto &w : result.WR)
+    w = -b * w * b;
+  result.z *= b;
+  return result;
+}
+
+void TTPTuple::printPowers() const {
+  cout << "|";
+  for (int i = 0; i < deltaSQL.size(); i++) {
+    if (deltaSQL[i] != 0) {
+      cout << "F" << "(" << deltaSQL[i] << ")";
+    } else {
+      cout << "S";
+    }
+  }
+  cout << "|";
+  for (int i = 0; i < deltaSQR.size(); i++) {
+    if (deltaSQR[i] != 0) {
+      cout << "F" << "(" << deltaSQR[i] << ")";
+    } else {
+      cout << "S";
+    }
+  }
+  cout << "|";
 }
 
 bool TTPTuple::testTuples( int N, bool details ) const
@@ -357,55 +447,54 @@ ProdElement AEKeyExchange::generatePublicKey( const vector<Word>& v, int r, int 
 	
 	return pubKey;
 }
-		
 
-TTPTuple AEKeyExchange::generateTuples( const TTP_Conf& ttp_conf, const BSets& bs )
-{
-	int nBL = ttp_conf.nBL;
-	int nBR = ttp_conf.nBR;
-	int N = ttp_conf.N;
-	int n = N-1;
-	int nGamma = ttp_conf.nGamma;
-	
-	int len_z = ttp_conf.len_z;
-	int len_w = ttp_conf.len_w;
+TTPTuple AEKeyExchange::generateTuples(const TTP_Conf &ttp_conf, const BSets &bs) {
+  int nBL = ttp_conf.nBL;
+  int nBR = ttp_conf.nBR;
+  int N = ttp_conf.N;
+  int n = N - 1;
+  int nGamma = ttp_conf.nGamma;
 
+  int len_z = ttp_conf.len_z;
+  int len_w = ttp_conf.len_w;
 
-	// Choose the secret conjugator
-	Word z = Word::randomWord(n,len_z);
-	
-	//choose the tuples
+  // Choose the secret conjugator
+  Word z = Word::randomWord(n, len_z);
 
-	vector<Word> wL(nGamma);
-	vector<Word> wR(nGamma);
-	vector<Word> origWL(nGamma);
-	vector<Word> origWR(nGamma);
+  // choose the tuples
 
-	for (int i=0;i<nGamma;i++){
-	  origWL[i] = (Word::randomWord(bs.BL.size(),len_w)).replaceGenerators(bs.BL);
-	  origWR[i] = (Word::randomWord(bs.BR.size(),len_w)).replaceGenerators(bs.BR);
-	  //cout << "BL : " << origWL[i] << endl;
-	  //cout << "BR : " << origWR[i] << endl;
- 
-	  wL[i] = -z*origWL[i]*z;
-	  wR[i] = -z*origWR[i]*z;
-	}
-	
-// 	cout << "z : " << z << endl << endl;
-	
-// 	cout << "BL: " << endl;
-// 	for (int i=0;i<wL.size();i++)
-// 		cout << wL[i] << " ";
-// 	cout << endl << endl;
-	
-// 	cout << "BR: " << endl;
-// 	for (int i=0;i<wR.size();i++)
-// 		cout << wR[i] << " ";
-// 	cout << endl;
-	
-	TTPTuple ret(wL,wR);
-	ret.z = z;
-	//	ret.origWL = origWL;
-	//	ret.origWR = origWR;
-	return ret;
+  vector<Word> wL(nGamma);
+  vector<Word> wR(nGamma);
+  vector<Word> origWL(nGamma);
+  vector<Word> origWR(nGamma);
+
+  for (int i = 0; i < nGamma; i++) {
+    origWL[i] =
+        (Word::randomWord(bs.BL.size(), len_w)).replaceGenerators(bs.BL);
+    origWR[i] =
+        (Word::randomWord(bs.BR.size(), len_w)).replaceGenerators(bs.BR);
+    // cout << "BL : " << origWL[i] << endl;
+    // cout << "BR : " << origWR[i] << endl;
+
+    wL[i] = -z * origWL[i] * z;
+    wR[i] = -z * origWR[i] * z;
+  }
+
+  // 	cout << "z : " << z << endl << endl;
+
+  // 	cout << "BL: " << endl;
+  // 	for (int i=0;i<wL.size();i++)
+  // 		cout << wL[i] << " ";
+  // 	cout << endl << endl;
+
+  // 	cout << "BR: " << endl;
+  // 	for (int i=0;i<wR.size();i++)
+  // 		cout << wR[i] << " ";
+  // 	cout << endl;
+
+  TTPTuple ret(wL, wR);
+  ret.origZ = z;
+  //	ret.origWL = origWL;
+  //	ret.origWR = origWR;
+  return ret;
 }

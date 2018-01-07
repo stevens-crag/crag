@@ -563,8 +563,8 @@ void test_WordProblem( )
   typedef ThLeftNormalForm NF;
   
   int exp = 100;
-  for( int e=0 ; e<exp ; ++e ) {
-    Word w = Word::randomWord( rank-1 , 200 );
+  for (int e = 0; e < exp; ++e) {
+    Word w = Word::randomWord( rank-1 , 400 );
     // cout << "w = " << w << endl;
     
     // compute a normal form
@@ -585,8 +585,8 @@ void test_WordProblem( )
     }
 
     
-    Word w1 = nf_inv.getWord( );
-    NF nf2( B , w*w1 );
+    Word w1 = nf_inv.getWord();
+    NF nf2(B, w * w1);
     if( !nf2.isTrivial( ) ) {
       cout << "Shit B!!!" << endl;
       exit( 1 );
