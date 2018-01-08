@@ -36,7 +36,7 @@ public:
   TTPLBA() {}
 
   bool reduce(int N, const BSets &bs, const TTPTuple &theTuple,
-              vector<Word> &gens, int sec, ostream &out, TTPTuple &red_T,
+              const vector<Word> &gens, int sec, ostream &out, TTPTuple &red_T,
               const Word &z);
 	
 private:												
@@ -44,7 +44,7 @@ private:
   //! Add NODE(weight,T) to checked/unchecked (if it is not in one of those sets yet).
   void addNewElt(const TTPTuple &T, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
   //! Conjugate cur with each generator (and inverse). Compute Weight. Add to set checked/unchecked.
-  void tryNode(int N, NODE cur, vector<Word> &gens, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
+  void tryNode(int N, NODE cur, const vector<Word> &gens, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
   bool process_conjugates(int N, NODE cur, const vector<Word> &gens, const set<NODE> &checkedElements, set<NODE> &uncheckedElements);
 
 

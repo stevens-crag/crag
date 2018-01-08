@@ -91,7 +91,7 @@ bool TTPLBA::process_conjugates(int N, NODE cur, const vector<Word> &gens,
   return progress;
 }
 
-void TTPLBA::tryNode(int N, NODE cur, vector<Word>& gens,
+void TTPLBA::tryNode(int N, NODE cur, const vector<Word>& gens,
                      const set<NODE> &checkedElements,
                      set<NODE> &uncheckedElements) {
   typedef ThLeftNormalForm NF;
@@ -104,7 +104,7 @@ void TTPLBA::tryNode(int N, NODE cur, vector<Word>& gens,
   if (cur.second.WL[0].length() >= 60)
     special_gens.push_back(-(cur.second.WL[0].terminalSegment(9 * cur.second.WL[0].length() / 10)));
   if (cur.second.WR[0].length() >= 60)
-    gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
+    special_gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
   //if (cur.second.WL[0].length() > 6)
   //  gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 3)));
   //if (cur.second.WR[0].length() > 6)
@@ -204,7 +204,7 @@ void TTPLBA::tryNode(int N, NODE cur, vector<Word>& gens,
 
 
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
-                    vector<Word> &gens, int sec, ostream &out,
+                    const vector<Word> &gens, int sec, ostream &out,
                     TTPTuple &red_T, const Word &z) {
   typedef ThLeftNormalForm NF;
   BraidGroup B(N);
@@ -220,17 +220,17 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
   int best_result = initTuple.length();
   NODE init(best_result, initTuple);
 
-  savTuple = initTuple;
-
   uncheckedElements.insert(init);
   out << "Initial length: " << best_result << endl;
 
   for (int c = 0; uncheckedElements.size() && c < maxIterations; ++c) {
 
+    cout << "q0" << endl;
     NODE cur = *uncheckedElements.begin();
     uncheckedElements.erase(uncheckedElements.begin());
     checkedElements.insert(cur);
 
+    cout << "qa1" << endl;
     int cur_time = time(0);
     if (best_result > cur.first)
       best_result = cur.first;
