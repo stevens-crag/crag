@@ -126,6 +126,7 @@ public:
   int length() const;
   //! Apply shortenBraid to each word in the tuples
   void shorten(int N);
+  void shorten_parallel(int N);
   //! Test tuples for being "seprated", i.e. two nonintersecting sets of
   //! commuting generators
   /*!
@@ -137,7 +138,10 @@ public:
 
   //! Performs shorten and then test on being "separated"
   bool shortAndTestTuples(int N, bool details = false) {
+    cout << "z1" << endl;
+    // shorten_parallel(N);
     shorten(N);
+    cout << "z2" << endl;
     return testTuples(N, details);
   }
 

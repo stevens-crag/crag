@@ -90,7 +90,7 @@ int main() {
   // AE suggested parameters
   ttp_conf.nBL    =  7; // 5;     // # Generators in BL
   ttp_conf.nBR    =  7; // 5;     // # Generators in BR
-  ttp_conf.N      = 16; // 12;    // Group rank
+  ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
   ttp_conf.len_z  = 500; // 18;  // Conjugator's length

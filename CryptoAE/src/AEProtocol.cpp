@@ -17,6 +17,7 @@
 #include "errormsgs.h"
 #include "ThLeftNormalForm.h"
 #include "RanlibCPP.h"
+#include <thread>
 
 //typedef pair< vector< Word > , vector< Word > > TTPTuple;
 
@@ -115,6 +116,34 @@ int TTPTuple::length() const {
     result += w.length();
   }
   return result;
+}
+
+static std::vector<Word> tmp_wl;
+static std::vector<Word> tmp_wr;
+
+static void run_thread1(int N, int i) {
+  tmp_wl[i] = shortenBraid(N, tmp_wl[i]);
+}
+static void run_thread2(int N, int i) {
+  tmp_wr[i] = shortenBraid(N, tmp_wr[i]);
+}
+
+
+void TTPTuple::shorten_parallel(int N) {
+  vector<std::thread> threads;
+  tmp_wl = WL;
+  tmp_wr = WR;
+  for (int i = 0; i < WL.size(); ++i) {
+    threads.push_back(std::thread(run_thread1, N, i));
+  }
+  for (int i = 0; i < WR.size(); ++i) {
+    threads.push_back(std::thread(run_thread2, N, i));
+  }
+  for (auto& th : threads) {
+    th.join();
+  }
+  WL = tmp_wl;
+  WR = tmp_wr;
 }
 
 void TTPTuple::shorten(int N) {
