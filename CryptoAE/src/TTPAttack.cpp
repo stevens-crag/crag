@@ -106,32 +106,37 @@ bool TTPLBA::process_conjugates(int N, const NODE& cur, const vector<Word>& gens
   return progress;
 }
 
-void TTPLBA::tryNode(int N, const NODE& cur, const vector<Word>& gens,
+void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector<Word>& gens,
                      const set<NODE>& checkedElements,
                      set<NODE>& uncheckedElements) {
   // 1. Conjugate by a long terminal segments of WL[0] and WR[0].
   // This dramatically reduces weight on the first iterations of the process
   cout << "a0" << endl;
+  if (use_special_gens) {
+    // @todo Apply special_gens only at the first 4-5 iterations. Then they are useless and can seriously slow down the program.
+    vector<Word> special_gens;
 
-  vector<Word> special_gens;
+    if (cur.second.WL[0].length() >= 60) {
+      special_gens.push_back(-(cur.second.WL[0].terminalSegment(9 * cur.second.WL[0].length() / 10)));
+    }
 
-  if (cur.second.WL[0].length() >= 60) {
-    special_gens.push_back(-(cur.second.WL[0].terminalSegment(9 * cur.second.WL[0].length() / 10)));
-  }
+    if (cur.second.WR[0].length() >= 60) {
+      special_gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
+    }
 
-  if (cur.second.WR[0].length() >= 60) {
-    special_gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
-  }
+    // if (cur.second.WL[0].length() > 6)
+    //  gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length()
+    //  - 3)));
+    // if (cur.second.WR[0].length() > 6)
+    //  gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length()
+    //  - 3)));
 
-  //if (cur.second.WL[0].length() > 6)
-  //  gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 3)));
-  //if (cur.second.WR[0].length() > 6)
-  //  gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 3)));
-
-  if (!special_gens.empty()) {
-    if (process_conjugates(N, cur, special_gens, checkedElements, uncheckedElements)) {
-      cout << "a1" << endl;
-      return;
+    if (!special_gens.empty()) {
+      if (process_conjugates(N, cur, special_gens, checkedElements,
+                             uncheckedElements)) {
+        cout << "a1" << endl;
+        return;
+      }
     }
   }
 
@@ -180,60 +185,11 @@ void TTPLBA::tryNode(int N, const NODE& cur, const vector<Word>& gens,
 
     cout << "a6" << endl;
   }
-
-  /*
-  for (int i = 0; i < cur.second.WL.size(); ++i) {
-    const auto w = cur.second.WL[i];
-    NF nf(B, w);
-    const auto p = nf.getPower();
-    for (int d = -1; d <= 1; d += 2) {
-      nf.setPower(p + 2 * d);
-      const auto w1 = shortenBraid(N, nf.getReducedWord2());
-      if (w1.length() < w.length()) {
-        TTPTuple new_tuple = cur.second;
-        new_tuple.WL[i] = w1;
-        new_tuple.deltaSQL[i] += d;
-        // (debug)
-        //if (!cur.second.equivalent(N, new_tuple)) {
-        //  cout << "Internal check failure in tryNode" << endl;
-        //  exit(1);
-        //} else {
-        //  cout << "Internal check in tryNode works WL #" << i << ": " << cur.second.deltaSQL[i] << " -> " << new_tuple.deltaSQL[i] << endl;
-        //}
-        addNewElt(new_tuple, checkedElements, uncheckedElements);
-      }
-    }
-  }
-  // Try to fix Delta^2 power in WR
-  for (int i = 0; i < cur.second.WR.size(); ++i) {
-    const auto w = cur.second.WR[i];
-    NF nf(B, w);
-    const auto p = nf.getPower();
-    for (int d = -1; d <= 1; d += 2) {
-      nf.setPower(p + 2 * d);
-      const auto w1 = shortenBraid(N, nf.getReducedWord2());
-      if (w1.length() < w.length()) {
-        TTPTuple new_tuple = cur.second;
-        new_tuple.WR[i] = w1;
-        new_tuple.deltaSQR[i] += d;
-        // (debug)
-        //if (!cur.second.equivalent(N, new_tuple)) {
-        //  cout << "Internal check failure in tryNode" << endl;
-        //  exit(1);
-        //} else {
-        //  cout << "Internal check in tryNode works WR #" << i << ": " << cur.second.deltaSQR[i] << " -> " << new_tuple.deltaSQR[i] << endl;
-        //}
-        addNewElt(new_tuple, checkedElements, uncheckedElements);
-      }
-    }
-  }
-  */
 }
-
 
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
                     const vector<Word> &gens, int sec, ostream &out,
-                    TTPTuple &red_T, const Word &z) {
+                    TTPTuple &red_T) {
   int init_time = time(0);
   int maxIterations = 100000;
 
@@ -244,6 +200,7 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
   TTPTuple initTuple = theTuple;
   int best_result = initTuple.length();
   NODE init(best_result, initTuple);
+  size_t stuck_check = 0;
 
   uncheckedElements.insert(init);
   out << "Initial length: " << best_result << endl;
@@ -260,6 +217,13 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
 
     if (best_result > cur.first) {
       best_result = cur.first;
+      stuck_check = 0;
+    } else {
+      if (++stuck_check > 10) {
+        // We are officially stuck. Save the instance to process later
+        // I think we need 2 saves: (a) the original instance as it was originally generated and (b) the reduced one to start LBA from that point
+        cout << " >>> STUCK <<< " << endl;
+      }
     }
 
     out << "Current (best) length: " << cur.first << " (" << best_result << ")   ";
@@ -286,7 +250,7 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
 
     cout << "q2" << endl;
 
-    tryNode(N, cur, gens, checkedElements, uncheckedElements);
+    tryNode(N, c < 5, cur, gens, checkedElements, uncheckedElements);
 
     cout << "q3" << endl;
   }
@@ -386,7 +350,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   // 3. Run LBA minimization
   TTPLBA ttpLBA;
   TTPTuple red_T;
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 12, cout, red_T, z);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 12, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {

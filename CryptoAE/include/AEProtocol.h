@@ -138,10 +138,8 @@ public:
 
   //! Performs shorten and then test on being "separated"
   bool shortAndTestTuples(int N, bool details = false) {
-    cout << "z1" << endl;
-    // shorten_parallel(N);
-    shorten(N);
-    cout << "z2" << endl;
+    shorten_parallel(N);
+    // shorten(N);
     return testTuples(N, details);
   }
 
