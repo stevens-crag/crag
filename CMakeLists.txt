@@ -1,11 +1,11 @@
 #Specify the version being used aswell as the language
 cmake_minimum_required(VERSION 2.8.12)
 cmake_policy(VERSION 2.8.12)
+
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+
 IF(UNIX)
-  #add -std=c++11 for all subprojects to make ABI fully compatible
-  #also enables eclipse c++11 features
-  #dirty hack, but the only one I can find
-  set(CMAKE_CXX_COMPILER_ARG1 "-std=c++11")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
 ENDIF(UNIX)
 
 # Name of the project
