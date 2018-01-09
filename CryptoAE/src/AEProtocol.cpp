@@ -118,32 +118,25 @@ int TTPTuple::length() const {
   return result;
 }
 
-static std::vector<Word> tmp_wl;
-static std::vector<Word> tmp_wr;
-
-static void run_thread1(int N, int i) {
-  tmp_wl[i] = shortenBraid(N, tmp_wl[i]);
-}
-static void run_thread2(int N, int i) {
-  tmp_wr[i] = shortenBraid(N, tmp_wr[i]);
-}
-
-
 void TTPTuple::shorten_parallel(int N) {
   vector<std::thread> threads;
-  tmp_wl = WL;
-  tmp_wr = WR;
+  threads.reserve(WL.size() + WR.size());
+
   for (int i = 0; i < WL.size(); ++i) {
-    threads.push_back(std::thread(run_thread1, N, i));
+    threads.emplace_back([this, N, i]() {
+      WL[i] = shortenBraid(N, WL[i]);
+    });
   }
+
   for (int i = 0; i < WR.size(); ++i) {
-    threads.push_back(std::thread(run_thread2, N, i));
+    threads.emplace_back([this, N, i]() {
+      WR[i] = shortenBraid(N, WR[i]);
+    });
   }
+
   for (auto& th : threads) {
     th.join();
   }
-  WL = tmp_wl;
-  WR = tmp_wr;
 }
 
 void TTPTuple::shorten(int N) {
