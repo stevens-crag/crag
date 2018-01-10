@@ -123,13 +123,12 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     if (cur.second.WR[0].length() >= 60) {
       special_gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
     }
-
-    // if (cur.second.WL[0].length() > 6)
-    //  gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length()
-    //  - 3)));
-    // if (cur.second.WR[0].length() > 6)
-    //  gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length()
-    //  - 3)));
+     if (cur.second.WL[0].length() > 20) {
+       special_gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 5)));
+     }
+     if (cur.second.WR[0].length() > 20) {
+       special_gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 5)));
+     }
 
     if (!special_gens.empty()) {
       if (process_conjugates(N, cur, special_gens, checkedElements,
@@ -170,10 +169,8 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     }
 
     cout << "a5" << endl;
-
     if (_shorterWordFound) {
       auto new_tuple = cur.second;
-      cout << "f" << endl;
       new_tuple.WL = vector<Word>(_word.begin(), _word.begin() + nWL);
       new_tuple.WR = vector<Word>(_word.begin() + nWL, _word.end());
       for (auto i = 0; i < nWL; ++i)
@@ -182,9 +179,20 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
         new_tuple.deltaSQR[i] += _power[nWL + i];
       addNewElt(new_tuple, checkedElements, uncheckedElements);
     }
-
-    cout << "a6" << endl;
   }
+}
+
+static void gen_distribution(int N, const Word &w) {
+  cout << "[";
+  vector<int> dist(N - 1, 0);
+  for (const auto i : w) {
+    dist[abs(i) - 1]++;
+  }
+  for (int i = 0; i < N - 1; ++i) {
+    cout.width(3);
+    cout << dist[i] << ".";
+  }
+  cout << "] -> " << w.length();
 }
 
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
@@ -206,23 +214,46 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
   out << "Initial length: " << best_result << endl;
 
   for (int c = 0; !uncheckedElements.empty() && c < maxIterations; ++c) {
-
-    cout << "q0" << endl;
+    // Pick the best unprocessed node
     NODE cur = *uncheckedElements.begin();
     uncheckedElements.erase(uncheckedElements.begin());
     checkedElements.insert(cur);
 
-    cout << "qa1" << endl;
-    int cur_time = time(0);
+    // Output some data
+    for (const auto&w : cur.second.WL) {
+      gen_distribution(N, w);
+      cout << endl;
+    }
+    cout << endl;
+    for (const auto&w : cur.second.WR) {
+      gen_distribution(N, w);
+      cout << endl;
+    }
 
+    int cur_time = time(0);
     if (best_result > cur.first) {
       best_result = cur.first;
       stuck_check = 0;
     } else {
-      if (++stuck_check > 10) {
+      if (++stuck_check > 50) {
         // We are officially stuck. Save the instance to process later
         // I think we need 2 saves: (a) the original instance as it was originally generated and (b) the reduced one to start LBA from that point
         cout << " >>> STUCK <<< " << endl;
+
+        const auto &best = *checkedElements.begin();
+        for (const auto&w : best.second.WL) {
+          cout << "> " << endl;
+          cout << w << endl;
+          gen_distribution(N, w);
+          cout << endl;
+        }
+        cout << endl;
+        for (const auto&w : best.second.WR) {
+          cout << "> " << endl;
+          cout << w << endl;
+          gen_distribution(N, w);
+          cout << endl;
+        }
       }
     }
 
@@ -235,11 +266,8 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
 
     // Termination condition: check that cur.second.WL and cur.second.WR are separated
     // if (cur.second.testTuples(N, false)) {
-    cout << "q1" << endl;
-
     if (cur.second.shortAndTestTuples(N)) {
       // (debug)
-      cout << "y" << endl;
       if (!theTuple.equivalent(N, cur.second)) {
         cout << "Internal check failure in TTPLBA::reduce" << endl;
         exit(1);
@@ -248,11 +276,8 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
       return true;
     }
 
-    cout << "q2" << endl;
-
-    tryNode(N, c < 5, cur, gens, checkedElements, uncheckedElements);
-
-    cout << "q3" << endl;
+    // tryNode(N, c < 5, cur, gens, checkedElements, uncheckedElements);
+    tryNode(N, true, cur, gens, checkedElements, uncheckedElements);
   }
 
   return false; // FAILED;
@@ -350,7 +375,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   // 3. Run LBA minimization
   TTPLBA ttpLBA;
   TTPTuple red_T;
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 12, cout, red_T);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {
