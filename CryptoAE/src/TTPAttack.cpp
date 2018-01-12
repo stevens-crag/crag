@@ -41,35 +41,35 @@ void TTPLBA::addNewElt(const TTPTuple& T, const set<NODE>& checkedElements, set<
   uncheckedElements.insert(new_node);
 }
 
-static bool _shorterWordFound;
-static vector<Word> _word;
-static vector<int> _power;
-
-static void run_thread_multiplyElementByPMDeltaSQtoReduceLength(const Word &w, int N, int i) {
-  BraidGroup B(N);
-
-  ThLeftNormalForm nf(B, w);
-  const auto p = nf.getPower();
-
-  nf.setPower(p - 2);
-  const auto w1 = shortenBraid(N, nf.getReducedWord2());
-
-  nf.setPower(p + 2);
-  const auto w2 = shortenBraid(N, nf.getReducedWord2());
-
-  if (w.length() <= w1.length() && w.length() <= w2.length()) {
-    _word[i] = w;
-    _power[i] = 0;
-  } else if (w1.length() <= w2.length()) {
-    _word[i] = w1;
-    _power[i] = -1;
-    _shorterWordFound = true;
-  } else {
-    _word[i] = w2;
-    _power[i] = 1;
-    _shorterWordFound = true;
-  }
-}
+//static bool _shorterWordFound;
+//static vector<Word> _word;
+//static vector<int> _power;
+//
+//static void run_thread_multiplyElementByPMDeltaSQtoReduceLength(const Word &w, int N, int i) {
+//  BraidGroup B(N);
+//
+//  ThLeftNormalForm nf(B, w);
+//  const auto p = nf.getPower();
+//
+//  nf.setPower(p - 2);
+//  const auto w1 = shortenBraid(N, nf.getReducedWord2());
+//
+//  nf.setPower(p + 2);
+//  const auto w2 = shortenBraid(N, nf.getReducedWord2());
+//
+//  if (w.length() <= w1.length() && w.length() <= w2.length()) {
+//    _word[i] = w;
+//    _power[i] = 0;
+//  } else if (w1.length() <= w2.length()) {
+//    _word[i] = w1;
+//    _power[i] = -1;
+//    _shorterWordFound = true;
+//  } else {
+//    _word[i] = w2;
+//    _power[i] = 1;
+//    _shorterWordFound = true;
+//  }
+//}
 
 bool TTPLBA::process_conjugates(int N, const NODE& cur, const vector<Word>& gens,
                         const set<NODE>& checkedElements,
@@ -116,19 +116,18 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     // @todo Apply special_gens only at the first 4-5 iterations. Then they are useless and can seriously slow down the program.
     vector<Word> special_gens;
 
-    if (cur.second.WL[0].length() >= 60) {
-      special_gens.push_back(-(cur.second.WL[0].terminalSegment(9 * cur.second.WL[0].length() / 10)));
+    if (cur.second.WL[0].length() >= 200) {
+      special_gens.push_back(-(cur.second.WL[0].terminalSegment(19 * cur.second.WL[0].length() / 20)));
     }
-
-    if (cur.second.WR[0].length() >= 60) {
-      special_gens.push_back(-(cur.second.WR[0].terminalSegment(9 * cur.second.WR[0].length() / 10)));
+    if (cur.second.WR[0].length() >= 200) {
+      special_gens.push_back(-(cur.second.WR[0].terminalSegment(19 * cur.second.WR[0].length() / 20)));
     }
-     if (cur.second.WL[0].length() > 20) {
-       special_gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 5)));
-     }
-     if (cur.second.WR[0].length() > 20) {
-       special_gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 5)));
-     }
+    if (cur.second.WL[0].length() > 20) {
+      special_gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 5)));
+    }
+    if (cur.second.WR[0].length() > 20) {
+      special_gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 5)));
+    }
 
     if (!special_gens.empty()) {
       if (process_conjugates(N, cur, special_gens, checkedElements,
@@ -146,40 +145,9 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
   }
 
   // 3. Try to fix Delta^2 power in WL
-  {
-    cout << "a3" << endl;
-    const auto nWL = cur.second.WL.size();
-    const auto nWR = cur.second.WR.size();
-    _word = vector<Word>(nWL + nWR);
-    _power = vector<int>(nWL + nWR, 0);
-    _shorterWordFound = false;
-    vector<std::thread> threads;
-    cout << "a4" << endl;
-
-    for (int i = 0; i < nWL; ++i) {
-      threads.push_back(std::thread(run_thread_multiplyElementByPMDeltaSQtoReduceLength, cur.second.WL[i], N, i));
-    }
-
-    for (int i = 0; i < nWR; ++i) {
-      threads.push_back(std::thread(run_thread_multiplyElementByPMDeltaSQtoReduceLength, cur.second.WR[i], N, nWL + i));
-    }
-
-    for (auto& th : threads) {
-      th.join();
-    }
-
-    cout << "a5" << endl;
-    if (_shorterWordFound) {
-      auto new_tuple = cur.second;
-      new_tuple.WL = vector<Word>(_word.begin(), _word.begin() + nWL);
-      new_tuple.WR = vector<Word>(_word.begin() + nWL, _word.end());
-      for (auto i = 0; i < nWL; ++i)
-        new_tuple.deltaSQL[i] += _power[i];
-      for (auto i = 0; i < nWR; ++i)
-        new_tuple.deltaSQR[i] += _power[nWL + i];
-      addNewElt(new_tuple, checkedElements, uncheckedElements);
-    }
-  }
+  cout << "a3" << endl;
+  const auto new_tuple = cur.second.multiplyElementsByDeltaSQtoReduceLength(N, 3, false);
+  addNewElt(new_tuple, checkedElements, uncheckedElements);
 }
 
 static void gen_distribution(int N, const Word &w) {
@@ -307,7 +275,7 @@ bool TTPAttack::run(const TTPTuple &original_tuple) {
 
   // 2. (attack) Attempt to restore the original delta powers
   cout << "Attempt to restore the original delta powers" << endl;
-  const auto tuple1 = multiplyElementsByDeltaSQtoReduceLength(init_tuple);
+  const auto tuple1 = init_tuple.multiplyElementsByDeltaSQtoReduceLength(N, 0, true);
   // (debug)
   // if (!original_tuple.equivalent(N, tuple1)) {
   //  cout << "Internal failure in multiplyElementsByDeltaSQtoReduceLength" <<
@@ -320,40 +288,6 @@ bool TTPAttack::run(const TTPTuple &original_tuple) {
 
   // 3. Apply length-based conjugacy minimization
   return LBA(original_tuple.WL.size(), original_tuple.WR.size(), tuple1, original_z);
-}
-
-bool TTPAttack::oneOfSSSReps( int NWL, int NWR, const vector<ThLeftNormalForm>& theTuple )
-{ 
-  
-  for ( int i=0;i<theTuple.size(); i++) {
-    //	  printStats(theTuple[i],cout); cout << " --> ";
-    pair<ThLeftNormalForm,ThLeftNormalForm> sssR = theTuple[i].findSSSRepresentative();
-    //		printStats(sssR.first,cout); cout << endl;
-    
-    
-    
-    // do test
-    
-    // convert and separate tuples 
-    TTPTuple check_tuples;
-    check_tuples.WL = vector<Word>(NWL);
-    check_tuples.WR = vector<Word>(NWR);
-    
-    for ( int j=0;j<theTuple.size();j++)
-      if ( j < NWL )
-	check_tuples.WL[j] = (-sssR.second*theTuple[j]*sssR.second).getWord();
-      else
-	check_tuples.WR[j-NWL] = (-sssR.second*theTuple[j]*sssR.second).getWord();
-    
-    if ( check_tuples.shortAndTestTuples( N ) ) {
-//      cout << "SUCC: " << endl; // << sssR.second << endl;
-      return true;
-    }
-    
-  }
-
-//  cout << "FAIL" << endl;  
-  return false;	
 }
 
 bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
@@ -389,131 +323,35 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   return red_res;
 }
 
-/*
-//! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
-static int multiplyByDeltaSQtoReduceLength(int N, Word &w) {
-  typedef ThLeftNormalForm NF;
-  BraidGroup B(N);
+bool TTPAttack::oneOfSSSReps(int NWL, int NWR, const vector<ThLeftNormalForm> &theTuple) {
 
-  NF nf(B, w);
-  // -nf.getDecomposition().size()/4 is the anticipated value
-  int best_nf = -nf.getDecomposition().size()/4;
-  map<int, int> weights;
-  static const int delta = 4;
+  for (int i = 0; i<theTuple.size(); i++) {
+    //	  printStats(theTuple[i],cout); cout << " --> ";
+    pair<ThLeftNormalForm, ThLeftNormalForm> sssR = theTuple[i].findSSSRepresentative();
+    //		printStats(sssR.first,cout); cout << endl;
 
-  bool progress = true;
-  while (progress) {
-    progress = false;
-    for (int i = best_nf - delta; i <= best_nf + delta; ++i) {
-      if (weights.find(i) == weights.end()) {
-        ThLeftNormalForm nf2 = nf;
-        nf2.setPower(nf.getPower() + 2 * i);
-        const auto cur_w = shortenBraid(N, nf2.getReducedWord2());
-        weights[i] = cur_w.length();
-        if (weights.find(best_nf) == weights.end() || weights[i] < weights[best_nf]) {
-          progress = true;
-          best_nf = i;
-          w = cur_w;
-        }
-        cout << weights[i] << ", ";
-      }
-    }
-  }
-  nf.setPower(nf.getPower() + 2 * best_nf);
-  for (const auto&p : weights) {
-    // cout << p.second << ", ";
-    // cout << "(" << p.first << "," << p.second << "), ";
-  }
-  cout << endl;
-  return best_nf;
-}
-*/
 
-//! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
-static int multiplyByDeltaSQtoReduceLength(int N, Word &w) {
-  typedef ThLeftNormalForm NF;
-  BraidGroup B(N);
 
-  NF nf(B, w);
-  // -nf.getDecomposition().size()/4 is the anticipated value
-  int best_nf = -nf.getDecomposition().size()/4;
-  map<int, Word> weights;
-  static const int delta = 2;
-  const Permutation omega = Permutation::getHalfTwistPermutation(N);
-  Word omegaWord = omega.geodesicWord();
+    // do test
 
-  // initial data
-  {
-    ThLeftNormalForm nf2 = nf;
-    nf2.setPower(nf.getPower() + 2 * best_nf);
-    weights[best_nf] = shortenBraid(N, nf2.getReducedWord2());
-    w = weights[best_nf];
-    cout << weights[best_nf].length() << ", ";
-  }
+    // convert and separate tuples 
+    TTPTuple check_tuples;
+    check_tuples.WL = vector<Word>(NWL);
+    check_tuples.WR = vector<Word>(NWR);
 
-  bool progress = true;
-  while (progress) {
-    progress = false;
+    for (int j = 0; j<theTuple.size(); j++)
+      if (j < NWL)
+        check_tuples.WL[j] = (-sssR.second*theTuple[j] * sssR.second).getWord();
+      else
+        check_tuples.WR[j - NWL] = (-sssR.second*theTuple[j] * sssR.second).getWord();
 
-    for (int i = best_nf + 1; i <= best_nf + delta; ++i) {
-      if (weights.find(i) != weights.end())
-        continue;
-      const auto &cur_w = weights[i - 1];
-      const auto new_w = shortenBraid(N, omegaWord.power(2) * cur_w);
-      weights[i] = new_w;
-      if (weights[i].length() < weights[best_nf].length()) {
-        progress = true;
-        best_nf = i;
-        w = new_w;
-        cout << "!";
-      }
-      cout << weights[i].length() << ", ";
+    if (check_tuples.shortAndTestTuples(N)) {
+      //      cout << "SUCC: " << endl; // << sssR.second << endl;
+      return true;
     }
 
-    for (int i = best_nf - 1; i >= best_nf - delta; --i) {
-      if (weights.find(i) != weights.end())
-        continue;
-      const auto &cur_w = weights[i + 1];
-      const auto new_w = shortenBraid(N, omegaWord.power(-2) * cur_w);
-      weights[i] = new_w;
-      if (weights[i].length() < weights[best_nf].length()) {
-        progress = true;
-        best_nf = i;
-        w = new_w;
-        cout << "!";
-      }
-      cout << weights[i].length() << ", ";
-    }
-  }
-  for (const auto&p : weights) {
-    // cout << p.second << ", ";
-    // cout << "(" << p.first << "," << p.second << "), ";
-  }
-  cout << endl;
-  return best_nf;
-}
-
-TTPTuple TTPAttack::multiplyElementsByDeltaSQtoReduceLength(const TTPTuple &t) {
-  vector<std::thread> threads;
-  threads.reserve(t.WL.size() + t.WR.size());
-
-  auto result = t;
-
-  for (int i = 0; i < t.WL.size(); ++i) {
-    threads.emplace_back([&result, i, this]() {
-      result.deltaSQL[i] += multiplyByDeltaSQtoReduceLength(N, result.WL[i]);
-    });
   }
 
-  for (int i = 0; i < t.WR.size(); ++i) {
-    threads.emplace_back([&result, i, this]() {
-      result.deltaSQR[i] += multiplyByDeltaSQtoReduceLength(N, result.WR[i]);
-    });
-  }
-
-  for (auto& th : threads) {
-    th.join();
-  }
-
-  return result;
+  //  cout << "FAIL" << endl;  
+  return false;
 }

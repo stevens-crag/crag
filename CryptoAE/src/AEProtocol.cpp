@@ -22,6 +22,14 @@
 //typedef pair< vector< Word > , vector< Word > > TTPTuple;
 
 
+static int abelinization(const Word& w) {
+  int result = 0;
+  for (const auto &g : w) {
+    result += g > 0 ? 1 : -1;
+  }
+  return result;
+}
+
 //
 //
 //  BSets
@@ -50,57 +58,55 @@ BSets BSets::generateEqual(int N)
   return retB;
 }
 
-BSets BSets::generateRandom(int N)
-{
+BSets BSets::generateRandom(int N) {
 
- BSets retB;
-  
-  while ( retB.BL.size() <=2 || retB.BR.size() <= 2 ) {
-    vector<int> partitionB(N-1,0);
-    for (int i=0;i<N-1;i+=2){
-      if ( RandLib::ur.rand() >= 0.5 )
-	partitionB[i] = -1;
+  BSets retB;
+
+  while (retB.BL.size() <= 2 || retB.BR.size() <= 2) {
+    vector<int> partitionB(N - 1, 0);
+    for (int i = 0; i < N - 1; i += 2) {
+      if (RandLib::ur.rand() >= 0.5)
+        partitionB[i] = -1;
       else
-	partitionB[i] =  1;
+        partitionB[i] = 1;
     }
-    
+
     // fill in the gaps
-    for (int i=0;i<N-1;i+=1){
-      if ( partitionB[i] == 0 ){
-	
-	if ( i == 0 ) // the leftmost (should never happen)
-	  partitionB[i] =  partitionB[i+1];
-	
-	else if ( i == N-2) // the rightmost
-	  partitionB[i] =  partitionB[i-1];
-	
-	else if ( partitionB[i-1] ==  partitionB[i+1] )       // somewhere in the middle
-	  partitionB[i] =  partitionB[i-1];
-	
+    for (int i = 0; i < N - 1; i += 1) {
+      if (partitionB[i] == 0) {
+
+        if (i == 0) // the leftmost (should never happen)
+          partitionB[i] = partitionB[i + 1];
+
+        else if (i == N - 2) // the rightmost
+          partitionB[i] = partitionB[i - 1];
+
+        else if (partitionB[i - 1] ==
+                 partitionB[i + 1]) // somewhere in the middle
+          partitionB[i] = partitionB[i - 1];
       }
-      
     }
-    
-    //    copy(partitionB.begin(),partitionB.end(), ostream_iterator<int>(cout," ") );
-    
+
+    //    copy(partitionB.begin(),partitionB.end(), ostream_iterator<int>(cout,"
+    //    ") );
+
     // Construct BL and BR
     retB.BL.clear();
     retB.BR.clear();
-    
-    for (int i=0;i<N-1;i+=1){
-      if (partitionB[i] > 0 )
-	retB.BL.push_back(Word(i+1));
-      if (partitionB[i] < 0 )
-	retB.BR.push_back(Word(i+1));    
+
+    for (int i = 0; i < N - 1; i += 1) {
+      if (partitionB[i] > 0)
+        retB.BL.push_back(Word(i + 1));
+      if (partitionB[i] < 0)
+        retB.BR.push_back(Word(i + 1));
     }
   }
 
-
   return retB;
 
-  //cout << endl << "BL : " << BL.size() << " " << "BR : " << BR.size() << endl;
+  // cout << endl << "BL : " << BL.size() << " " << "BR : " << BR.size() <<
+  // endl;
 }
-
 
 //
 //
@@ -206,6 +212,107 @@ TTPTuple TTPTuple::takeModuloDeltaSQ(int N) const {
     result.deltaSQR[i] += ((nf.getPower() % 2) - p) / 2;
     nf.setPower(nf.getPower() % 2);
     result.WR[i] = nf.getReducedWord2();
+  }
+
+  return result;
+}
+
+static int anticipated_delta(int N, Word &w) {
+  const auto l = abelinization(w);
+  const auto step = N * (N - 1);
+  const auto to_achieve1 = (l % step + step) % step;
+  const auto to_achieve2 = to_achieve1 - step;
+  return abs(to_achieve1) < abs(to_achieve2) ? -(l - to_achieve1) / step : -(l - to_achieve2) / step;
+}
+
+//! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
+static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool power_reset) {
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(N);
+
+  int best_nf;
+  map<int, Word> weights;
+  // initial data
+  if (power_reset) {
+    NF nf(B, w);
+    // -nf.getDecomposition().size()/4 is the anticipated value
+    // best_nf = -nf.getDecomposition().size() / 4;
+    best_nf = anticipated_delta(N, w);
+    ThLeftNormalForm nf2 = nf;
+    nf2.setPower(nf.getPower() + 2 * best_nf);
+    weights[best_nf] = shortenBraid(N, nf2.getReducedWord2());
+    w = weights[best_nf];
+    cout << weights[best_nf].length() << ", ";
+  }
+  else {
+    best_nf = 0;
+    weights[best_nf] = w;
+  }
+
+  const Permutation omega = Permutation::getHalfTwistPermutation(N);
+  Word omegaWord = omega.geodesicWord();
+  bool progress = true;
+  while (progress) {
+    progress = false;
+
+    for (int i = best_nf + 1; i <= best_nf + delta; ++i) {
+      if (weights.find(i) != weights.end())
+        continue;
+      const auto &cur_w = weights[i - 1];
+      const auto new_w = shortenBraid(N, omegaWord.power(2) * cur_w);
+      weights[i] = new_w;
+      if (weights[i].length() < weights[best_nf].length()) {
+        progress = true;
+        best_nf = i;
+        w = new_w;
+        cout << "!";
+      }
+      cout << weights[i].length() << ", ";
+    }
+
+    for (int i = best_nf - 1; i >= best_nf - delta; --i) {
+      if (weights.find(i) != weights.end())
+        continue;
+      const auto &cur_w = weights[i + 1];
+      const auto new_w = shortenBraid(N, omegaWord.power(-2) * cur_w);
+      weights[i] = new_w;
+      if (weights[i].length() < weights[best_nf].length()) {
+        progress = true;
+        best_nf = i;
+        w = new_w;
+        cout << "!";
+      }
+      cout << weights[i].length() << ", ";
+    }
+  }
+  for (const auto&p : weights) {
+    // cout << p.second << ", ";
+    // cout << "(" << p.first << "," << p.second << "), ";
+  }
+  cout << endl;
+  return best_nf;
+}
+
+TTPTuple TTPTuple::multiplyElementsByDeltaSQtoReduceLength(int N, const int delta, bool power_reset) const {
+  vector<std::thread> threads;
+  threads.reserve(WL.size() + WR.size());
+
+  auto result = *this;
+
+  for (int i = 0; i < WL.size(); ++i) {
+    threads.emplace_back([&result, N, i, delta, power_reset, this]() {
+      result.deltaSQL[i] += multiplyByDeltaSQtoReduceLength(N, result.WL[i], delta, power_reset);
+    });
+  }
+
+  for (int i = 0; i < WR.size(); ++i) {
+    threads.emplace_back([&result, N, i, delta, power_reset, this]() {
+      result.deltaSQR[i] += multiplyByDeltaSQtoReduceLength(N, result.WR[i], delta, power_reset);
+    });
+  }
+
+  for (auto& th : threads) {
+    th.join();
   }
 
   return result;

@@ -88,8 +88,6 @@ private:
 
   bool LBA(int NWL, int NWR, const TTPTuple &t, const Word &z);
   bool oneOfSSSReps(int N1, int N2, const vector<ThLeftNormalForm> &theTuple);
-  //! Trying to reconstruct the original Delta powers
-  TTPTuple multiplyElementsByDeltaSQtoReduceLength(const TTPTuple &t);
 
   int N;
   BSets BS;

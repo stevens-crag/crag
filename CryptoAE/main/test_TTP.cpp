@@ -74,6 +74,27 @@ void compareGenerateWordFunctions() {
 
 }
 
+static int abelinization(const Word& w) {
+  int result = 0;
+  for (const auto &g : w) {
+    result += g > 0 ? 1 : -1;
+  }
+  return result;
+}
+
+void abelinizationTest() {
+
+  const int n = 16;
+  const int l = 2000;
+  const BraidGroup B(n);
+  for (int i = 0; i < 1000; ++i) {
+    const auto w = Word::randomWord(n - 1, l);
+    cout << abelinization(w) << ", ";
+  }
+  cout << endl;
+  cout << 2 * Permutation::getHalfTwistPermutation(n).geodesic().size() << endl;
+}
+
 int main() {
   RandLib::ur.reset();
   long s1, s2;
@@ -82,6 +103,7 @@ int main() {
   
   // getDecompositionDetails();
   // compareGenerateWordFunctions();
+  // abelinizationTest();
   // return 0;
 
   TTP_Conf ttp_conf;

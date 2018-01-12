@@ -120,6 +120,9 @@ public:
   //! Check if auxiliary data is correct
   bool equivalent(int N, const TTPTuple &t) const;
 
+  //! Trying to reconstruct the original Delta powers. Use power_reset = true if you want to reset the power of Delta to an "anticipated value".
+  TTPTuple multiplyElementsByDeltaSQtoReduceLength(int N, const int delta = 3, bool power_reset = true) const;
+
   //! Take modulo DeltaSQ. Normal forms (obfuscation) applies.
   TTPTuple takeModuloDeltaSQ(int N) const;
   //! The sum of lengths of words in the tuples
