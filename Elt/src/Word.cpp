@@ -224,3 +224,13 @@ Word Word::minimalEquivalentForm( const set< int >& permutableGenerators , bool 
 
   return result;
 }
+
+
+Word operator"" _w(const char* str, size_t) {
+  Word w;
+  std::istringstream s(str);
+
+  s >> w;
+
+  return w;
+}

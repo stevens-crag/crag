@@ -53,7 +53,7 @@ void Alphabet::printWord( ostream& out, const Word& w )const {
 }
 
 Word Alphabet::readWord( istream& in )const {
-  Parser p( cin,(const Alphabet*)this );
+  Parser p( in,(const Alphabet*)this );
   p.parse();
   
   return Word( p.getWord() );

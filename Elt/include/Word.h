@@ -357,4 +357,6 @@ public:
 };
 
 
+Word operator"" _w(const char* str, size_t);
+
 #endif

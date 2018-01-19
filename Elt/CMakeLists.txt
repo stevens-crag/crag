@@ -18,3 +18,6 @@ target_link_libraries(Elt
 
 crag_main(test_word Elt)
 crag_main(ac_enum Elt)
+
+
+crag_test(test_word Elt)
