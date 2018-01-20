@@ -15,3 +15,5 @@ target_link_libraries(CryptoAE
 )
 
 crag_main(test_TTP CryptoAE ranlib)
+
+crag_test(test_cryptoae CryptoAE)
