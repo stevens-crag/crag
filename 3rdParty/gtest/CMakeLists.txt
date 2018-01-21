@@ -4,11 +4,15 @@ cmake_policy(VERSION 2.8.12)
 find_package(Threads REQUIRED)
 include(ExternalProject)
 
+if(MSVC)
+  set(SILENCE_DEPRECATION "-DCMAKE_CXX_FLAGS=/D_SILENCE_TR1_NAMESPACE_DEPRECATION_WARNING")
+endif()
+
 ExternalProject_Add(
     gtest_build
     URL https://github.com/google/googletest/archive/release-1.8.0.zip 
     URL_HASH MD5=adfafc8512ab65fd3cf7955ef0100ff5
-    CMAKE_ARGS -DBUILD_GTEST=1 -DBUILD_GMOCK=0 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DCMAKE_DEBUG_POSTFIX:STRING=d
+    CMAKE_ARGS -DBUILD_GTEST=1 -DBUILD_GMOCK=0 -DCMAKE_INSTALL_PREFIX=<INSTALL_DIR> -DCMAKE_DEBUG_POSTFIX:STRING=d ${SILENCE_DEPRECATION}
 )
 
 ExternalProject_Get_Property(gtest_build install_dir)
