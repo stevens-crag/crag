@@ -19,6 +19,9 @@
 #include "ThLeftNormalForm.h"
 #include <thread>
 #include <mutex>
+#include <fstream>
+
+#define TEST_EQUIVALENCE
 
 //
 //
@@ -41,35 +44,6 @@ void TTPLBA::addNewElt(const TTPTuple& T, const set<NODE>& checkedElements, set<
   uncheckedElements.insert(new_node);
 }
 
-//static bool _shorterWordFound;
-//static vector<Word> _word;
-//static vector<int> _power;
-//
-//static void run_thread_multiplyElementByPMDeltaSQtoReduceLength(const Word &w, int N, int i) {
-//  BraidGroup B(N);
-//
-//  ThLeftNormalForm nf(B, w);
-//  const auto p = nf.getPower();
-//
-//  nf.setPower(p - 2);
-//  const auto w1 = shortenBraid(N, nf.getReducedWord2());
-//
-//  nf.setPower(p + 2);
-//  const auto w2 = shortenBraid(N, nf.getReducedWord2());
-//
-//  if (w.length() <= w1.length() && w.length() <= w2.length()) {
-//    _word[i] = w;
-//    _power[i] = 0;
-//  } else if (w1.length() <= w2.length()) {
-//    _word[i] = w1;
-//    _power[i] = -1;
-//    _shorterWordFound = true;
-//  } else {
-//    _word[i] = w2;
-//    _power[i] = 1;
-//    _shorterWordFound = true;
-//  }
-//}
 
 bool TTPLBA::process_conjugates(int N, const NODE& cur, const vector<Word>& gens,
                         const set<NODE>& checkedElements,
@@ -122,11 +96,21 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     if (cur.second.WR[0].length() >= 200) {
       special_gens.push_back(-(cur.second.WR[0].terminalSegment(19 * cur.second.WR[0].length() / 20)));
     }
-    if (cur.second.WL[0].length() > 20) {
-      special_gens.push_back(-(cur.second.WL[0].terminalSegment(cur.second.WL[0].length() - 5)));
+    //for (const auto &w : cur.second.WL) {
+    //  if (w.length() >= 20) {
+    //    special_gens.push_back(-(w.terminalSegment(w.length() - 5)));
+    //  }
+    //}
+    //for (const auto &w : cur.second.WR) {
+    //  if (w.length() >= 20) {
+    //    special_gens.push_back(-(w.terminalSegment(w.length() - 5)));
+    //  }
+    //}
+    if (cur.second.WL[1].length() > 20) {
+      special_gens.push_back(-(cur.second.WL[1].terminalSegment(cur.second.WL[1].length() - 5)));
     }
-    if (cur.second.WR[0].length() > 20) {
-      special_gens.push_back(-(cur.second.WR[0].terminalSegment(cur.second.WR[0].length() - 5)));
+    if (cur.second.WR[1].length() > 20) {
+      special_gens.push_back(-(cur.second.WR[1].terminalSegment(cur.second.WR[1].length() - 5)));
     }
 
     if (!special_gens.empty()) {
@@ -141,7 +125,7 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
   // 2. Process all conjugates
   cout << "a2" << endl;
   if (process_conjugates(N, cur, gens, checkedElements, uncheckedElements)) {
-    return;
+    // return;
   }
 
   // 3. Try to fix Delta^2 power in WL
@@ -161,6 +145,39 @@ static void gen_distribution(int N, const Word &w) {
     cout << dist[i] << ".";
   }
   cout << "] -> " << w.length();
+}
+
+static ostream &printVectorOfWords(const vector<Word> &vec, ostream &os) {
+  os << "{";
+  for (const auto &w : vec) {
+    os << "\"" << w << "\"_w, ";
+  }
+  os << "};";
+  return os;
+}
+
+static ostream &printVectorOfInts(const vector<int> &vec, ostream &os) {
+  os << "{";
+  for (const auto &w : vec) {
+    os << w << ", ";
+  }
+  os << "};";
+  return os;
+}
+
+static void saveDifficultInstance(const int N, const vector<Word> &gens, const BSets &BS, const TTPTuple &t) {
+  ofstream of("bad_example.txt", ios::app);
+  of << "const int N = " << N << ";" << endl;
+  printVectorOfWords(gens, of << "const vector<Word> gens = ") << endl;
+  of << "BSets BS;" << endl;
+  printVectorOfWords(BS.BL, of << "BS.BL = ") << endl;
+  printVectorOfWords(BS.BR, of << "BS.BR = ") << endl << endl;
+  of << "TTPTuple T;" << endl;
+  printVectorOfWords(t.WL, of << "T.WL = ") << endl;
+  printVectorOfWords(t.WR, of << "T.WR = ") << endl;
+  printVectorOfInts(t.deltaSQL, of << "T.deltaSQL = ") << endl;
+  printVectorOfInts(t.deltaSQR, of << "T.deltaSQR = ") << endl;
+  of << "T.z = \"" << t.z << "\"_w;";
 }
 
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
@@ -208,19 +225,21 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
         // I think we need 2 saves: (a) the original instance as it was originally generated and (b) the reduced one to start LBA from that point
         cout << " >>> STUCK <<< " << endl;
 
-        const auto &best = *checkedElements.begin();
-        for (const auto&w : best.second.WL) {
-          cout << "> " << endl;
-          cout << w << endl;
-          gen_distribution(N, w);
+        if (checkedElements.size() % 50 == 0) {
+          const auto &best = *checkedElements.begin();
+          for (const auto &w : best.second.WL) {
+            cout << "> " << endl;
+            cout << w << endl;
+            gen_distribution(N, w);
+            cout << endl;
+          }
           cout << endl;
-        }
-        cout << endl;
-        for (const auto&w : best.second.WR) {
-          cout << "> " << endl;
-          cout << w << endl;
-          gen_distribution(N, w);
-          cout << endl;
+          for (const auto &w : best.second.WR) {
+            cout << "> " << endl;
+            cout << w << endl;
+            gen_distribution(N, w);
+            cout << endl;
+          }
         }
       }
     }
@@ -229,17 +248,23 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
     cur.second.printPowers();
     cout << "   tm = " << cur_time << endl;
 
-    if (cur_time - init_time > sec)
+    if (cur_time - init_time > sec) {
+      cout << "Failed example!" << endl;
+      saveDifficultInstance(N, gens, bs, checkedElements.begin()->second);
+      exit(1);
       return false; // TIME_EXPIRED;
+    }
 
     // Termination condition: check that cur.second.WL and cur.second.WR are separated
     // if (cur.second.testTuples(N, false)) {
     if (cur.second.shortAndTestTuples(N)) {
       // (debug)
+#ifdef TEST_EQUIVALENCE
       if (!theTuple.equivalent(N, cur.second)) {
         cout << "Internal check failure in TTPLBA::reduce" << endl;
         exit(1);
       }
+#endif
       red_T = cur.second;
       return true;
     }
@@ -268,19 +293,23 @@ bool TTPAttack::run(const TTPTuple &original_tuple) {
   TTPTuple init_tuple = original_tuple.takeModuloDeltaSQ(N);
 
   // (debug)
-  // if (!original_tuple.equivalent(N, init_tuple)) {
-  //  cout << "Internal failure in takeModuloDeltaSQ" << endl;
-  //  exit(1);
-  //}
+#ifdef TEST_EQUIVALENCE
+  if (!original_tuple.equivalent(N, init_tuple)) {
+    cout << "Internal failure in takeModuloDeltaSQ" << endl;
+    exit(1);
+  }
+#endif
 
   // 2. (attack) Attempt to restore the original delta powers
   cout << "Attempt to restore the original delta powers" << endl;
   const auto tuple1 = init_tuple.multiplyElementsByDeltaSQtoReduceLength(N, 0, true);
   // (debug)
-  // if (!original_tuple.equivalent(N, tuple1)) {
-  //  cout << "Internal failure in multiplyElementsByDeltaSQtoReduceLength" <<
-  //  endl; exit(1);
-  //}
+#ifdef TEST_EQUIVALENCE
+  if (!original_tuple.equivalent(N, tuple1)) {
+    cout << "Internal failure in multiplyElementsByDeltaSQtoReduceLength" << endl;
+    exit(1);
+  }
+#endif
 
   // (debug) Here we test if we found correct powers of Delta^2
   tuple1.printPowers();
@@ -309,7 +338,8 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   // 3. Run LBA minimization
   TTPLBA ttpLBA;
   TTPTuple red_T;
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
+  // bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 600, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {
@@ -319,6 +349,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
       cout << "Internal LBA check failed" << endl;
       exit(1);
     }
+  } else {
   }
   return red_res;
 }
