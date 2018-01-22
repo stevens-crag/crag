@@ -164,7 +164,7 @@ Word ThLeftNormalForm::getWord() const {
   // A. Take care of Deltas
   if( theOmegaPower!=0 ) {
     const Permutation omega = Permutation::getHalfTwistPermutation( theRank );
-    Word omegaWord = omega.geodesicWord();
+    Word omegaWord = Word(omega.geodesicWord());
     if( theOmegaPower<0 )
       omegaWord = -omegaWord;
     result = omegaWord.power(abs(theOmegaPower));
@@ -172,7 +172,7 @@ Word ThLeftNormalForm::getWord() const {
   
   // B. Take care of permutation braids
   for (const auto &d : theDecomposition) {
-    result *= d.geodesicWord();
+    result *= Word(d.geodesicWord());
   }
   
   return result;
@@ -190,7 +190,7 @@ Word ThLeftNormalForm::getReducedWord2() const {
 
   // 1. Process omega
   const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
-  Word omegaWord = omega.geodesicWord();
+  Word omegaWord = Word(omega.geodesicWord());
   omegaWord = -omegaWord;
   result = omegaWord.power(p - a);
 
@@ -230,7 +230,7 @@ Word ThLeftNormalForm::getReducedWord() const {
 
   // 1. Process omega
   const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
-  Word omegaWord = omega.geodesicWord();
+  Word omegaWord = Word(omega.geodesicWord());
   omegaWord = -omegaWord;
   result = omegaWord.power(p - a);
 
@@ -244,7 +244,7 @@ Word ThLeftNormalForm::getReducedWord() const {
   }
   // 3. process the rest of positive permutations
   for (; it != theDecomposition.end(); ++it) {
-    result *= (*it).geodesicWord();
+    result *= Word((*it).geodesicWord());
   }
 
   return result;

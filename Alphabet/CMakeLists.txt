@@ -13,8 +13,8 @@ crag_library(Alphabet
 )
 
 target_link_libraries(Alphabet
-  PRIVATE crag_general
   PUBLIC Elt
+  PRIVATE crag_general
 )
 
 target_compile_definitions(Alphabet PRIVATE "YY_NO_UNISTD_H")

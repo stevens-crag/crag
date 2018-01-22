@@ -74,7 +74,7 @@ UI word_2_number( const Word& w )
 {
   // w is assumed to be reduced and non-trivial
   UI result = 4;
-  ConstWordIterator w_it = w.begin( );
+  auto w_it = w.begin( );
   int prev_gen = *(w_it++);
   result += prev_gen<0 ? prev_gen+2 : prev_gen+1;
 

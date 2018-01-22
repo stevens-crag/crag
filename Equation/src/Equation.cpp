@@ -160,5 +160,5 @@ Equation Equation::randomQuadraticEquation( int nGen , int nVar , int len )
     
   }
   
-  return Equation( nGen , nVar , result );
+  return Equation( nGen , nVar , Word(result) );
 }

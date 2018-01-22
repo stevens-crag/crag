@@ -6,6 +6,15 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
 IF(UNIX)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pthread")
+
+  set(CMAKE_CXX_FLAGS_ASAN "-g -O3 -fsanitize=address,undefined"
+          CACHE STRING "Compiler flags in asan build"
+          FORCE)
+
+  set(CMAKE_CXX_FLAGS_TSAN "-g -O3 -fsanitize=thread"
+          CACHE STRING "Compiler flags in tsan build"
+          FORCE)
+
 ENDIF(UNIX)
 
 # Name of the project

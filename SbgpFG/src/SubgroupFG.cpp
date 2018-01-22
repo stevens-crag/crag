@@ -141,7 +141,7 @@ void SubgroupFG::computeFSA( ) const
 {
   int is = theFSA.newVertex( );
   for( int i=0 ; i<theGenerators.size( ) ; ++i ) {
-    const list< int >& lst = theGenerators[i].getList( );
+    const Word& lst = theGenerators[i];
     addLoop( theFSA , is , lst.begin( ) , lst.end( ) );
   }
   fold( theFSA , 0 , &foldDetails );
