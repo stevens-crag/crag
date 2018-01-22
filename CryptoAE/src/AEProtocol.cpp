@@ -250,7 +250,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
   }
 
   const Permutation omega = Permutation::getHalfTwistPermutation(N);
-  Word omegaWord = omega.geodesicWord();
+  Word omegaWord = Word(omega.geodesicWord());
   bool progress = true;
   while (progress) {
     progress = false;
@@ -364,13 +364,13 @@ bool TTPTuple::testTuples( int N, bool details ) const
   
   vector<char> gensFlags(N-1,0);
   for ( int i=0;i<WL.size();i++){
-    for (ConstWordIterator I=WL[i].begin();I!=WL[i].end();I++){
+    for (auto I=WL[i].begin();I!=WL[i].end();I++){
       gensFlags[abs(*I)-1] = 1;
     }
   }
   
   for ( int i=0;i<WR.size();i++){
-    for (ConstWordIterator I=WR[i].begin();I!=WR[i].end();I++){
+    for (auto I=WR[i].begin();I!=WR[i].end();I++){
       int gI = abs(*I)-1;
       int glI = gI > 0 ? gI-1 : gI;
       int grI = gI < N-2 ? gI+1 : gI;
@@ -550,7 +550,7 @@ ProdElement AEKeyExchange::generatePublicKey( const vector<Word>& v, int r, int 
 	for (int i=0;i<m;i++){
 		Word w = Word::randomWord(v.size(),wl);
 		Word image_w;
-		for(ConstWordIterator I=w.begin();I!=w.end();I++){
+		for(auto I=w.begin();I!=w.end();I++){
 			int w_i = abs(*I)-1;
 			if (*I > 0)
 				image_w *= v[w_i];
@@ -565,7 +565,7 @@ ProdElement AEKeyExchange::generatePublicKey( const vector<Word>& v, int r, int 
 	// generate the public key
 	
 	ProdElement pubKey(N,Permutation());
-	for (ConstWordIterator I=wsAsOneWord.begin();I!=wsAsOneWord;I++){
+	for (auto I=wsAsOneWord.begin();I!=wsAsOneWord.end();I++){
 		int wi = abs(*I)-1;
 		// @am not sure what to do with inverse. Pretend that all positive for now
 		Permutation p(the_n-1);  //@am check if n correct!!!

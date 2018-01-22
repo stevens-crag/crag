@@ -105,7 +105,7 @@ LinkedBraidStructure::LinkedBraidStructure( int N , const Word& w ) :
   backNodes ( vector< BraidNode* >( N , (BraidNode*)NULL ) ),
   frontNodes( vector< BraidNode* >( N , (BraidNode*)NULL ) )
 {
-  for( ConstWordIterator w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it )
+  for( auto w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it )
     push_back( *w_it );
 }
 

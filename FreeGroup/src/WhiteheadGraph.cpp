@@ -241,10 +241,10 @@ WhiteheadSimpleGraph::WhiteheadSimpleGraph( const Word& w, int num_of_gens ): Wh
   // the word
   //for (int a=1;a<w.length();a++)
   //    theAdjMatrix[genToIndex(w[a-1])][genToIndex(-(w[a]))] += 1;
-  for ( ConstWordIterator I = ++(w.begin()); I!=w.end();I++){
-    ConstWordIterator I1 = I;
-    Generator g1 = *(--I1);
-    Generator g2 = *I;
+  for ( auto I = ++(w.begin()); I!=w.end();I++){
+    auto I1 = I;
+    auto g1 = *(--I1);
+    auto g2 = *I;
     theAdjMatrix[genToIndex(g1)][genToIndex(-(g2))] += 1;
   }
 
@@ -291,7 +291,7 @@ vector<Word> WhiteheadSimpleGraph::getWeightNames()const
     for (int j=i;j<s;j++)
       if (i!=j){
 	//cout << i << "," << j << ":" << wg.getCount( i,j ) << "," << wg.getCount( j,i ) << endl;
-	theVector[count] = indToGenerator(i) * indToGenerator(j);
+	theVector[count] = Word(indToGenerator(i) * indToGenerator(j));
 	count++;
       }
   return theVector; 

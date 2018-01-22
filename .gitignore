@@ -36,5 +36,4 @@ crag.includes
 build
 
 #CLion default build dir
-cmake-build-debug
-cmake-build-release
+cmake-build-*

@@ -336,7 +336,7 @@ Word ThRightNormalForm::getShortWord( ) const
 	  result.push_back( -gd[t]-1 );
       }
     }
-    Word omega_w = omega.geodesicWord( );
+    Word omega_w = Word(omega.geodesicWord( ));
     omega_w = -omega_w;
     for( int j=decomp.size( ) ; j<-power ; ++j )
       result = omega_w*result;

@@ -10,8 +10,8 @@
 Word Map::imageOf( const Word& w ) const {
   Word image;
   
-  for ( ConstWordIterator I = w.begin(); I!=w.end(); I++){
-    Generator g = *I;
+  for ( auto I = w.begin(); I!=w.end(); I++){
+    auto g = *I;
     image *= ( g > 0 ? theGeneratingImages[abs(g)-1] :  theGeneratingImages[abs(g)-1].inverse() );
   }
 
@@ -78,7 +78,7 @@ void Map::readFrom(istream& in)
 
     //cout << "Read image"  <<endl;
   
-    ConstWordIterator gI = g.begin();
+    auto gI = g.begin();
 
     int g_i  = *(gI)-1;
 
@@ -108,7 +108,7 @@ Map RMap::getRandomWhiteheadAuto(  int nOfGens )
 {
   vector<Word> image(nOfGens);
   int ai = RandLib::ur.irand(0,nOfGens-1);
-  Generator a = ai+1;
+  auto a = ai+1;
   if (RandLib::ur.rand() < 0.5)
     a = -a;
   image[ai] = Word(a);

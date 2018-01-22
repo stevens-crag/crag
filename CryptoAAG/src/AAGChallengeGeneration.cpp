@@ -45,7 +45,7 @@ vector<Word> AAGChallenge::getDpSubgroup( int N, int Pgens,
   for ( int i=0;i<Prelts.size();i++){
     Word oldRel = Prelts[i];
     Word newRel ;
-    for ( ConstWordIterator I = oldRel.begin(); I!=oldRel.end();I++){
+    for ( auto I = oldRel.begin(); I!=oldRel.end();I++){
       Word newGen = (*I > 0 ?  gens2[abs(*I)-1] : -gens2[abs(*I)-1]);
 	  newRel *= newGen;
     }
@@ -95,7 +95,7 @@ pair< vector<Word>,vector<Word> >  AAGChallenge::getSgGenComponentsRandom( int P
       Word w   = Word::randomWord( k/2 - 1,len );
       Word dw;
       
-      for (ConstWordIterator I=w.begin();I!=w.end();I++){
+      for (auto I=w.begin();I!=w.end();I++){
 	int delta_i = *I;
 	if ( d ) delta_i += (delta_i > 0 ? k/2 : -k/2 ); // @am What if not even?
 	Word w_tmp = getDelta( delta_i,c ); 
@@ -157,7 +157,7 @@ Word AAGChallenge::randomSubgroupWord( int N,const vector<Word>& sg )
   Word decomp = Word::randomWord( sg.size(),50 );
   Word rWord;
   
-  for ( ConstWordIterator I=decomp.begin();I!=decomp.end();I++){
+  for ( auto I=decomp.begin();I!=decomp.end();I++){
     Word gen = (*I > 0 ?  sg[abs(*I)-1] : -sg[abs(*I)-1]);
     rWord *= gen; 
   }

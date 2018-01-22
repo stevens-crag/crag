@@ -30,7 +30,7 @@ void Alphabet::printWord( ostream& out, const Word& w )const {
   }
   
   int pb;
-  for( ConstWordIterator  e_it = w.begin( ) ; e_it!=w.end() ; ++e_it ) {
+  for( auto  e_it = w.begin( ) ; e_it!=w.end() ; ++e_it ) {
     if( *e_it==p_base )
       ++deg;
     else {
