@@ -24,5 +24,5 @@ Word BraidGroup::twist( const Word& w ) const
     result.push_back( g<0 ? -g-theRank : theRank-g );
   }
 
-  return result;
+  return Word(std::move(result));
 }

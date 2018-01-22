@@ -42,7 +42,7 @@ using namespace std;
 bool areSeparate( int N , const Word& w1 , const Word& w2 )
 {
   vector< bool > letters( N , false );
-  for( ConstWordIterator w_it=w1.begin( ) ; w_it!=w1.end( ) ; ++w_it ) {
+  for( auto w_it=w1.begin( ) ; w_it!=w1.end( ) ; ++w_it ) {
     int g = *w_it;
     int ag = abs(g)-1;
     if( ag ) letters[ag-1] = true;
@@ -50,7 +50,7 @@ bool areSeparate( int N , const Word& w1 , const Word& w2 )
     if( ag<N-1 ) letters[ag+1] = true;
   }
 
-  for( ConstWordIterator w_it=w2.begin( ) ; w_it!=w2.end( ) ; ++w_it ) {
+  for( auto w_it=w2.begin( ) ; w_it!=w2.end( ) ; ++w_it ) {
     int g = *w_it;
     int ag = abs(g)-1;
     if( letters[ag] )
@@ -254,7 +254,7 @@ vector< Word > precomputeShortWords( int N , set< Word >& new_elts , set< Word >
   vector< set< int > > indices( N );
   for( int i=0 ; i<sbgp.size( ) ; ++i ) {
     const Word& w = sbgp[i];
-    for( ConstWordIterator w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it ) {
+    for( auto w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it ) {
       int g = *w_it;
       int ag = abs( g )-1;
       indices[ag].insert( i );
@@ -318,7 +318,7 @@ void locally_perturbate_elts( int N , set< Word >& new_elts , set< Word >& check
   vector< set< int > > indices( N );
   for( int i=0 ; i<sbgp.size( ) ; ++i ) {
     const Word& w = sbgp[i];
-    for( ConstWordIterator w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it ) {
+    for( auto w_it=w.begin( ) ; w_it!=w.end( ) ; ++w_it ) {
       int g = *w_it;
       int ag = abs( g )-1;
       indices[ag].insert( i );

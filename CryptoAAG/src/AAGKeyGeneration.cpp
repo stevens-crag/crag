@@ -25,7 +25,7 @@ Word constructKey( int N , const vector< Word >& sbgp , const Word& decompositio
 {
   Word result;
   int len = decomposition.length( );
-  ConstWordIterator d_it = decomposition.begin( );
+  auto d_it = decomposition.begin( );
   for( ; d_it!=decomposition.end( ) ; ++d_it ) {
     int ngen = *d_it;
     if( ngen<0 )
@@ -94,7 +94,7 @@ vector< Word > generateSubgroup( int N , int num_gens , int min_len , int max_le
     set< triple< int , int , int > >::iterator g_it = gens.begin( );
     for( int i=0 ; i<num_gens ; ++i ) {
       for( int k=0 ; k<lenghts[i] ; ++k , ++g_it )
-        result[i] *= ( RandLib::ur.irand(0,1)==0 ? 1+(*g_it).second : -1-(*g_it).second );
+        result[i] *= Word( RandLib::ur.irand(0,1)==0 ? 1+(*g_it).second : -1-(*g_it).second );
     }
     result = shortBraidSbgpForm( N , result );
 
@@ -102,7 +102,7 @@ vector< Word > generateSubgroup( int N , int num_gens , int min_len , int max_le
     vector< bool > involved( N , false );
     for( int i=0 ; i<num_gens ; ++i ) {
       Word& w = result[i];
-      ConstWordIterator w_it = w.begin( );
+      auto w_it = w.begin( );
       for( ; w_it!=w.end( ) ; ++w_it )
         involved[abs( *w_it )] = true;
     }
@@ -247,9 +247,7 @@ Word AAGProtocolInstance::generateHardProductOfGenerators( int num_gens , int pr
   if( product_length<4 )
     return Word::randomWord( num_gens , product_length );
   
-  list< int > result;
-  
-  result = Word::randomWord( num_gens , 2 ).getList( );
+  auto result = Word::randomWord( num_gens , 2 ).toList( );
   result.push_back( -(*  result.begin( ) ) );
   result.push_back( -(*++result.begin( ) ) );
   
@@ -267,7 +265,7 @@ Word AAGProtocolInstance::generateHardProductOfGenerators( int num_gens , int pr
     }
   }
   
-  Word product = result;
+  Word product = Word(std::move(result));
   while( product.length( )<product_length ) {
     int g = RandLib::ur.irand( 1 , num_gens );
     g = RandLib::ur.irand( 0 , 1 )==0 ? -g : g;

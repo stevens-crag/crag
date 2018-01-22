@@ -6,7 +6,6 @@ include("../cmake/common.cmake")
 
 crag_library(Elt
   Word
-  WordIterator
   WordRep
 )
 
@@ -21,3 +20,4 @@ crag_main(ac_enum Elt)
 
 
 crag_test(test_word Elt)
+crag_test(test_word_rep Elt)

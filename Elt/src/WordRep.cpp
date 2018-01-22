@@ -3,498 +3,339 @@
 //
 // Principal Authors: Alexander Ushakov
 //
-// Revision History:
-//
 
 
-#include <math.h>
 #include "WordRep.h"
-#include "WordIterator.h"
-#include <stdlib.h>
 
-using namespace std;
+#include <sstream>
 
-//---------------------------------------------------------------------------//
-//-------------------------------- WordRep ----------------------------------//
-//---------------------------------------------------------------------------//
+WordRep::WordRep(std::list<int> gens)
+  : elements_(std::move(gens)) {
+  validate_();
+  freelyReduce();
+}
 
+WordRep::WordRep(int g)
+  : elements_({g}) {
+  validate_();
+}
 
-ostream& WordRep::printOn( ostream& os ) const
-{
-  int p_base = 0;
-  int deg = 0;
+WordRep::WordRep(std::initializer_list<int> gens)
+  : elements_(gens) {
+  validate_();
+  freelyReduce();
+}
 
-  if( theElements.size()==0 ) {
-    os << "1";
-    return os;
+std::string WordRep::toString() const {
+  std::ostringstream os;
+
+  os << *this;
+
+  return os.str();
+}
+
+WordRep::iterator WordRep::begin() {
+  return elements_.begin();
+}
+
+WordRep::const_iterator WordRep::begin() const {
+  return elements_.begin();
+}
+
+WordRep::iterator WordRep::end() {
+  return elements_.end();
+}
+
+WordRep::const_iterator WordRep::end() const {
+  return elements_.end();
+}
+
+WordRep::const_iterator WordRep::cbegin() const {
+  return elements_.cbegin();
+}
+
+WordRep::const_iterator WordRep::cend() const {
+  return elements_.cend();
+}
+
+WordRep& WordRep::operator^=(int power) {
+  const auto base = (power > 0) ? *this : this->inverse();
+
+  this->clear();
+
+  for (int i = 0; i < std::abs(power); ++i) {
+    *this *= base;
   }
 
-  int pb;
-	for( list< int >::const_iterator e_it = theElements.begin( ) ; e_it!=theElements.end() ; ++e_it ) {
-    if( *e_it==p_base )
-      ++deg;
-    else {
-      pb = p_base;
-      if( pb!=0 ) {
-        os << 'x' << abs( p_base );
-        if( deg!=1 || pb<0 )
-          os << "^" << ( pb<0 ? -deg : deg );
-        os << " ";
-      }
-      pb = p_base = *e_it;
-      deg = 1;
+  return *this;
+}
+
+WordRep& WordRep::operator^=(const WordRep& conjugator) {
+  auto result = conjugator.inverse();
+  result *= *this;
+  result *= conjugator;
+
+  elements_.swap(result.elements_);
+
+  return *this;
+}
+
+WordRep& WordRep::operator*=(const WordRep& other) {
+  for (const auto g : other.elements_) {
+    reduced_push_back_(g);
+  }
+
+  return *this;
+}
+
+bool WordRep::contains(int gen) const {
+  validate_(gen);
+
+  return std::any_of(elements_.begin(), elements_.end(), [gen](int el) {
+    return std::abs(el) == std::abs(gen);
+  });
+}
+
+void WordRep::cyclicLeftShift() {
+  if (elements_.size() < 2) {
+    return;
+  }
+
+  reduced_push_back_(elements_.front());
+  elements_.pop_front();
+}
+
+void WordRep::cyclicRightShift() {
+  if (elements_.size() < 2) {
+    return;
+  }
+
+  reduced_push_front_(elements_.back());
+  elements_.pop_back();
+}
+
+
+//=========================================================
+
+
+size_t WordRep::occurrences(int gen) const {
+  if (gen == 0) {
+    throw std::invalid_argument("Zero indices are not allowed.");
+  }
+
+  const int abs_gen = std::abs(gen);
+  size_t result = 0;
+
+  for (const auto el : elements_) {
+    if (abs_gen == std::abs(el)) {
+      ++result;
     }
   }
-	
-	os << 'x' << abs( p_base );
-  if( deg!=1 || pb<0 )
-    os << "^" << ( pb<0 ? -deg : deg );
 
-	return os;
+  return result;
 }
 
-
-//=========================================================
-
-
-void WordRep::push_back( int g )
-{
-  if( !theElements.size( ) )
-    theElements.push_back( g );
-  else {
-    int e = *(--theElements.end());
-    if( e+g==0 )
-      theElements.pop_back( );
-    else
-      theElements.push_back( g );
+int WordRep::exponentSum(int gen) const {
+  if (gen == 0) {
+    throw std::invalid_argument("Zero indices are not allowed.");
   }
-}
 
-
-//=========================================================
-
-
-void WordRep::push_front( int g )
-{
-  if( !theElements.size( ) )
-    theElements.push_front( g );
-  else {
-    int e = *(theElements.begin());
-    if( e+g==0 )
-      theElements.pop_front( );
-    else
-      theElements.push_front( g );
-  }
-}
-
-
-//=========================================================
-
-
-WordRep::WordRep( )
-{ 
-  
-}
-
-//=========================================================
-
-WordRep::WordRep( const list< int >& gens )
-{
-  for( list< int >::const_iterator g_it = gens.begin( ) ; g_it!=gens.end( ) ; ++g_it )
-    push_back( *g_it );
-}
-
-//=========================================================
-
-WordRep::WordRep( const vector< int >& gens )
-{
-  for( vector< int >::const_iterator g_it = gens.begin( ) ; g_it!=gens.end( ) ; ++g_it )
-    push_back( *g_it );
-}
-
-//=========================================================
-
-
-WordRep::WordRep( const WordRep& wr ) :
-  theElements( wr.theElements )
-{
-  
-}
-
-
-//=========================================================
-
-
-WordRep::WordRep( int g )
-{ 
-  push_back( g );
-}
-
-
-//=========================================================
-
-
-WordRep WordRep::operator=( const WordRep wr ) 
-{
-  theElements = wr.theElements;
-  return *this;
-}
-
-//=========================================================
-
-WordRep& WordRep::operator ^= ( int power )
-{
-  WordRep base = ( power>0 ? *this : this->inverse( ) );
-  this->clear( );
-  int ap = abs( power );
-  for( int i=0 ; i<ap ; ++i )
-    *this *= base;
-  return *this;
-}
-
-//=========================================================
-
-WordRep& WordRep::operator ^= ( const WordRep& w )
-{
-  *this *= w;
-  for( list< int >::const_iterator m_it = w.theElements.begin( ) ; m_it!=w.theElements.end( ) ; ++m_it )
-    push_front( -*m_it );
-  return *this;
-}
-
-//=========================================================
-
-
-WordRep& WordRep::operator *= ( const WordRep& w ) 
-{
-  for( list< int >::const_iterator m_it = w.theElements.begin( ) ; m_it!=w.theElements.end( ) ; ++m_it )
-    push_back( *m_it );
-  return *this;
-}
-
-//=========================================================
-
-bool WordRep::doesContain( int gen ) const
-{
-  for( list< int >::const_iterator g_it = theElements.begin( ) ; g_it!=theElements.end( ) ; ++g_it )
-    if( *g_it==gen || *g_it==-gen )
-      return true;
-
-  return false;
-}
-
-
-//=========================================================
-
-
-void WordRep::cyclicLeftShift( )
-{
-  if( theElements.size( )<2 ) 
-    return;
-  push_back( *theElements.begin( ) );
-  theElements.pop_front( );
-}
-
-
-//=========================================================
-
-
-void WordRep::cyclicRightShift( )
-{
-  if( theElements.size( )<2 ) 
-    return;
-  push_front( *--theElements.end( ) );
-  theElements.pop_back( );
-}
-
-
-//=========================================================
-
-
-int WordRep::isIn( int gen ) const
-{
+  const int abs_gen = std::abs(gen);
   int result = 0;
-  list< int >::const_iterator g_it = theElements.begin( );
-  for( ; g_it!=theElements.end( ) ; ++g_it )
-    if( *g_it==gen || *g_it==-gen )
-      result += 1;
-  return result;
-}
 
+  for (const auto el : elements_) {
+    const int degree = (el > 0) ? 1 : -1;
 
-//=========================================================
-
-
-int WordRep::exponentSum( int gen ) const
-{
-  int result = 0;
-  list< int >::const_iterator g_it = theElements.begin( );
-  for( ; g_it!=theElements.end( ) ; ++g_it )
-    if( *g_it==gen || *g_it==-gen )
-      result += 1;
-  return result;
-}
-
-
-//=========================================================
-
-
-WordRep WordRep::inverse( ) const
-{
-  WordRep result;
-  list< int >::const_iterator g_it = theElements.begin( );
-  for( ; g_it!=theElements.end( ) ; ++g_it )
-    result.push_front( -*g_it );
-  return result;
-}
-
-
-//=========================================================
-
-
-bool WordRep::operator == ( const WordRep& wr ) const
-{
-  if( theElements.size( )!=wr.theElements.size( ) )
-    return false;
-
-  list< int >::const_iterator g_it1 = theElements.begin( );
-  list< int >::const_iterator g_it2 = wr.theElements.begin( );
-  while( g_it1!=theElements.end( ) )
-    if( *(g_it1++) != *(g_it2++) )
-      return false;
-
-  return true;
-}
-
-
-//=========================================================
-
-
-bool WordRep::operator < ( const WordRep& wr ) const
-{
-  int len1 = theElements.size( );
-  int len2 = wr.theElements.size( );
-  if( len1<len2 ) return true;
-  if( len1>len2 ) return false;
-
-  list< int >::const_iterator g_it1 = theElements.begin( );
-  list< int >::const_iterator g_it2 = wr.theElements.begin( );
-  for( int t=0 ; t<len1 ; ++t ) {
-    if( *g_it1 < *g_it2 )
-      return true;
-    if( *(g_it1++) > *(g_it2++) )
-      return false;
+    if (abs_gen == std::abs(el)) {
+      result += degree;
+    }
   }
-  
+
+  return result;
+}
+
+WordRep WordRep::inverse() const {
+  storage_t elements;
+
+  for (auto it = elements_.rbegin(); it != elements_.rend(); ++it) {
+    elements.push_back(-*it);
+  }
+
+  return WordRep(std::move(elements));
+}
+
+bool WordRep::operator==(const WordRep& other) const {
+  return elements_ == other.elements_;
+}
+
+bool WordRep::operator!=(const WordRep& other) const {
+  return !(*this == other);
+}
+
+bool WordRep::operator<(const WordRep& other) const {
+  const auto this_size = size();
+  const auto other_size = other.size();
+
+  if (this_size != other_size) {
+    return this_size < other_size;
+  }
+
+  auto this_it = elements_.begin();
+  auto other_it = other.elements_.begin();
+
+  for (size_t t = 0; t < this_size; ++t) {
+    if (*this_it < *other_it) {
+      return true;
+    }
+
+    if (*(this_it++) > *(other_it++)) {
+      return false;
+    }
+  }
+
+  // words are equal
   return false;
 }
 
+bool WordRep::operator>(const WordRep& other) const {
+  return other < *this;
+}
 
-//=========================================================
+void WordRep::insert(iterator position, int g) {
+  validate_({g});
 
+  elements_.insert(position, g);
+}
 
-bool WordRep::operator > ( const WordRep& wr ) const
-{
-  int len1 = theElements.size( );
-  int len2 = wr.theElements.size( );
-  if( len1<len2 ) return true;
-  if( len1>len2 ) return false;
-  
-  list< int >::const_iterator g_it1 = theElements.begin( );
-  list< int >::const_iterator g_it2 = wr.theElements.begin( );
-  for( int t=0 ; t<len1 ; ++t ) {
-    if( *g_it1 > *g_it2 )
-      return true;
-    if( *(g_it1++) < *(g_it2++) )
-      return false;
+void WordRep::insert(size_t position, int g) {
+  position = std::min(position, size());
+
+  auto it = elements_.begin();
+  std::advance(it, position);
+
+  insert(it, g);
+}
+
+void WordRep::replace(iterator position, int g) {
+  validate_({g});
+
+  *position = g;
+}
+
+void WordRep::replace(size_t position, int g) {
+  if (position >= size()) {
+    throw std::invalid_argument("Bad position.");
   }
 
-  return false;
+  auto it = elements_.begin();
+  std::advance(it, position);
+
+  replace(it, g);
 }
 
-
-//=========================================================
-
-
-void WordRep::insert( WordIterator it , int g )
-{
-  theElements.insert( it.theIterator , g );
-}
-
-template< class ConstIntIterator > 
-void WordRep::insert( WordIterator it , ConstIntIterator B , ConstIntIterator E )
-{
-  theElements.insert( it.theIterator , B , E );
-}
-
-void WordRep::insert( int pos , int g )
-{
-  if( pos<0 || theElements.size( )<pos ) return;
-  list< int >::iterator l_it = theElements.begin( );
-  for( ; pos>0 ; --pos, ++l_it );
-  theElements.insert( l_it , g );
-}
-
-template< class ConstIntIterator > 
-void WordRep::insert( int pos , ConstIntIterator B , ConstIntIterator E )
-{
-  if( pos<0 || theElements.size( )<pos ) return;
-  list< int >::iterator l_it = theElements.begin( );
-  for( ; pos>0 ; --pos, ++l_it );
-  theElements.insert( l_it , B , E );
-}
-
-
-//=========================================================
-
-void WordRep::replace( WordIterator it , const Generator& g )
-{
-  *(it.theIterator) = g;
-}
-
-void WordRep::replace( int pos , const Generator& g )
-{
-  if( pos<0 || theElements.size( )<pos ) return;
-  list< int >::iterator l_it = theElements.begin( );
-  for( ; pos>0 ; --pos, ++l_it );
-  *l_it = g;
-}
-
-//=========================================================
-
-template< class ConstIntIterator > 
-void WordRep::replace( WordIterator it , ConstIntIterator B , ConstIntIterator E )
-{
-  // list< int >::iterator l_it = 
-  list< int >::iterator c_it = it.theIterator;
-  for( ; c_it!=theElements.end( ) && B!=E ; ++c_it, ++B )
-    *c_it = *B;
-}
-
-//=========================================================
-
-
-void WordRep::cyclicallyPermute( int n )
-{
-  int len = theElements.size( );
-  if( n==0 || len==0 ) return;
-
-  // make it positive
-  n %= len;
-  n = n<0 ? n+len : n;
-  
-  WordRep segm1 = *this;
-  segm1.initialSegment( n );
-  WordRep segm2 = *this;
-  segm2.terminalSegment( n );
-  *this = segm2*segm1;
-}
-
-
-//=========================================================
-
-
-void WordRep::segment( int from , int to )
-{
-  initialSegment( to );
-  terminalSegment( from );
-}
-
-//=========================================================
-
-void WordRep::initialSegment( int len )
-{
-  if( len<=0 ) {
-    theElements.clear( );
+void WordRep::cyclicallyPermute(int n) {
+  if (size() < 2) {
     return;
   }
-  
-  for( int left=theElements.size( ) - len ; left>0 ; --left )
-    theElements.pop_back( );
-}
 
+  int sz = static_cast<int>(size());
 
-//=========================================================
+  // make n positive
+  n = ((n % sz) + sz) % sz;
 
-
-void WordRep::terminalSegment( int len )
-{
-  int l = len < theElements.size( ) ? len : theElements.size( );
-  for( int t=0 ; t<l ; ++t )
-    theElements.pop_front( );
-}
-
-//=========================================================
-
-
-void WordRep::cyclicallyReduce( )
-{
-  while( theElements.size( )>1 ) {
-    int b = *theElements.begin( );
-    int e = *--theElements.end( );
-    if( e+b )
-      break;
-    theElements.pop_back( );
-    theElements.pop_front( );
+  if (n == 0) {
+    return;
   }
+
+  auto middle = elements_.begin();
+  std::advance(middle, n);
+
+  elements_.splice(elements_.end(), elements_, elements_.begin(), middle);
+  freelyReduce();
 }
 
-
-//=========================================================
-
-
-void WordRep::cyclicallyReduce( WordRep& conjugator )
-{
-  conjugator.theElements.clear( );
-  while( theElements.size( )>1 ) {
-    int b = *theElements.begin( );
-    int e = *--theElements.end( );
-    if( e+b )
-      break;
-    theElements.pop_back( );
-    theElements.pop_front( );
-    conjugator.theElements.push_front( e );
+void WordRep::segment(size_t from, size_t to) {
+  if (from > to) {
+    throw std::invalid_argument("Bad segment.");
   }
+
+  initialSegment(to);
+  terminalSegment(from);
 }
 
+void WordRep::initialSegment(size_t to) {
+  to = std::min(to, size());
 
-//=========================================================
+  elements_.resize(to);
+}
 
+void WordRep::terminalSegment(size_t from) {
+  if (from > size()) {
+    from = size();
+  }
 
-int WordRep::getPower( WordRep& base ) const
-{
-  int len = theElements.size( );
-  if( len<=1 ) return 1;
-  
-  int up = sqrt((double)len)+1;
-  
-  // Decompose len into a product of primes 
-  list< pair< int , int > > primes;
-  list< pair< int , int > > primes_to_use;
-  
+  auto it = elements_.begin();
+  std::advance(it, from);
+
+  elements_.erase(elements_.begin(), it);
+}
+
+WordRep WordRep::cyclicallyReduce() {
+  WordRep conjugator;
+
+  while (elements_.size() > 1) {
+    const auto b = elements_.front();
+    const auto e = elements_.back();
+
+    if (e + b != 0) {
+      break;
+    }
+
+    elements_.pop_back();
+    elements_.pop_front();
+
+    conjugator.elements_.push_front(e);
+  }
+
+  return conjugator;
+}
+
+std::pair<WordRep, int> WordRep::root() const {
+  auto len = size();
+
+  if (len <= 1) {
+    return std::make_pair(*this, 1);
+  }
+
+  int up = std::sqrt(static_cast<double>(len)) + 1;
+
+  // Decompose len into a product of primes
+  std::list< std::pair< int , int > > primes;
+  std::list< std::pair< int , int > > primes_to_use;
+
   for( int i=2 ; i<up ; ++i ) {
     bool prime = true;
-    list< pair< int , int > >::iterator p_it = primes.begin( );
+    auto p_it = primes.begin( );
     for( ; p_it!=primes.end( ) ; ++p_it ) {
       int a = (*p_it).first;
       int b = (*p_it).second;
       (*p_it).second = b+1==a ? (prime=false) : b+1;
     }
     if( prime ) {
-      primes.push_back( pair< int , int >(i,0) );
+      primes.push_back( std::pair< int , int >(i,0) );
       int count = 0;
       while( len%i==0 ) {
-	++count;
-	len /= i;
+        ++count;
+        len /= i;
       }
       if( count ) {
-	primes_to_use.push_back( pair<int,int>(i,count) );
-	up = sqrt((double)len)+1;
+        primes_to_use.push_back( std::pair<int,int>(i,count) );
+        up = std::sqrt(static_cast<double>(len)) + 1;
       }
     }
   }
   if( len>1 )
-    primes_to_use.push_back( pair<int,int>(len,1) );
+    primes_to_use.push_back( std::pair<int,int>(len,1) );
 
   /*{
 	list< pair< int , int > >::iterator p_it = primes_to_use.begin( );
@@ -505,65 +346,151 @@ int WordRep::getPower( WordRep& base ) const
 	}
 	}*/
 
-  len = theElements.size( );
-  
+  len = size();
+
   // Construct a vector of generators (to have indexed access)
-  vector< int > wrd_vct(len);
-  list< int >::const_iterator g_it = theElements.begin( );
-  for( int j=0 ; g_it!=theElements.end() ; ++j, ++g_it )
+  std::vector< int > wrd_vct(len);
+  auto g_it = cbegin( );
+  for( int j=0 ; g_it!=cend() ; ++j, ++g_it )
     wrd_vct[j] = *g_it;
-  
+
   // Find the power
-  list< pair< int , int > >::iterator p_it = primes_to_use.begin( );
+  auto p_it = primes_to_use.begin( );
   for( ; p_it!=primes_to_use.end( ) ; ++p_it ) {
     int parts = (*p_it).first;
     int count = (*p_it).second;
     int shrt_len = len/parts;
-    
+
     bool progress = true;
     for( int t=0 ; t<count && progress ; ++t ) {
       for( int offset=0 ; offset<shrt_len  && progress ; ++offset ) {
-	int e = wrd_vct[offset];
-	for( int j=offset ; j<len && progress ; j+=shrt_len )
-	  if( wrd_vct[j]!=e )
-	    progress = false;
+        int e = wrd_vct[offset];
+        for( int j=offset ; j<len && progress ; j+=shrt_len )
+          if( wrd_vct[j]!=e )
+            progress = false;
       }
       if( progress )
-	shrt_len = (len = shrt_len) / parts;
+        shrt_len = (len = shrt_len) / parts;
     }
   }
-  
-  base = *this;
+
+  auto base = *this;
   base.initialSegment( len );
-  return theElements.size()/len;
-}
+  return std::make_pair(base, size() / len);
+};
 
+void WordRep::freelyReduce() {
+  for (auto it = elements_.begin(); it != elements_.end();) {
+    auto next = it;
+    ++next;
 
-//=========================================================
+    if (next == elements_.end()) {
+      return;
+    }
 
-
-void WordRep::freelyReduce( WordIterator beg , WordIterator end )
-{
-  list< int >::iterator b = beg.theIterator;
-  list< int >::iterator e = end.theIterator;
-  
-  for( list< int >::iterator cur_it=b ; cur_it!=e && cur_it!=theElements.end( ) ; ) {
-    
-    list< int >::iterator cur_it2 = cur_it;
-    if( ++cur_it2==theElements.end( ) )
-      break;
-    if( *cur_it+*cur_it2 ) {
-      ++cur_it;
+    if (*it + *next != 0) {
+      it = next;
       continue;
     }
-    
-    if( cur_it2==e )
-      ++e;
-    theElements.erase( cur_it );
-    cur_it = theElements.erase( cur_it2 );
-    if( cur_it!=theElements.begin( ) )
-      --cur_it;
+
+    // reduction
+    const auto is_beginning = (it == elements_.begin());
+
+    it = elements_.erase(elements_.erase(it));
+
+    if (!is_beginning) {
+      --it;
+    }
   }
-  
-  
+}
+
+void WordRep::freelyReduce(iterator begin, iterator end) {
+  // cut prefix
+  storage_t prefix;
+  prefix.splice(prefix.begin(), elements_, elements_.begin(), begin);
+
+  // cut suffix
+  storage_t suffix;
+  suffix.splice(suffix.begin(), elements_, end, elements_.end());
+
+  // reduce the remaining part
+  freelyReduce();
+
+  // put prefix and suffix back
+  elements_.splice(elements_.begin(), prefix, prefix.begin(), prefix.end());
+  elements_.splice(elements_.end(), suffix, suffix.begin(), suffix.end());
+}
+
+void WordRep::reduced_push_back_(int g) {
+  validate_({g});
+
+  if (elements_.empty()) {
+    elements_.push_back(g);
+    return;
+  }
+
+  const int last_el = elements_.back();
+
+  if (last_el + g == 0) {
+    elements_.pop_back();
+  } else {
+    elements_.push_back(g);
+  }
+}
+
+void WordRep::reduced_push_front_(int g) {
+  validate_({g});
+
+  if (elements_.empty()) {
+    elements_.push_back(g);
+    return;
+  }
+
+  const int first_el = elements_.front();
+
+  if (first_el + g == 0) {
+    elements_.pop_front();
+  } else {
+    elements_.push_front(g);
+  }
+}
+
+std::ostream& operator<<(std::ostream& out, const WordRep& w) {
+  if (w.empty()) {
+    return out << "1";
+  }
+
+  const std::string letter("x");
+
+  int last_index = w.front();
+  int last_degree = 1;
+
+  const auto printLastEl = [&] () {
+    out << letter << std::abs(last_index);
+
+    if (last_index < 0 || last_degree != 1) {
+      out << "^" << ((last_index > 0) ? last_degree : -last_degree);
+    }
+  };
+
+  for (auto it = ++w.begin(); it != w.end(); ++it) {
+    const int index = *it;
+
+    if (last_index != index) {
+      printLastEl();
+
+      if (last_degree != 0) {
+        out << " ";
+      }
+
+      last_index = index;
+      last_degree = 1;
+    } else {
+      ++last_degree;
+    }
+  }
+
+  printLastEl();
+
+  return out;
 }

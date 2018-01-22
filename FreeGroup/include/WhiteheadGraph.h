@@ -252,13 +252,13 @@ class WhiteheadSimpleGraph : public WhiteheadGraph
   }
   
   //! Transfers a vertex into the corresponding letter
-  Generator indToGenerator( int i )const{
+  int indToGenerator( int i )const{
     if (i < nOfGenerators)
       // if positive
-      return Generator(i+1);
+      return i+1;
     else {
       // if negative
-      return -( Generator(i - nOfGenerators + 1) );
+      return -( i - nOfGenerators + 1 );
     }
   }
 
