@@ -177,7 +177,7 @@ static void saveDifficultInstance(const int N, const vector<Word> &gens, const B
   printVectorOfWords(t.WR, of << "T.WR = ") << endl;
   printVectorOfInts(t.deltaSQL, of << "T.deltaSQL = ") << endl;
   printVectorOfInts(t.deltaSQR, of << "T.deltaSQR = ") << endl;
-  of << "T.z = \"" << t.z << "\"_w;";
+  of << "T.z = \"" << t.z << "\"_w;" << endl << endl;
 }
 
 bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
