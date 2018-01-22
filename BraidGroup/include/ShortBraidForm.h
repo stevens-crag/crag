@@ -8,13 +8,15 @@ using namespace std;
 class Word;
 class LinkedBraidStructure;
 
-Word shortenBraid( int N , const Word& w );
-
+//! Attempt to reduce |w| using Dehornoy handle free form
+Word shortenBraid(int N, const Word &w);
+//! Attempt to reduce |w| using Dehornoy handle free form (for longer words)
+Word shortenBraid2(int N, const Word &w);
+//! Compute normal form for w and then shorten the result
 Word shortBraidForm( int N , const Word& w );
 
-vector< Word > shortBraidSbgpForm( int N , const vector< Word >& w );
+vector<Word> shortBraidSbgpForm(int N, const vector<Word> &w);
 
-LinkedBraidStructure shortenLBS( LinkedBraidStructure& lbs );
-
+LinkedBraidStructure shortenLBS(LinkedBraidStructure &lbs);
 
 #endif

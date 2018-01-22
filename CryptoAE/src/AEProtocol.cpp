@@ -130,13 +130,13 @@ void TTPTuple::shorten_parallel(int N) {
 
   for (int i = 0; i < WL.size(); ++i) {
     threads.emplace_back([this, N, i]() {
-      WL[i] = shortenBraid(N, WL[i]);
+      WL[i] = shortenBraid2(N, WL[i]);
     });
   }
 
   for (int i = 0; i < WR.size(); ++i) {
     threads.emplace_back([this, N, i]() {
-      WR[i] = shortenBraid(N, WR[i]);
+      WR[i] = shortenBraid2(N, WR[i]);
     });
   }
 
@@ -147,10 +147,10 @@ void TTPTuple::shorten_parallel(int N) {
 
 void TTPTuple::shorten(int N) {
   for (auto &w : WL) {
-    w = shortenBraid(N, w);
+    w = shortenBraid2(N, w);
   }
   for (auto &w : WR) {
-    w = shortenBraid(N, w);
+    w = shortenBraid2(N, w);
   }
 }
 

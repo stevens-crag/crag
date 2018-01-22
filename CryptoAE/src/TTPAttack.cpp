@@ -112,6 +112,7 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     if (cur.second.WR[1].length() > 20) {
       special_gens.push_back(-(cur.second.WR[1].terminalSegment(cur.second.WR[1].length() - 5)));
     }
+    // special_gens.push_back("x1 x2 x3 x4 x5 x6 x7"_w);
 
     if (!special_gens.empty()) {
       if (process_conjugates(N, cur, special_gens, checkedElements,
@@ -339,7 +340,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   TTPLBA ttpLBA;
   TTPTuple red_T;
   // bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 600, cout, red_T);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {

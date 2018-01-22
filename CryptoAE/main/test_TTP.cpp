@@ -84,7 +84,6 @@ static int abelinization(const Word& w) {
 }
 
 void abelinizationTest() {
-
   const int n = 16;
   const int l = 2000;
   const BraidGroup B(n);
@@ -96,6 +95,25 @@ void abelinizationTest() {
   cout << 2 * Permutation::getHalfTwistPermutation(n).geodesic().size() << endl;
 }
 
+void test_shortenBraid2() {
+  const int n = 16;
+  typedef ThLeftNormalForm NF;
+  BraidGroup B(n);
+
+  const int l = 200;
+  for (int i = 0; i < 100; ++i) {
+    const auto w1 = Word::randomWord(n - 1, l);
+    const auto w2 = shortenBraid(n, w1);
+    const auto w3 = shortenBraid2(n, w1);
+    cout << w1.length() << " -> " << w2.length() << " -> " << w3.length() << endl;
+    NF nf1(B, w1);
+    NF nf3(B, w3);
+    if (nf1 != nf3) {
+      cout << "Failure!" << endl;
+      exit(1);
+    }
+  }
+}
 
 int main() {
   RandLib::ur.reset();
@@ -103,6 +121,7 @@ int main() {
   RandLib::ur.getseed( s1, s2 );
   cout << "Seed : " << s1 << " " << s2 << endl;
   
+  // test_shortenBraid2();
   // getDecompositionDetails();
   // compareGenerateWordFunctions();
   // abelinizationTest();
@@ -110,15 +129,14 @@ int main() {
 
   TTP_Conf ttp_conf;
   
-
   // AE suggested parameters
-  ttp_conf.nBL    =  3; // 5;     // # Generators in BL
-  ttp_conf.nBR    =  3; // 5;     // # Generators in BR
+  ttp_conf.nBL    =  7; // 5;     // # Generators in BL
+  ttp_conf.nBR    =  7; // 5;     // # Generators in BR
   ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 500; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 500;  // Word's length
+  ttp_conf.len_z  = 600; // 18;  // Conjugator's length
+  ttp_conf.len_w  = 600;  // Word's length
   
   cout << ttp_conf << endl;
 
