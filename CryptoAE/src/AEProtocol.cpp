@@ -240,7 +240,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
     best_nf = anticipated_delta(N, w);
     ThLeftNormalForm nf2 = nf;
     nf2.setPower(nf.getPower() + 2 * best_nf);
-    weights[best_nf] = shortenBraid(N, nf2.getReducedWord2());
+    weights[best_nf] = shortenBraid2(N, nf2.getReducedWord2());
     w = weights[best_nf];
     cout << weights[best_nf].length() << ", ";
   }
@@ -259,7 +259,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
       if (weights.find(i) != weights.end())
         continue;
       const auto &cur_w = weights[i - 1];
-      const auto new_w = shortenBraid(N, omegaWord.power(2) * cur_w);
+      const auto new_w = shortenBraid2(N, omegaWord.power(2) * cur_w);
       weights[i] = new_w;
       if (weights[i].length() < weights[best_nf].length()) {
         progress = true;
@@ -274,7 +274,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
       if (weights.find(i) != weights.end())
         continue;
       const auto &cur_w = weights[i + 1];
-      const auto new_w = shortenBraid(N, omegaWord.power(-2) * cur_w);
+      const auto new_w = shortenBraid2(N, omegaWord.power(-2) * cur_w);
       weights[i] = new_w;
       if (weights[i].length() < weights[best_nf].length()) {
         progress = true;

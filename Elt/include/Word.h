@@ -10,6 +10,7 @@
 #include <string>
 #include <set>
 #include <memory>
+#include <tuple>
 
 #include "WordRep.h"
 #include "Alphabet.h"

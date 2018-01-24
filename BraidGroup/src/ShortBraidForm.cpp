@@ -34,10 +34,12 @@ Word shortenBraid(int N, const Word &w) {
 }
 
 Word shortenBraid2(const int N, const Word &w) {
+  return shortenBraid(N, w);
+
   Word result = w;
   for (unsigned int step = 16; step < result.length(); step *= 2) {
     Word interm_result;
-    const auto l = result.getList();
+    const auto l = result.toList();
     auto it = l.begin();
     for (auto i = 0; i < result.length(); i += step) {
       auto it_beg = it;
