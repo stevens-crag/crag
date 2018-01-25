@@ -137,7 +137,11 @@ public:
    \param deails - if true will print verbose information
    */
   TTPTuple conjugate(int N, const Word& b) const;
+  
+  //! Test if elements in tuples are separated
   bool testTuples(int N, bool details) const;
+  bool testTuples2(int N, bool details) const;
+
 
   //! Performs shorten and then test on being "separated"
   bool shortAndTestTuples(int N, bool details = false) {

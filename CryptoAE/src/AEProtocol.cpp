@@ -18,6 +18,7 @@
 #include "ThLeftNormalForm.h"
 #include "RanlibCPP.h"
 #include <thread>
+#include "LinkedBraidStructure.h"
 
 //typedef pair< vector< Word > , vector< Word > > TTPTuple;
 
@@ -348,36 +349,68 @@ void TTPTuple::printPowers() const {
   cout << "|";
 }
 
-bool TTPTuple::testTuples( int N, bool details ) const
-{
-  if (details){
-
-    cout << "WL:" << endl;
-    for (int i=0;i<WL.size();i++)
-      cout << WL[i] << endl;
-
-    cout << "WR:" << endl;
-    for (int i=0;i<WR.size();i++)
-      cout << WR[i] << endl;
-
+bool TTPTuple::testTuples2(int N, bool details) const {
+  auto t1 = *this;
+  for (auto &w : t1.WL) {
+    LinkedBraidStructure df(N - 1, w);
+    df.removeRightHandles();
+    w = df.translateIntoWord();
   }
-  
-  vector<char> gensFlags(N-1,0);
-  for ( int i=0;i<WL.size();i++){
-    for (auto I=WL[i].begin();I!=WL[i].end();I++){
-      gensFlags[abs(*I)-1] = 1;
+  for (auto &w : t1.WR) {
+    LinkedBraidStructure df(N - 1, w);
+    df.removeLeftHandles();
+    w = df.translateIntoWord();
+  }
+  if (t1.testTuples(N, details)) {
+    return true;
+  }
+
+  auto t2 = *this;
+  for (auto &w : t2.WL) {
+    LinkedBraidStructure df(N - 1, w);
+    df.removeLeftHandles();
+    w = df.translateIntoWord();
+  }
+  for (auto &w : t2.WR) {
+    LinkedBraidStructure df(N - 1, w);
+    df.removeRightHandles();
+    w = df.translateIntoWord();
+  }
+  if (t2.testTuples(N, details)) {
+    return true;
+  }
+  return testTuples(N, details);
+}
+
+
+bool TTPTuple::testTuples(int N, bool details) const {
+  if (details) {
+    cout << "WL:" << endl;
+    for (int i = 0; i < WL.size(); i++) {
+      cout << WL[i] << endl;
+    }
+    cout << "WR:" << endl;
+    for (int i = 0; i < WR.size(); i++) {
+      cout << WR[i] << endl;
     }
   }
-  
-  for ( int i=0;i<WR.size();i++){
-    for (auto I=WR[i].begin();I!=WR[i].end();I++){
-      int gI = abs(*I)-1;
-      int glI = gI > 0 ? gI-1 : gI;
-      int grI = gI < N-2 ? gI+1 : gI;
-      if ( gensFlags[gI] || gensFlags[glI] || gensFlags[grI] ){
-	if (details)
-	  cout << gI+1 << " FAILS" << endl;
-	return false;
+
+  vector<char> gensFlags(N - 1, 0);
+  for (int i = 0; i < WL.size(); i++) {
+    for (auto I = WL[i].begin(); I != WL[i].end(); I++) {
+      gensFlags[abs(*I) - 1] = 1;
+    }
+  }
+
+  for (int i = 0; i < WR.size(); i++) {
+    for (auto I = WR[i].begin(); I != WR[i].end(); I++) {
+      int gI = abs(*I) - 1;
+      int glI = gI > 0 ? gI - 1 : gI;
+      int grI = gI < N - 2 ? gI + 1 : gI;
+      if (gensFlags[gI] || gensFlags[glI] || gensFlags[grI]) {
+        if (details)
+          cout << gI + 1 << " FAILS" << endl;
+        return false;
       }
     }
   }

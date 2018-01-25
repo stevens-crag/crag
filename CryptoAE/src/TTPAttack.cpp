@@ -364,8 +364,9 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
     }
 
     // Termination condition: check that cur.second.WL and cur.second.WR are separated
+    if (cur.second.testTuples2(N, false)) {
     // if (cur.second.testTuples(N, false)) {
-    if (cur.second.shortAndTestTuples(N)) {
+    // if (cur.second.shortAndTestTuples(N)) {
       // (debug)
 #ifdef TEST_EQUIVALENCE
       if (!theTuple.equivalent(N, cur.second)) {
