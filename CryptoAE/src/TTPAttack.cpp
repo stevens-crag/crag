@@ -202,9 +202,9 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
   }
 
   // 3. Try to fix Delta^2 power in WL
-   cout << "a3" << endl;
-   const auto new_tuple = cur.second.multiplyElementsByDeltaSQtoReduceLength(N, 3, false);
-   addNewElt(new_tuple, checkedElements, uncheckedElements);
+   //cout << "a3" << endl;
+   //const auto new_tuple = cur.second.multiplyElementsByDeltaSQtoReduceLength(N, 3, false);
+   //addNewElt(new_tuple, checkedElements, uncheckedElements);
 }
 
 static void gen_distribution(int N, const Word &w) {
@@ -315,24 +315,24 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
       best_result = cur.first;
       stuck_check = 0;
     } else {
-      if (++stuck_check > 20) {
+      if (++stuck_check > 50) {
         // We are officially stuck. Save the instance to process later
         // I think we need 2 saves: (a) the original instance as it was originally generated and (b) the reduced one to start LBA from that point
         cout << " >>> STUCK <<< " << endl;
 
         auto best = checkedElements.begin()->second;
-//        if (fixDeltas(N, best)) {
-//          checkedElements.clear();
-//          uncheckedElements.clear();
-//          addNewElt(best, checkedElements, uncheckedElements);
-//#ifdef TEST_EQUIVALENCE
-//          if (!initTuple.equivalent(N, best)) {
-//            cout << "ERROR!!!" << endl;
-//            exit(1);
-//          }
-//#endif
-//          continue;
-//        }
+        if (fixDeltas(N, best)) {
+          checkedElements.clear();
+          uncheckedElements.clear();
+          addNewElt(best, checkedElements, uncheckedElements);
+#ifdef TEST_EQUIVALENCE
+          if (!initTuple.equivalent(N, best)) {
+            cout << "ERROR!!!" << endl;
+            exit(1);
+          }
+#endif
+          continue;
+        }
 
         if (checkedElements.size() % 50 == 0) {
           for (const auto &w : best.WL) {
@@ -448,7 +448,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   TTPLBA ttpLBA;
   TTPTuple red_T;
   // bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600, cout, red_T);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 12 * 3600, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {

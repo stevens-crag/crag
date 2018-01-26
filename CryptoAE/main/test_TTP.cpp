@@ -135,11 +135,10 @@ int main() {
   ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 600; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 600;  // Word's length
+  ttp_conf.len_z  = 1000; // 18;  // Conjugator's length
+  ttp_conf.len_w  = 1000;  // Word's length
   
   cout << ttp_conf << endl;
-
 
   const int nExp = 100;
   
