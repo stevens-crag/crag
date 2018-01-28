@@ -188,7 +188,7 @@ class LinkedBraidStructure
   vector< BraidNode* >  backNodes;
   map< int , BraidNode > theNodes;
   
-  int maxNodeNumber;
+  uint64_t maxNodeNumber;
 };
 
 
