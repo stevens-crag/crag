@@ -20,6 +20,8 @@
 #include <thread>
 #include <mutex>
 #include <fstream>
+#include <ctime>
+#include <iomanip>
 
 // #define TEST_EQUIVALENCE
 
@@ -184,11 +186,8 @@ void TTPLBA::tryNode(int N, bool use_special_gens, const NODE& cur, const vector
     if (cur.second.WR[1].length() > 20) {
       special_gens.push_back(-(cur.second.WR[1].terminalSegment(cur.second.WR[1].length() - 5)));
     }
-    // special_gens.push_back("x1 x2 x3 x4 x5 x6 x7"_w);
-
     if (!special_gens.empty()) {
-      if (process_conjugates(N, cur, special_gens, checkedElements,
-                             uncheckedElements)) {
+      if (process_conjugates(N, cur, special_gens, checkedElements, uncheckedElements)) {
         cout << "a1" << endl;
         return;
       }
@@ -315,7 +314,7 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
       best_result = cur.first;
       stuck_check = 0;
     } else {
-      if (++stuck_check > 50) {
+      if (++stuck_check > 20) {
         // We are officially stuck. Save the instance to process later
         // I think we need 2 saves: (a) the original instance as it was originally generated and (b) the reduced one to start LBA from that point
         cout << " >>> STUCK <<< " << endl;
@@ -331,30 +330,44 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
             exit(1);
           }
 #endif
+          stuck_check = 0;
+          continue;
+        } else {
+          best = best.conjugate(N, Word::randomWord(N - 1, 500));
+          best_result = best.length();
+          checkedElements.clear();
+          uncheckedElements.clear();
+          addNewElt(best, checkedElements, uncheckedElements);
+          stuck_check = 0;
           continue;
         }
 
-        if (checkedElements.size() % 50 == 0) {
-          for (const auto &w : best.WL) {
-            cout << "> " << endl;
-            cout << w << endl;
-            gen_distribution(N, w);
-            cout << endl;
-          }
-          cout << endl;
-          for (const auto &w : best.WR) {
-            cout << "> " << endl;
-            cout << w << endl;
-            gen_distribution(N, w);
-            cout << endl;
-          }
-        }
+        // To be deleted
+        //if (checkedElements.size() % 50 == 0) {
+        //  for (const auto &w : best.WL) {
+        //    cout << "> " << endl;
+        //    cout << w << endl;
+        //    gen_distribution(N, w);
+        //    cout << endl;
+        //  }
+        //  cout << endl;
+        //  for (const auto &w : best.WR) {
+        //    cout << "> " << endl;
+        //    cout << w << endl;
+        //    gen_distribution(N, w);
+        //    cout << endl;
+        //  }
+        //}
       }
     }
 
-    out << "Current (best) length: " << cur.first << " (" << best_result << ")   ";
+    out << "Current (best) length: " << cur.first << " (" << best_result << "), Stuck = ";
+    cout << "[" << stuck_check << "],  ";
     cur.second.printPowers();
-    cout << "   tm = " << cur_time << endl;
+    // cout << "   tm = " << cur_time << endl;
+    auto t = std::time(nullptr);
+    auto tm = *std::localtime(&t);
+    cout << std::put_time(&tm, ",  tm = %H-%M-%S") << std::endl;
 
     if (cur_time - init_time > sec) {
       cout << "Failed example!" << endl;
