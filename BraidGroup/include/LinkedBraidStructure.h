@@ -1,50 +1,33 @@
+// Copyright (C) 2005 Alexander Ushakov
 
-#ifndef _LinkedBraidStructure_h_
-#define _LinkedBraidStructure_h_
+#ifndef CRAG_LINKED_BRAID_STRUCTURE_H
+#define CRAG_LINKED_BRAID_STRUCTURE_H
 
+#include <list>
+#include <map>
+#include <ostream>
+#include <set>
+#include <tuple>
+#include <vector>
 
-#include "set"
-#include "map"
-#include "list"
-#include "vector"
-using namespace std;
+#include "Word.h"
 
-#include "tuples.h"
+struct BraidNode {
+public:
+  BraidNode(int num = 0, bool tp = true, BraidNode* l = NULL, BraidNode* a = NULL, BraidNode* r = NULL,
+            BraidNode* bl = NULL, BraidNode* b = NULL, BraidNode* br = NULL)
+      : left(l)
+      , ahead(a)
+      , right(r)
+      , back_left(bl)
+      , back(b)
+      , back_right(br)
+      , type(tp)
+      , link(NULL)
+      , weight(0)
+      , theNumber(num) {}
 
-
-//---------------------------------------------------------------------------//
-//------------------------------ BraidNode ----------------------------------//
-//---------------------------------------------------------------------------//
-
-
-struct BraidNode
-{
-
-  ///////////////////////////////////////////////////////// 
-  //                                                     //
-  //  Constructors:                                      //
-  //                                                     //
-  /////////////////////////////////////////////////////////
-    
-  public:
-
-  BraidNode( int num=0, bool tp=true, BraidNode* l=NULL, BraidNode* a=NULL, BraidNode* r=NULL, BraidNode* bl=NULL, BraidNode* b=NULL, BraidNode* br=NULL) : 
-    left( l ), ahead( a ), right( r ),
-    back_left( bl ), back( b ), back_right( br ) ,
-    type( tp ) ,
-    link( NULL ),
-    weight(0),
-    theNumber( num )
-  { }
-
-  /////////////////////////////////////////////////////////
-  //                                                     //
-  //  Data members:                                      //
-  //                                                     //
-  /////////////////////////////////////////////////////////
-  
-  public:
-  
+public:
   BraidNode* left;
   BraidNode* ahead;
   BraidNode* right;
@@ -52,36 +35,42 @@ struct BraidNode
   BraidNode* back_left;
   BraidNode* back;
   BraidNode* back_right;
-  
-  bool type;
+
   // shows whether a crossing positive or negative
-  
+  bool type;
+
+  // auxiliary member, used in LinkedBraidStructure copy constructor and in
+  // translateIntoWord
   mutable BraidNode* link;
-  // auxiliary member, used in LinkedBraidStructure copy constructor and in translateIntoWord
-  
-  mutable int weight;
+
   // auxiliary member, used in remove Handle functions
-  
-  int theNumber;
+  mutable int weight;
+
   // a unique number associated with the node in a LBS
+  int theNumber;
 };
 
-ostream& operator << ( ostream& os , const BraidNode& bn );
+std::ostream& operator<<(std::ostream& os, const BraidNode& bn);
 
+struct LinkedBraidStructureTransform {
+  enum TRANSFORM {
+    ERASED,
+    ADDED,
+    CHANGE_TYPE,
+  };
 
-
-//---------------------------------------------------------------------------//
-//---------------------- LinkedBraidStructureTransform ----------------------//
-//---------------------------------------------------------------------------//
-
-
-struct LinkedBraidStructureTransform
-{
-  enum TRANSFORM{ ERASED , ADDED , CHANGE_TYPE };
-
-  LinkedBraidStructureTransform( int n , int p , TRANSFORM tr , bool t=false , int l=0 , int a=0 , int r=0 , int bl=0 , int b=0 , int br=0 ) :
-    theTransform(tr), left(l), ahead(a), right(r), back_left(bl), back(b), back_right(br), type(t), theNumber( n ), thePosition(p)
-  { }
+  LinkedBraidStructureTransform(int n, int p, TRANSFORM tr, bool t = false, int l = 0, int a = 0, int r = 0, int bl = 0,
+                                int b = 0, int br = 0)
+      : theTransform(tr)
+      , left(l)
+      , ahead(a)
+      , right(r)
+      , back_left(bl)
+      , back(b)
+      , back_right(br)
+      , type(t)
+      , theNumber(n)
+      , thePosition(p) {}
 
   TRANSFORM theTransform;
 
@@ -92,105 +81,75 @@ struct LinkedBraidStructureTransform
   int back_left;
   int back;
   int back_right;
-  
+
   bool type;
   int theNumber;
   int thePosition;
 };
 
+class LinkedBraidStructure {
+public:
+  LinkedBraidStructure(int N);
+  LinkedBraidStructure(int N, const Word& w);
+  LinkedBraidStructure(const LinkedBraidStructure& LBS);
 
-//---------------------------------------------------------------------------//
-//------------------------- LinkedBraidStructure ----------------------------//
-//---------------------------------------------------------------------------//
+  LinkedBraidStructure& operator=(const LinkedBraidStructure& LBS);
 
+public:
+  // function check if the braid-word represented by *this is shortlex smaller
+  // than the one given by lbs, usually the computation of the words is not
+  // required, so the function is often fast
+  bool operator<(const LinkedBraidStructure& lbs) const;
 
-class LinkedBraidStructure
-{
+  size_t size() const {
+    return the_nodes_.size();
+  }
 
-  ///////////////////////////////////////////////////////// 
-  //                                                     //
-  //  Constructors:                                      //
-  //                                                     //
-  /////////////////////////////////////////////////////////
-    
- public:
+  void clear();
 
-  LinkedBraidStructure( int N );
-  LinkedBraidStructure( int N , const Word& w );
-  LinkedBraidStructure( const LinkedBraidStructure& LBS );
+  LinkedBraidStructureTransform push_back(int g);
+  LinkedBraidStructureTransform push_front(int g);
 
-  LinkedBraidStructure& operator= ( const LinkedBraidStructure& LBS );
+  void removeLeftHandles(std::list<LinkedBraidStructureTransform>* result = NULL);
+  void removeRightHandles(std::list<LinkedBraidStructureTransform>* result = NULL);
 
-  
-  /////////////////////////////////////////////////////////
-  //                                                     //
-  //  Accessors:                                         //
-  //                                                     //
-  /////////////////////////////////////////////////////////
+  Word translateIntoWord() const;
 
- public:
+  void undo(const std::list<LinkedBraidStructureTransform>& lbst_seq);
+  void undo(const LinkedBraidStructureTransform& lbst);
 
-  bool operator < ( const LinkedBraidStructure& lbs ) const;
-  // function check if the braid-word represented by *this is shortlex smaller than the one given by lbs
-  // usually the computation of the words is not required, so the function is often fast
+private:
+  using NODE = std::tuple<int, int, BraidNode*>;
 
-  int size( ) const { return theNodes.size( ); }
-  void clear( );
+  LinkedBraidStructureTransform make_EraseTransform(BraidNode* bn, int pos) const;
+  LinkedBraidStructureTransform make_AddTransform(BraidNode* bn, int pos) const;
+  LinkedBraidStructureTransform make_ChangeType(BraidNode* bn, int pos) const;
 
-  LinkedBraidStructureTransform push_back ( int g );
-  LinkedBraidStructureTransform push_front( int g );
-  
-  void removeLeftHandles ( list< LinkedBraidStructureTransform >* result = NULL );
-  void removeRightHandles( list< LinkedBraidStructureTransform >* result = NULL );
-  
-  Word translateIntoWord( ) const;
+  int checkIfStartsLeftHandle(int pos, BraidNode* bn);
+  int checkIfStartsRightHandle(int pos, BraidNode* bn);
 
-  void undo( const list< LinkedBraidStructureTransform >& lbst_seq );
-  void undo( const LinkedBraidStructureTransform& lbst );
+  void removeLeftHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
+  void removeRightHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
 
-  /////////////////////////////////////////////////////////
-  //                                                     //
-  //  Internal functions:                                //
-  //                                                     //
-  /////////////////////////////////////////////////////////
+  LinkedBraidStructureTransform removeNode(BraidNode* bn, int pos);
 
- private:
+  BraidNode* insertBackRight(BraidNode* bn, int pos, bool type);
+  BraidNode* insertBackLeft(BraidNode* bn, int pos, bool type);
+  BraidNode* insert(const LinkedBraidStructureTransform& lbst);
 
-  LinkedBraidStructureTransform make_EraseTransform( BraidNode* bn , int pos ) const;
-  LinkedBraidStructureTransform make_AddTransform( BraidNode* bn , int pos ) const;
-  LinkedBraidStructureTransform make_ChangeType( BraidNode* bn , int pos ) const;
+  void processTree(int al, BraidNode* node, Word& result) const;
 
-  int checkIfStartsLeftHandle ( int pos , BraidNode* bn );
-  int checkIfStartsRightHandle( int pos , BraidNode* bn );
-  void removeLeftHandle( triple< int , int , BraidNode* > node , set< triple< int , int , BraidNode* > >& to_check , list< LinkedBraidStructureTransform >* lst );
-  void removeRightHandle(triple< int , int , BraidNode* > node , set< triple< int , int , BraidNode* > >& to_check , list< LinkedBraidStructureTransform >* lst );
+  void clearLinks() const;
 
-  LinkedBraidStructureTransform removeNode( BraidNode* bn , int pos );
-  BraidNode* insertBackRight( BraidNode* bn , int pos , bool type );
-  BraidNode* insertBackLeft( BraidNode* bn , int pos , bool type );
-  BraidNode* insert( const LinkedBraidStructureTransform& lbst );
-  
-  void processTree( int al , BraidNode* node , Word& result ) const;
-
-  void clearLinks( ) const;
-
-  /////////////////////////////////////////////////////////
-  //                                                     //
-  //  Data members:                                      //
-  //                                                     //
-  /////////////////////////////////////////////////////////
-
- private:
-  
+private:
   //! Number of generators!!!
-  int theIndex;
-  vector< BraidNode* > frontNodes;
-  vector< BraidNode* >  backNodes;
-  map< int , BraidNode > theNodes;
-  
-  uint64_t maxNodeNumber;
+  int the_index_;
+
+  std::vector<BraidNode*> front_nodes_;
+  std::vector<BraidNode*> back_nodes_;
+  std::map<int, BraidNode> the_nodes_;
+
+  uint64_t max_node_number_;
 };
 
-
-#endif
-
+#endif // CRAG_LINKED_BRAID_STRUCTURE_H

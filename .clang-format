@@ -1,0 +1,19 @@
+BasedOnStyle: Google
+
+IndentWidth: 2
+AccessModifierOffset: -2
+
+ColumnLimit: 120
+
+AllowShortFunctionsOnASingleLine: Empty
+
+BreakBeforeBinaryOperators: NonAssignment
+
+BreakConstructorInitializersBeforeComma: true
+
+KeepEmptyLinesAtTheStartOfBlocks: false
+MaxEmptyLinesToKeep: 2
+
+PointerAlignment: Left
+SpaceAfterCStyleCast: true
+SpacesBeforeTrailingComments: 1
