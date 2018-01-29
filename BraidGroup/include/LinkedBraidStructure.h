@@ -14,8 +14,8 @@
 
 struct BraidNode {
 public:
-  BraidNode(int num = 0, bool tp = true, BraidNode* l = NULL, BraidNode* a = NULL, BraidNode* r = NULL,
-            BraidNode* bl = NULL, BraidNode* b = NULL, BraidNode* br = NULL)
+  BraidNode(int64_t num = 0, bool tp = true, BraidNode* l = nullptr, BraidNode* a = nullptr, BraidNode* r = nullptr,
+            BraidNode* bl = nullptr, BraidNode* b = nullptr, BraidNode* br = nullptr)
       : left(l)
       , ahead(a)
       , right(r)
@@ -23,7 +23,7 @@ public:
       , back(b)
       , back_right(br)
       , type(tp)
-      , link(NULL)
+      , link(nullptr)
       , weight(0)
       , theNumber(num) {}
 
@@ -44,10 +44,10 @@ public:
   mutable BraidNode* link;
 
   // auxiliary member, used in remove Handle functions
-  mutable int weight;
+  mutable int64_t weight;
 
   // a unique number associated with the node in a LBS
-  int theNumber;
+  int64_t theNumber;
 };
 
 std::ostream& operator<<(std::ostream& os, const BraidNode& bn);
@@ -59,8 +59,8 @@ struct LinkedBraidStructureTransform {
     CHANGE_TYPE,
   };
 
-  LinkedBraidStructureTransform(int n, int p, TRANSFORM tr, bool t = false, int l = 0, int a = 0, int r = 0, int bl = 0,
-                                int b = 0, int br = 0)
+  LinkedBraidStructureTransform(int64_t n, int64_t p, TRANSFORM tr, bool t = false, int64_t l = 0, int64_t a = 0,
+                                int64_t r = 0, int64_t bl = 0, int64_t b = 0, int64_t br = 0)
       : theTransform(tr)
       , left(l)
       , ahead(a)
@@ -74,25 +74,26 @@ struct LinkedBraidStructureTransform {
 
   TRANSFORM theTransform;
 
-  int left;
-  int ahead;
-  int right;
+  int64_t left;
+  int64_t ahead;
+  int64_t right;
 
-  int back_left;
-  int back;
-  int back_right;
+  int64_t back_left;
+  int64_t back;
+  int64_t back_right;
 
   bool type;
-  int theNumber;
-  int thePosition;
+
+  int64_t theNumber;
+  int64_t thePosition;
 };
 
 class LinkedBraidStructure {
 public:
-  LinkedBraidStructure(int N);
-  LinkedBraidStructure(int N, const Word& w);
-  LinkedBraidStructure(const LinkedBraidStructure& LBS);
+  LinkedBraidStructure(size_t N);
+  LinkedBraidStructure(size_t N, const Word& w);
 
+  LinkedBraidStructure(const LinkedBraidStructure& LBS);
   LinkedBraidStructure& operator=(const LinkedBraidStructure& LBS);
 
 public:
@@ -110,8 +111,8 @@ public:
   LinkedBraidStructureTransform push_back(int g);
   LinkedBraidStructureTransform push_front(int g);
 
-  void removeLeftHandles(std::list<LinkedBraidStructureTransform>* result = NULL);
-  void removeRightHandles(std::list<LinkedBraidStructureTransform>* result = NULL);
+  void removeLeftHandles(std::list<LinkedBraidStructureTransform>* result = nullptr);
+  void removeRightHandles(std::list<LinkedBraidStructureTransform>* result = nullptr);
 
   Word translateIntoWord() const;
 
@@ -119,22 +120,22 @@ public:
   void undo(const LinkedBraidStructureTransform& lbst);
 
 private:
-  using NODE = std::tuple<int, int, BraidNode*>;
+  using NODE = std::tuple<int64_t, int64_t, BraidNode*>;
 
-  LinkedBraidStructureTransform make_EraseTransform(BraidNode* bn, int pos) const;
-  LinkedBraidStructureTransform make_AddTransform(BraidNode* bn, int pos) const;
-  LinkedBraidStructureTransform make_ChangeType(BraidNode* bn, int pos) const;
+  LinkedBraidStructureTransform make_EraseTransform(BraidNode* bn, int64_t pos) const;
+  LinkedBraidStructureTransform make_AddTransform(BraidNode* bn, int64_t pos) const;
+  LinkedBraidStructureTransform make_ChangeType(BraidNode* bn, int64_t pos) const;
 
-  int checkIfStartsLeftHandle(int pos, BraidNode* bn);
-  int checkIfStartsRightHandle(int pos, BraidNode* bn);
+  int64_t checkIfStartsLeftHandle(int64_t pos, BraidNode* bn);
+  int64_t checkIfStartsRightHandle(int64_t pos, BraidNode* bn);
 
   void removeLeftHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
   void removeRightHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
 
-  LinkedBraidStructureTransform removeNode(BraidNode* bn, int pos);
+  LinkedBraidStructureTransform removeNode(BraidNode* bn, int64_t pos);
 
-  BraidNode* insertBackRight(BraidNode* bn, int pos, bool type);
-  BraidNode* insertBackLeft(BraidNode* bn, int pos, bool type);
+  BraidNode* insertBackRight(BraidNode* bn, int64_t pos, bool type);
+  BraidNode* insertBackLeft(BraidNode* bn, int64_t pos, bool type);
   BraidNode* insert(const LinkedBraidStructureTransform& lbst);
 
   void processTree(int al, BraidNode* node, Word& result) const;
@@ -143,13 +144,14 @@ private:
 
 private:
   //! Number of generators!!!
-  int the_index_;
+  size_t the_index_;
 
   std::vector<BraidNode*> front_nodes_;
   std::vector<BraidNode*> back_nodes_;
-  std::map<int, BraidNode> the_nodes_;
 
-  uint64_t max_node_number_;
+  std::map<int64_t, BraidNode> the_nodes_;
+
+  int64_t max_node_number_;
 };
 
 #endif // CRAG_LINKED_BRAID_STRUCTURE_H

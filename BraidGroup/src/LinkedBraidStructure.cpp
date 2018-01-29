@@ -9,7 +9,7 @@ std::ostream& operator<<(std::ostream& os, const BraidNode& bn) {
   return os;
 }
 
-LinkedBraidStructureTransform LinkedBraidStructure::make_EraseTransform(BraidNode* bn, int pos) const {
+LinkedBraidStructureTransform LinkedBraidStructure::make_EraseTransform(BraidNode* bn, int64_t pos) const {
   return LinkedBraidStructureTransform(
       bn->theNumber, pos, LinkedBraidStructureTransform::ERASED, bn->type, bn->left ? bn->left->theNumber : -1,
       bn->ahead ? bn->ahead->theNumber : -1, bn->right ? bn->right->theNumber : -1,
@@ -17,11 +17,11 @@ LinkedBraidStructureTransform LinkedBraidStructure::make_EraseTransform(BraidNod
       bn->back_right ? bn->back_right->theNumber : -1);
 }
 
-LinkedBraidStructureTransform LinkedBraidStructure::make_AddTransform(BraidNode* bn, int pos) const {
+LinkedBraidStructureTransform LinkedBraidStructure::make_AddTransform(BraidNode* bn, int64_t pos) const {
   return LinkedBraidStructureTransform(bn->theNumber, pos, LinkedBraidStructureTransform::ADDED, bn->type);
 }
 
-LinkedBraidStructureTransform LinkedBraidStructure::make_ChangeType(BraidNode* bn, int pos) const {
+LinkedBraidStructureTransform LinkedBraidStructure::make_ChangeType(BraidNode* bn, int64_t pos) const {
   return LinkedBraidStructureTransform(bn->theNumber, pos, LinkedBraidStructureTransform::CHANGE_TYPE, bn->type);
 }
 
@@ -45,17 +45,17 @@ bool LinkedBraidStructure::operator<(const LinkedBraidStructure& lbs) const {
   return translateIntoWord() < lbs.translateIntoWord();
 }
 
-LinkedBraidStructure::LinkedBraidStructure(int N)
+LinkedBraidStructure::LinkedBraidStructure(size_t N)
     : max_node_number_(0)
     , the_index_(N)
-    , back_nodes_(std::vector<BraidNode*>(N, (BraidNode*) NULL))
-    , front_nodes_(std::vector<BraidNode*>(N, (BraidNode*) NULL)) {}
+    , back_nodes_(std::vector<BraidNode*>(N, nullptr))
+    , front_nodes_(std::vector<BraidNode*>(N, nullptr)) {}
 
-LinkedBraidStructure::LinkedBraidStructure(int N, const Word& w)
+LinkedBraidStructure::LinkedBraidStructure(size_t N, const Word& w)
     : max_node_number_(0)
     , the_index_(N)
-    , back_nodes_(std::vector<BraidNode*>(N, (BraidNode*) NULL))
-    , front_nodes_(std::vector<BraidNode*>(N, (BraidNode*) NULL)) {
+    , back_nodes_(std::vector<BraidNode*>(N, nullptr))
+    , front_nodes_(std::vector<BraidNode*>(N, nullptr)) {
   for (auto w_it = w.begin(); w_it != w.end(); ++w_it) {
     push_back(*w_it);
   }
@@ -70,8 +70,8 @@ LinkedBraidStructure& LinkedBraidStructure::operator=(const LinkedBraidStructure
   back_nodes_ = LBS.back_nodes_;
   front_nodes_ = LBS.front_nodes_;
 
-  std::map<int, BraidNode>::const_iterator n_it1 = LBS.the_nodes_.begin();
-  std::map<int, BraidNode>::iterator n_it2 = the_nodes_.begin();
+  auto n_it1 = LBS.the_nodes_.begin();
+  auto n_it2 = the_nodes_.begin();
 
   for (; n_it1 != LBS.the_nodes_.end(); ++n_it1, ++n_it2) {
     (*n_it1).second.link = &(*n_it2).second;
@@ -107,7 +107,7 @@ LinkedBraidStructure& LinkedBraidStructure::operator=(const LinkedBraidStructure
     }
   }
 
-  for (int i = 0; i < the_index_; ++i) {
+  for (size_t i = 0; i < the_index_; ++i) {
     if (back_nodes_[i]) {
       back_nodes_[i] = back_nodes_[i]->link;
     }
@@ -129,8 +129,8 @@ LinkedBraidStructure::LinkedBraidStructure(const LinkedBraidStructure& LBS)
     , back_nodes_(LBS.back_nodes_)
     , front_nodes_(LBS.front_nodes_) {
   // cout << "   &" << endl;
-  std::map<int, BraidNode>::const_iterator n_it1 = LBS.the_nodes_.begin();
-  std::map<int, BraidNode>::iterator n_it2 = the_nodes_.begin();
+  auto n_it1 = LBS.the_nodes_.begin();
+  auto n_it2 = the_nodes_.begin();
 
   for (; n_it1 != LBS.the_nodes_.end(); ++n_it1, ++n_it2) {
     (*n_it1).second.link = &(*n_it2).second;
@@ -166,7 +166,7 @@ LinkedBraidStructure::LinkedBraidStructure(const LinkedBraidStructure& LBS)
     }
   }
 
-  for (int i = 0; i < the_index_; ++i) {
+  for (size_t i = 0; i < the_index_; ++i) {
     if (back_nodes_[i]) {
       back_nodes_[i] = back_nodes_[i]->link;
     }
@@ -181,9 +181,9 @@ LinkedBraidStructure::LinkedBraidStructure(const LinkedBraidStructure& LBS)
 
 LinkedBraidStructureTransform LinkedBraidStructure::push_back(int g) {
   int ag = std::abs(g);
-  BraidNode* left = (ag > 1) ? back_nodes_[ag - 2] : NULL;
+  BraidNode* left = (ag > 1) ? back_nodes_[ag - 2] : nullptr;
   BraidNode* ahead = back_nodes_[ag - 1];
-  BraidNode* right = (ag < the_index_) ? back_nodes_[ag] : NULL;
+  BraidNode* right = (ag < the_index_) ? back_nodes_[ag] : nullptr;
 
   BraidNode& newNode = the_nodes_[max_node_number_] = BraidNode(max_node_number_, g > 0);
 
@@ -269,9 +269,9 @@ void LinkedBraidStructure::removeLeftHandles(list<LinkedBraidStructureTransform>
 
   // form the initial set of nodes to check (all nodes from the Linked
   // Structure)
-  for (int i = 0; i < the_index_; ++i) {
+  for (size_t i = 0; i < the_index_; ++i) {
     for (BraidNode* c = front_nodes_[i]; c != back_nodes_[i]; c = c->back) {
-      int weight = checkIfStartsLeftHandle(i, c);
+      const auto weight = checkIfStartsLeftHandle(i, c);
 
       if (weight != -1) {
         c->weight = weight;
@@ -287,7 +287,7 @@ void LinkedBraidStructure::removeLeftHandles(list<LinkedBraidStructureTransform>
     to_check.erase(to_check.begin());
 
     // b. remove the handle
-    int weight = checkIfStartsLeftHandle(std::get<1>(cur_node), std::get<2>(cur_node));
+    const auto weight = checkIfStartsLeftHandle(std::get<1>(cur_node), std::get<2>(cur_node));
 
     if (weight != -1) {
       removeLeftHandle(cur_node, to_check, result);
@@ -295,8 +295,9 @@ void LinkedBraidStructure::removeLeftHandles(list<LinkedBraidStructureTransform>
   }
 }
 
-int LinkedBraidStructure::checkIfStartsLeftHandle(int pos, BraidNode* bn) {
+int64_t LinkedBraidStructure::checkIfStartsLeftHandle(int64_t pos, BraidNode* bn) {
   BraidNode* back = bn->back;
+
   // if there is no more x_i
   if (!back) {
     return -1;
@@ -316,7 +317,7 @@ int LinkedBraidStructure::checkIfStartsLeftHandle(int pos, BraidNode* bn) {
   BraidNode* l1 = bn->back_left;
   BraidNode* l2 = back->left;
 
-  int counter = 0;
+  int64_t counter = 0;
   bool crossingType;
 
   for (; l1; l1 = l1->back) {
@@ -340,9 +341,11 @@ int LinkedBraidStructure::checkIfStartsLeftHandle(int pos, BraidNode* bn) {
 
 void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
                                             std::list<LinkedBraidStructureTransform>* lst) {
-  int pos = std::get<1>(node);
+  const auto pos = std::get<1>(node);
+
   BraidNode* n1 = std::get<2>(node);
   BraidNode* n2 = n1->back;
+
   bool type = n1->type;
 
   BraidNode* l1 = n1->back_left;
@@ -350,14 +353,14 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
 
   // Removal of a handle can introduce new handles. Here we store some nodes to
   // check. A few will be added later.
-  set<pair<int, BraidNode*>> to_check2;
+  std::set<std::pair<int64_t, BraidNode*>> to_check2;
 
   if (n1->ahead) {
-    to_check2.insert(pair<int, BraidNode*>(pos, n1->ahead));
+    to_check2.insert(std::make_pair(pos, n1->ahead));
   }
 
   if (n1->left) {
-    to_check2.insert(pair<int, BraidNode*>(pos - 1, n1->left));
+    to_check2.insert(std::make_pair(pos - 1, n1->left));
   }
 
   for (BraidNode* cn = n1; cn; cn = cn->ahead) {
@@ -365,16 +368,14 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
       continue;
     }
 
-    to_check2.insert(pair<int, BraidNode*>(pos + 1, cn->right));
+    to_check2.insert(std::make_pair(pos + 1, cn->right));
 
     break;
   }
 
   // A. process left nodes
-  int counter = 0;
 
   for (; l1;) {
-    // ++counter;
     BraidNode* l3 = l1->back;
     BraidNode* new_node = insertBackRight(l1, pos, l1->type);
     BraidNode* new_node2 = insertBackLeft(new_node, pos - 1, type);
@@ -386,10 +387,10 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
     }
 
     l1->type = !type;
-    to_check2.insert(pair<int, BraidNode*>(pos - 1, new_node2));
+    to_check2.insert(std::make_pair(pos - 1, new_node2));
 
     if (l1 == l2) {
-      to_check2.insert(pair<int, BraidNode*>(pos, new_node));
+      to_check2.insert(std::make_pair(pos, new_node));
       break;
     }
 
@@ -410,9 +411,10 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
 
   // Check if new handles were introduced.
   for (auto c_it = to_check2.begin(); c_it != to_check2.end(); ++c_it) {
-    int pos = (*c_it).first;
-    BraidNode* bn = (*c_it).second;
-    int weight = checkIfStartsLeftHandle(pos, bn);
+    const auto pos = c_it->first;
+    BraidNode* bn = c_it->second;
+
+    const auto weight = checkIfStartsLeftHandle(pos, bn);
 
     if (weight != -1) {
       // remove old version
@@ -431,9 +433,9 @@ void LinkedBraidStructure::removeRightHandles(list<LinkedBraidStructureTransform
 
   // form the initial set of nodes to check (all nodes from the Linked
   // Structure)
-  for (int i = 0; i < the_index_; ++i) {
+  for (size_t i = 0; i < the_index_; ++i) {
     for (BraidNode* c = front_nodes_[i]; c != back_nodes_[i]; c = c->back) {
-      int weight = checkIfStartsRightHandle(i, c);
+      const auto weight = checkIfStartsRightHandle(i, c);
 
       if (weight != -1) {
         c->weight = weight;
@@ -449,7 +451,7 @@ void LinkedBraidStructure::removeRightHandles(list<LinkedBraidStructureTransform
     to_check.erase(to_check.begin());
 
     // b. remove the handle
-    int weight = checkIfStartsRightHandle(std::get<1>(cur_node), std::get<2>(cur_node));
+    const auto weight = checkIfStartsRightHandle(std::get<1>(cur_node), std::get<2>(cur_node));
 
     if (weight != -1) {
       removeRightHandle(cur_node, to_check, result);
@@ -457,7 +459,7 @@ void LinkedBraidStructure::removeRightHandles(list<LinkedBraidStructureTransform
   }
 }
 
-int LinkedBraidStructure::checkIfStartsRightHandle(int pos, BraidNode* bn) {
+int64_t LinkedBraidStructure::checkIfStartsRightHandle(int64_t pos, BraidNode* bn) {
   BraidNode* back = bn->back;
 
   // if there is no more x_i
@@ -479,7 +481,7 @@ int LinkedBraidStructure::checkIfStartsRightHandle(int pos, BraidNode* bn) {
   BraidNode* l1 = bn->back_right;
   BraidNode* l2 = back->right;
 
-  int counter = 0;
+  int64_t counter = 0;
   bool crossingType;
 
   for (; l1; l1 = l1->back) {
@@ -503,9 +505,10 @@ int LinkedBraidStructure::checkIfStartsRightHandle(int pos, BraidNode* bn) {
 
 void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check,
                                              list<LinkedBraidStructureTransform>* lst) {
-  int pos = std::get<1>(node);
+  const auto pos = std::get<1>(node);
   BraidNode* n1 = std::get<2>(node);
   BraidNode* n2 = n1->back;
+
   bool type = n1->type;
 
   BraidNode* r1 = n1->back_right;
@@ -513,14 +516,14 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
 
   // Removal of a handle can introduce new handles. Here we store some nodes to
   // check. A few will be added later.
-  std::set<std::pair<int, BraidNode*>> to_check2;
+  std::set<std::pair<int64_t, BraidNode*>> to_check2;
 
   if (n1->ahead) {
-    to_check2.insert(pair<int, BraidNode*>(pos, n1->ahead));
+    to_check2.insert(std::make_pair(pos, n1->ahead));
   }
 
   if (n1->right) {
-    to_check2.insert(pair<int, BraidNode*>(pos + 1, n1->right));
+    to_check2.insert(std::make_pair(pos + 1, n1->right));
   }
 
   for (BraidNode* cn = n1; cn; cn = cn->ahead) {
@@ -528,16 +531,13 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
       continue;
     }
 
-    to_check2.insert(pair<int, BraidNode*>(pos - 1, cn->left));
+    to_check2.insert(std::make_pair(pos - 1, cn->left));
 
     break;
   }
 
   // B. process right nodes
-  int counter = 0;
   for (; r1;) {
-    // ++counter;
-
     // cout << "Process right node" << endl;
     BraidNode* r3 = r1->back;
     BraidNode* new_node = insertBackLeft(r1, pos, r1->type);
@@ -551,10 +551,10 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
 
     r1->type = !type;
 
-    to_check2.insert(pair<int, BraidNode*>(pos + 1, new_node2));
+    to_check2.insert(std::make_pair(pos + 1, new_node2));
 
     if (r1 == r2) {
-      to_check2.insert(pair<int, BraidNode*>(pos, new_node));
+      to_check2.insert(std::make_pair(pos, new_node));
       break;
     }
 
@@ -575,9 +575,10 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
 
   // Check if new handles were introduced.
   for (auto c_it = to_check2.begin(); c_it != to_check2.end(); ++c_it) {
-    int pos = (*c_it).first;
-    BraidNode* bn = (*c_it).second;
-    int weight = checkIfStartsRightHandle(pos, bn);
+    const auto pos = c_it->first;
+    BraidNode* bn = c_it->second;
+
+    const auto weight = checkIfStartsRightHandle(pos, bn);
 
     if (weight != -1) {
       // remove old version
@@ -589,12 +590,12 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
   }
 }
 
-LinkedBraidStructureTransform LinkedBraidStructure::removeNode(BraidNode* bn, int pos) {
+LinkedBraidStructureTransform LinkedBraidStructure::removeNode(BraidNode* bn, int64_t pos) {
   LinkedBraidStructureTransform result = make_EraseTransform(bn, pos);
 
   // A. process left
   if (bn->left) {
-    bn->left->back_right = bn->back_left ? NULL : bn->back;
+    bn->left->back_right = bn->back_left ? nullptr : bn->back;
   }
 
   // B. process ahead
@@ -612,12 +613,12 @@ LinkedBraidStructureTransform LinkedBraidStructure::removeNode(BraidNode* bn, in
 
   // C. process right
   if (bn->right) {
-    bn->right->back_left = bn->back_right ? NULL : bn->back;
+    bn->right->back_left = bn->back_right ? nullptr : bn->back;
   }
 
   // D. process back_left
   if (bn->back_left) {
-    bn->back_left->right = bn->left ? NULL : bn->ahead;
+    bn->back_left->right = bn->left ? nullptr : bn->ahead;
   }
 
   // E. process back
@@ -635,7 +636,7 @@ LinkedBraidStructureTransform LinkedBraidStructure::removeNode(BraidNode* bn, in
 
   // F. process back_right
   if (bn->back_right) {
-    bn->back_right->left = bn->right ? NULL : bn->ahead;
+    bn->back_right->left = bn->right ? nullptr : bn->ahead;
   }
 
   // G. process front_nodes_ and back_nodes_
@@ -653,21 +654,21 @@ LinkedBraidStructureTransform LinkedBraidStructure::removeNode(BraidNode* bn, in
   return result;
 }
 
-BraidNode* LinkedBraidStructure::insertBackLeft(BraidNode* bn, int pos, bool type) {
+BraidNode* LinkedBraidStructure::insertBackLeft(BraidNode* bn, int64_t pos, bool type) {
   // A. determine the "main" nodes around the new node
   BraidNode* back = bn->back;
 
-  BraidNode* left = NULL;
+  BraidNode* left = nullptr;
 
-  for (BraidNode* c = bn; c != NULL && !left; c = c->ahead) {
+  for (BraidNode* c = bn; c != nullptr && !left; c = c->ahead) {
     if (c->left) {
       left = c->left;
     }
   }
 
-  BraidNode* back_left = NULL;
+  BraidNode* back_left = nullptr;
 
-  for (BraidNode* c = bn; c != NULL && !back_left; c = c->back) {
+  for (BraidNode* c = bn; c != nullptr && !back_left; c = c->back) {
     if (c->back_left) {
       back_left = c->back_left;
     }
@@ -679,25 +680,25 @@ BraidNode* LinkedBraidStructure::insertBackLeft(BraidNode* bn, int pos, bool typ
     left_back_left = left->back_left;
   } else if (back_left) {
     if (!back_left->left) {
-      left_back_left = NULL;
+      left_back_left = nullptr;
     } else {
-      left_back_left = pos > 0 ? front_nodes_[pos - 1] : NULL;
+      left_back_left = pos > 0 ? front_nodes_[pos - 1] : nullptr;
     }
   } else {
-    left_back_left = pos > 0 ? front_nodes_[pos - 1] : NULL;
+    left_back_left = pos > 0 ? front_nodes_[pos - 1] : nullptr;
   }
 
   BraidNode* back_left_right;
 
   if (back_left) {
-    back_left_right = back_left->right != bn ? bn->back : NULL;
+    back_left_right = back_left->right != bn ? bn->back : nullptr;
   } else {
     back_left_right = back;
   }
 
   // B. create a new node and link it to other nodes
   BraidNode& newNode = the_nodes_[max_node_number_] =
-      BraidNode(max_node_number_, type, NULL, left, bn, left_back_left, back_left, back_left_right);
+      BraidNode(max_node_number_, type, nullptr, left, bn, left_back_left, back_left, back_left_right);
 
   max_node_number_++;
 
@@ -705,12 +706,12 @@ BraidNode* LinkedBraidStructure::insertBackLeft(BraidNode* bn, int pos, bool typ
 
   if (left) {
     left->back = &newNode;
-    left->back_left = NULL;
+    left->back_left = nullptr;
   }
 
   if (back_left) {
     back_left->ahead = &newNode;
-    back_left->right = back_left->right == bn ? NULL : back_left->right;
+    back_left->right = back_left->right == bn ? nullptr : back_left->right;
   }
 
   if (left_back_left) {
@@ -732,21 +733,21 @@ BraidNode* LinkedBraidStructure::insertBackLeft(BraidNode* bn, int pos, bool typ
   return &newNode;
 }
 
-BraidNode* LinkedBraidStructure::insertBackRight(BraidNode* bn, int pos, bool type) {
+BraidNode* LinkedBraidStructure::insertBackRight(BraidNode* bn, int64_t pos, bool type) {
   // A. determine the "main" nodes around the new node
   BraidNode* back = bn->back;
 
-  BraidNode* right = NULL;
+  BraidNode* right = nullptr;
 
-  for (BraidNode* c = bn; c != NULL && !right; c = c->ahead) {
+  for (BraidNode* c = bn; c != nullptr && !right; c = c->ahead) {
     if (c->right) {
       right = c->right;
     }
   }
 
-  BraidNode* back_right = NULL;
+  BraidNode* back_right = nullptr;
 
-  for (BraidNode* c = bn; c != NULL && !back_right; c = c->back) {
+  for (BraidNode* c = bn; c != nullptr && !back_right; c = c->back) {
     if (c->back_right) {
       back_right = c->back_right;
     }
@@ -758,36 +759,36 @@ BraidNode* LinkedBraidStructure::insertBackRight(BraidNode* bn, int pos, bool ty
     right_back_right = right->back_right;
   } else if (back_right) {
     if (!back_right->right) {
-      right_back_right = NULL;
+      right_back_right = nullptr;
     } else {
-      right_back_right = pos < the_index_ - 1 ? front_nodes_[pos + 1] : NULL;
+      right_back_right = (pos + 1 < the_index_) ? front_nodes_[pos + 1] : nullptr;
     }
   } else {
-    right_back_right = pos < the_index_ - 1 ? front_nodes_[pos + 1] : NULL;
+    right_back_right = (pos + 1 < the_index_) ? front_nodes_[pos + 1] : nullptr;
   }
 
   BraidNode* back_right_left;
   if (back_right) {
-    back_right_left = back_right->left != bn ? bn->back : NULL;
+    back_right_left = back_right->left != bn ? bn->back : nullptr;
   } else {
     back_right_left = back;
   }
 
   // B. create a new node and link it to other nodes
   BraidNode& newNode = the_nodes_[max_node_number_] =
-      BraidNode(max_node_number_, type, bn, right, NULL, back_right_left, back_right, right_back_right);
+      BraidNode(max_node_number_, type, bn, right, nullptr, back_right_left, back_right, right_back_right);
   max_node_number_++;
 
   bn->back_right = &newNode;
 
   if (right) {
     right->back = &newNode;
-    right->back_right = NULL;
+    right->back_right = nullptr;
   }
 
   if (back_right) {
     back_right->ahead = &newNode;
-    back_right->left = back_right->left == bn ? NULL : back_right->left;
+    back_right->left = back_right->left == bn ? nullptr : back_right->left;
   }
 
   if (back_right_left) {
@@ -812,10 +813,10 @@ BraidNode* LinkedBraidStructure::insertBackRight(BraidNode* bn, int pos, bool ty
 
 BraidNode* LinkedBraidStructure::insert(const LinkedBraidStructureTransform& lbst) {
   BraidNode& newNode = the_nodes_[lbst.theNumber] = BraidNode(
-      lbst.theNumber, lbst.type, lbst.left == -1 ? NULL : &the_nodes_[lbst.left],
-      lbst.ahead == -1 ? NULL : &the_nodes_[lbst.ahead], lbst.right == -1 ? NULL : &the_nodes_[lbst.right],
-      lbst.back_left == -1 ? NULL : &the_nodes_[lbst.back_left], lbst.back == -1 ? NULL : &the_nodes_[lbst.back],
-      lbst.back_right == -1 ? NULL : &the_nodes_[lbst.back_right]);
+      lbst.theNumber, lbst.type, lbst.left == -1 ? nullptr : &the_nodes_[lbst.left],
+      lbst.ahead == -1 ? nullptr : &the_nodes_[lbst.ahead], lbst.right == -1 ? nullptr : &the_nodes_[lbst.right],
+      lbst.back_left == -1 ? nullptr : &the_nodes_[lbst.back_left], lbst.back == -1 ? nullptr : &the_nodes_[lbst.back],
+      lbst.back_right == -1 ? nullptr : &the_nodes_[lbst.back_right]);
 
   // A. determine the "main" nodes around the new node
   if (newNode.left) {
@@ -826,11 +827,11 @@ BraidNode* LinkedBraidStructure::insert(const LinkedBraidStructureTransform& lbs
     newNode.ahead->back = &newNode;
 
     if (!newNode.left) {
-      newNode.ahead->back_left = NULL;
+      newNode.ahead->back_left = nullptr;
     }
 
     if (!newNode.right) {
-      newNode.ahead->back_right = NULL;
+      newNode.ahead->back_right = nullptr;
     }
   }
 
@@ -846,11 +847,11 @@ BraidNode* LinkedBraidStructure::insert(const LinkedBraidStructureTransform& lbs
     newNode.back->ahead = &newNode;
 
     if (!newNode.back_left) {
-      newNode.back->left = NULL;
+      newNode.back->left = nullptr;
     }
 
     if (!newNode.back_right) {
-      newNode.back->right = NULL;
+      newNode.back->right = nullptr;
     }
   }
 
@@ -891,7 +892,7 @@ void LinkedBraidStructure::processTree(int al, BraidNode* node, Word& result) co
 Word LinkedBraidStructure::translateIntoWord() const {
   Word result;
 
-  for (int i = 0; i < the_index_; ++i) {
+  for (size_t i = 0; i < the_index_; ++i) {
     if (front_nodes_[i] && !front_nodes_[i]->link) {
       processTree(i + 1, front_nodes_[i], result);
     }
@@ -906,14 +907,15 @@ void LinkedBraidStructure::clearLinks() const {
   auto n_it = the_nodes_.begin();
 
   for (; n_it != the_nodes_.end(); ++n_it) {
-    (*n_it).second.link = NULL;
+    (*n_it).second.link = nullptr;
   }
 }
 
 void LinkedBraidStructure::clear() {
   the_nodes_.clear();
-  front_nodes_ = std::vector<BraidNode*>(the_index_, (BraidNode*) NULL);
-  back_nodes_ = std::vector<BraidNode*>(the_index_, (BraidNode*) NULL);
+
+  front_nodes_ = std::vector<BraidNode*>(the_index_, nullptr);
+  back_nodes_ = std::vector<BraidNode*>(the_index_, nullptr);
 }
 
 void LinkedBraidStructure::undo(const std::list<LinkedBraidStructureTransform>& lbst_seq) {
