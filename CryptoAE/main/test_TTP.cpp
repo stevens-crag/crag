@@ -116,6 +116,8 @@ void test_shortenBraid2() {
 }
 
 int main() {
+  std::ios_base::sync_with_stdio(false);
+
   RandLib::ur.reset();
   long s1, s2;
   RandLib::ur.getseed( s1, s2 );
