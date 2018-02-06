@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
+#include <argagg/argagg.hpp>
 #include "AEProtocol.h"
 #include "TTPAttack.h"
 #include "RanlibCPP.h"
@@ -115,8 +116,32 @@ void test_shortenBraid2() {
   }
 }
 
-int main() {
-  std::ios_base::sync_with_stdio(false);
+int main(int argc, char* argv[]) {
+  argagg::parser argparser {{
+    { "n", {"-n"}, "Group rank", 1},
+    { "z", {"-z"}, "|z|", 1},
+    { "w", {"-w"}, "|w| (default: |z|)", 1},
+  }};
+
+  argagg::parser_results args;
+  try {
+    args = argparser.parse(argc, argv);
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if (!args["n"]) {
+    std::cerr << "-n is required" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if (!args["z"]) {
+    std::cerr << "-z is required" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  //std::ios_base::sync_with_stdio(false);
 
   RandLib::ur.reset();
   long s1, s2;
@@ -132,13 +157,14 @@ int main() {
   TTP_Conf ttp_conf;
   
   // AE suggested parameters
-  ttp_conf.nBL    =  7; // 5;     // # Generators in BL
-  ttp_conf.nBR    =  7; // 5;     // # Generators in BR
+  auto arg_n = args["n"].as<int>();
+  ttp_conf.nBL    = arg_n / 2 - 1; // 5;     // # Generators in BL
+  ttp_conf.nBR    = arg_n / 2 - 1; // 5;     // # Generators in BR
   ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 1000; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 1000;  // Word's length
+  ttp_conf.len_z  = args["z"].as<int>(); // 18;  // Conjugator's length
+  ttp_conf.len_w  = args["w"].as<int>(ttp_conf.len_z);  // Word's length
   
   cout << ttp_conf << endl;
 

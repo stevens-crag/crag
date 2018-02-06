@@ -41,6 +41,7 @@ ENDIF(MSVC)
 set_property(GLOBAL PROPERTY USE_FOLDERS ON) #turn on folders for VS
 
 # Add subdirectories (All new directories should go here)
+add_subdirectory(3rdParty/argagg)
 add_subdirectory(3rdParty/gtest)
 add_subdirectory(3rdParty/gmp)
 add_subdirectory(Alphabet)
