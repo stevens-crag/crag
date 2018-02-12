@@ -461,7 +461,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
   TTPLBA ttpLBA;
   TTPTuple red_T;
   // bool red_res = ttpLBA.reduce(N, BS, T, gens, 3600 * 2, cout, red_T);
-  bool red_res = ttpLBA.reduce(N, BS, T, gens, 12 * 3600, cout, red_T);
+  bool red_res = ttpLBA.reduce(N, BS, T, gens, 24 * 3600, cout, red_T);
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {

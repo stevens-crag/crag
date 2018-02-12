@@ -115,7 +115,115 @@ void test_shortenBraid2() {
   }
 }
 
+void prepareTableOfLengths() {
+  vector<int> ranks = {8, 12, 16, 20};
+  vector<int> lengths = {20, 50, 100, 200, 500, 1000};
+  for (const auto& l : lengths) {
+    for (const auto& N : ranks) {
+      cout << "(" << N << "," << l << ") -> ";
+      TTP_Conf ttp_conf;
+      ttp_conf.nBL = N / 2 - 1; // 5;     // # Generators in BL
+      ttp_conf.nBR = N / 2 - 1; // 5;     // # Generators in BR
+      ttp_conf.N = N; // 12;    // Group rank
+      ttp_conf.nGamma = 10; // Tuple size
+      ttp_conf.len_z = l; // 18;  // Conjugator's length
+      ttp_conf.len_w = l;  // Word's length
+
+      long long int total_length = 0;
+      const int nExp = 100;
+      for (int i = 0; i < nExp; i++) {
+        BSets bs = BSets::generateEqual(ttp_conf.N);
+        TTPTuple dw = AEKeyExchange::generateTuples(ttp_conf, bs);
+        TTPTuple init_tuple = dw.takeModuloDeltaSQ(N);
+        total_length += init_tuple.length();
+      }
+      cout << total_length / nExp << endl;
+    }
+  }
+  // Output:
+  //(8, 20) -> 3986
+  //(12, 20) -> 6244
+  //(16, 20) -> 9573
+  //(20, 20) -> 12586
+  //(8, 50) -> 10005
+  //(12, 50) -> 15842
+  //(16, 50) -> 21968
+  //(20, 50) -> 28576
+  //(8, 100) -> 20258
+  //(12, 100) -> 31485
+  //(16, 100) -> 43089
+  //(20, 100) -> 56229
+  //(8, 200) -> 41361
+  //(12, 200) -> 64291
+  //(16, 200) -> 86824
+  //(20, 200) -> 110392
+  //(8, 500) -> 103100
+  //(12, 500) -> 159551
+  //(16, 500) -> 218255
+  //(20, 500) -> 275611
+  //(8, 1000) -> 206835
+  //(12, 1000) -> 320829
+  //(16, 1000) -> 438238
+  //(20, 1000) -> 556195
+
+  // 17708
+  // 31392
+  // 52102
+  // 72553
+  // 44449
+  // 79648
+  // 119565
+  // 164729
+  // 90000
+  // 158295
+  // 234520
+  // 324138
+  // 183754
+  // 323233
+  // 472556
+  // 636368
+  // 458041
+  // 802167
+  // 1187895
+  // 1588793
+  // 918904
+  // 1613018
+  // 2385195
+  // 3206254
+}
+
 int main() {
+  //const vector<double> len = {
+  //    (log(8) + 1) / log(2) * 3986,
+  //    (log(12) + 1) / log(2) * 6244,
+  //    (log(16) + 1) / log(2) * 9573,
+  //    (log(20) + 1) / log(2) * 12586,
+  //    (log(8) + 1) / log(2) * 10005,
+  //    (log(12) + 1) / log(2) * 15842,
+  //    (log(16) + 1) / log(2) * 21968,
+  //    (log(20) + 1) / log(2) * 28576,
+  //    (log(8) + 1) / log(2) * 20258,
+  //    (log(12) + 1) / log(2) * 31485,
+  //    (log(16) + 1) / log(2) * 43089,
+  //    (log(20) + 1) / log(2) * 56229,
+  //    (log(8) + 1) / log(2) * 41361,
+  //    (log(12) + 1) / log(2) * 64291,
+  //    (log(16) + 1) / log(2) * 86824,
+  //    (log(20) + 1) / log(2) * 110392,
+  //    (log(8) + 1) / log(2) * 103100,
+  //    (log(12) + 1) / log(2) * 159551,
+  //    (log(16) + 1) / log(2) * 218255,
+  //    (log(20) + 1) / log(2) * 275611,
+  //    (log(8) + 1) / log(2) * 206835,
+  //    (log(12) + 1) / log(2) * 320829,
+  //    (log(16) + 1) / log(2) * 438238,
+  //    (log(20) + 1) / log(2) * 556195,
+  //};
+  //for (const auto l : len) {
+  //  cout << static_cast<int>(l) << endl;
+  //}
+  //cout << endl;
+  //return 0;
   std::ios_base::sync_with_stdio(false);
 
   RandLib::ur.reset();
@@ -127,18 +235,19 @@ int main() {
   // getDecompositionDetails();
   // compareGenerateWordFunctions();
   // abelinizationTest();
+  // prepareTableOfLengths();
   // return 0;
 
   TTP_Conf ttp_conf;
   
   // AE suggested parameters
-  ttp_conf.nBL    =  7; // 5;     // # Generators in BL
-  ttp_conf.nBR    =  7; // 5;     // # Generators in BR
+  ttp_conf.nBL    =  9; // 5;     // # Generators in BL
+  ttp_conf.nBR    =  9; // 5;     // # Generators in BR
   ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10; // Tuple size
   
-  ttp_conf.len_z  = 1000; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 1000;  // Word's length
+  ttp_conf.len_z  = 500; // 18;  // Conjugator's length
+  ttp_conf.len_w  = 500;  // Word's length
   
   cout << ttp_conf << endl;
 
