@@ -2,6 +2,7 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
+#include <argagg/argagg.hpp>
 #include "AEProtocol.h"
 #include "TTPAttack.h"
 #include "RanlibCPP.h"
@@ -192,45 +193,71 @@ void prepareTableOfLengths() {
   // 3206254
 }
 
-int main() {
-  //const vector<double> len = {
-  //    (log(8) + 1) / log(2) * 3986,
-  //    (log(12) + 1) / log(2) * 6244,
-  //    (log(16) + 1) / log(2) * 9573,
-  //    (log(20) + 1) / log(2) * 12586,
-  //    (log(8) + 1) / log(2) * 10005,
-  //    (log(12) + 1) / log(2) * 15842,
-  //    (log(16) + 1) / log(2) * 21968,
-  //    (log(20) + 1) / log(2) * 28576,
-  //    (log(8) + 1) / log(2) * 20258,
-  //    (log(12) + 1) / log(2) * 31485,
-  //    (log(16) + 1) / log(2) * 43089,
-  //    (log(20) + 1) / log(2) * 56229,
-  //    (log(8) + 1) / log(2) * 41361,
-  //    (log(12) + 1) / log(2) * 64291,
-  //    (log(16) + 1) / log(2) * 86824,
-  //    (log(20) + 1) / log(2) * 110392,
-  //    (log(8) + 1) / log(2) * 103100,
-  //    (log(12) + 1) / log(2) * 159551,
-  //    (log(16) + 1) / log(2) * 218255,
-  //    (log(20) + 1) / log(2) * 275611,
-  //    (log(8) + 1) / log(2) * 206835,
-  //    (log(12) + 1) / log(2) * 320829,
-  //    (log(16) + 1) / log(2) * 438238,
-  //    (log(20) + 1) / log(2) * 556195,
-  //};
-  //for (const auto l : len) {
-  //  cout << static_cast<int>(l) << endl;
-  //}
-  //cout << endl;
-  //return 0;
-  std::ios_base::sync_with_stdio(false);
+// const vector<double> len = {
+//    (log(8) + 1) / log(2) * 3986,
+//    (log(12) + 1) / log(2) * 6244,
+//    (log(16) + 1) / log(2) * 9573,
+//    (log(20) + 1) / log(2) * 12586,
+//    (log(8) + 1) / log(2) * 10005,
+//    (log(12) + 1) / log(2) * 15842,
+//    (log(16) + 1) / log(2) * 21968,
+//    (log(20) + 1) / log(2) * 28576,
+//    (log(8) + 1) / log(2) * 20258,
+//    (log(12) + 1) / log(2) * 31485,
+//    (log(16) + 1) / log(2) * 43089,
+//    (log(20) + 1) / log(2) * 56229,
+//    (log(8) + 1) / log(2) * 41361,
+//    (log(12) + 1) / log(2) * 64291,
+//    (log(16) + 1) / log(2) * 86824,
+//    (log(20) + 1) / log(2) * 110392,
+//    (log(8) + 1) / log(2) * 103100,
+//    (log(12) + 1) / log(2) * 159551,
+//    (log(16) + 1) / log(2) * 218255,
+//    (log(20) + 1) / log(2) * 275611,
+//    (log(8) + 1) / log(2) * 206835,
+//    (log(12) + 1) / log(2) * 320829,
+//    (log(16) + 1) / log(2) * 438238,
+//    (log(20) + 1) / log(2) * 556195,
+//};
+// for (const auto l : len) {
+//  cout << static_cast<int>(l) << endl;
+//}
+// cout << endl;
+// return 0;
+// std::ios_base::sync_with_stdio(false);
+
+int main(int argc, char* argv[]) {
+  argagg::parser argparser{{
+      {"n", {"-n"}, "Group rank", 1},
+      {"z", {"-z"}, "|z|", 1},
+      {"w", {"-w"}, "|w| (default: |z|)", 1},
+  }};
+
+  argagg::parser_results args;
+  try {
+    args = argparser.parse(argc, argv);
+  } catch (const std::exception& e) {
+    std::cerr << e.what() << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if (!args["n"]) {
+    std::cerr << "-n is required" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  if (!args["z"]) {
+    std::cerr << "-z is required" << std::endl;
+    return EXIT_FAILURE;
+  }
+
+  // std::ios_base::sync_with_stdio(false);
 
   RandLib::ur.reset();
   long s1, s2;
-  RandLib::ur.getseed( s1, s2 );
+  RandLib::ur.getseed(s1, s2);
   cout << "Seed : " << s1 << " " << s2 << endl;
-  
+
   // test_shortenBraid2();
   // getDecompositionDetails();
   // compareGenerateWordFunctions();
@@ -239,33 +266,41 @@ int main() {
   // return 0;
 
   TTP_Conf ttp_conf;
-  
+
   // AE suggested parameters
-  ttp_conf.nBL    =  9; // 5;     // # Generators in BL
-  ttp_conf.nBR    =  9; // 5;     // # Generators in BR
-  ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
-  ttp_conf.nGamma = 10; // Tuple size
-  
-  ttp_conf.len_z  = 500; // 18;  // Conjugator's length
-  ttp_conf.len_w  = 500;  // Word's length
-  
+  // ttp_conf.nBL    =  9; // 5;     // # Generators in BL
+  // ttp_conf.nBR    =  9; // 5;     // # Generators in BR
+  // ttp_conf.N      = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
+  // ttp_conf.nGamma = 10; // Tuple size
+  //
+  // ttp_conf.len_z  = 500; // 18;  // Conjugator's length
+  // ttp_conf.len_w  = 500;  // Word's length
+  auto arg_n = args["n"].as<int>();
+  ttp_conf.nBL = arg_n / 2 - 1;                 // 5;     // # Generators in BL
+  ttp_conf.nBR = arg_n / 2 - 1;                 // 5;     // # Generators in BR
+  ttp_conf.N = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
+  ttp_conf.nGamma = 10;                         // Tuple size
+
+  ttp_conf.len_z = args["z"].as<int>();               // 18;  // Conjugator's length
+  ttp_conf.len_w = args["w"].as<int>(ttp_conf.len_z); // Word's length
+
   cout << ttp_conf << endl;
 
   const int nExp = 100;
-  
+
   ////////////////////////////////////////////////////////////////////////
   //
   //   TTP attack
   //
   ////////////////////////////////////////////////////////////////////////
-  
-  
+
+
   double suc_count = 0;
 
   fstream of("experiments.txt", ios::app);
   for (int i = 0; i < nExp; i++) {
-    BSets bs = BSets::generateEqual( ttp_conf.N );
-    //BSets bs = BSets::generateRandom( ttp_conf.N );
+    BSets bs = BSets::generateEqual(ttp_conf.N);
+    // BSets bs = BSets::generateRandom( ttp_conf.N );
     cout << "==============================================" << endl;
     cout << "Experiment #" << i + 1 << endl;
     cout << "BS generated : " << bs << endl;
@@ -275,9 +310,9 @@ int main() {
 
     TTPAttack ttp(ttp_conf.N, bs);
     clock_t begin_t = clock();
-    if ( ttp.run(dw) ) {
-    	cout << "SUCCESS" << endl;
-      	suc_count++;
+    if (ttp.run(dw)) {
+      cout << "SUCCESS" << endl;
+      suc_count++;
     } else
     	cout << "FAIL" << endl;
 
