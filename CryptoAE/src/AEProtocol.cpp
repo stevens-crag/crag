@@ -349,8 +349,10 @@ void TTPTuple::printPowers() const {
   cout << "|";
 }
 
+
 bool TTPTuple::testTuples2(int N, bool details) const {
   auto t1 = *this;
+  // 1. Dehornloy form configuration #1
   for (auto &w : t1.WL) {
     LinkedBraidStructure df(N - 1, w);
     df.removeRightHandles();
@@ -365,6 +367,7 @@ bool TTPTuple::testTuples2(int N, bool details) const {
     return true;
   }
 
+  // 2. Dehornloy form configuration #2
   auto t2 = *this;
   for (auto &w : t2.WL) {
     LinkedBraidStructure df(N - 1, w);
@@ -379,6 +382,7 @@ bool TTPTuple::testTuples2(int N, bool details) const {
   if (t2.testTuples(N, details)) {
     return true;
   }
+
   return testTuples(N, details);
 }
 
