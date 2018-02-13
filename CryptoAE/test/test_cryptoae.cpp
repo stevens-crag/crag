@@ -29,7 +29,6 @@ TEST(TestCryptoAE, VerySlowDescend1) {
   TTPLBA ttpLBA;
   TTPTuple red_T;
   EXPECT_TRUE(ttpLBA.reduce(N, BS, T, gens, 3600 * 24 * 100, cout, red_T));
-  exit(1);
 }
 
 TEST(TestCryptoAE, TerminationConditionFail1) {
