@@ -1,6 +1,21 @@
-#Specify the version being used aswell as the language
-cmake_minimum_required(VERSION 2.8.12)
-cmake_policy(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.8)
+
+### Hunter snapshot that will be used ###
+include("cmake/HunterGate.cmake")
+HunterGate(
+  URL "https://github.com/ruslo/hunter/archive/v0.20.9.tar.gz"
+  SHA1 "8f7cf6d719d05c49224a4ebeba90c6bb90b90f4a"
+)
+
+project(crag)
+
+### Download dependencies ###
+hunter_add_package(Boost)
+hunter_add_package(GTest)
+
+### Find dependencies ###
+find_package(GTest CONFIG REQUIRED) # GTest::main
+find_package(Boost CONFIG REQUIRED) # Boost::boost, header only libs
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
@@ -16,9 +31,6 @@ IF(UNIX)
           FORCE)
 
 ENDIF(UNIX)
-
-# Name of the project
-project(crag)
 
 enable_testing()
 
@@ -42,7 +54,6 @@ set_property(GLOBAL PROPERTY USE_FOLDERS ON) #turn on folders for VS
 
 # Add subdirectories (All new directories should go here)
 add_subdirectory(3rdParty/argagg)
-add_subdirectory(3rdParty/gtest)
 add_subdirectory(3rdParty/gmp)
 add_subdirectory(Alphabet)
 add_subdirectory(BraidGroup)

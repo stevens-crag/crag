@@ -41,7 +41,7 @@ function(crag_test name)
   get_filename_component(LIBNAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
   add_executable("${LIBNAME}_test_${name}" "test/${name}.cpp")
-  target_link_libraries("${LIBNAME}_test_${name}" PRIVATE gtest PRIVATE gtest_main)
+  target_link_libraries("${LIBNAME}_test_${name}" PRIVATE GTest::main)
 
   set_target_properties("${LIBNAME}_test_${name}" PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY test

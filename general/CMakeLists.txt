@@ -1,24 +1,4 @@
-#Specify the version being used aswell as the language
-cmake_minimum_required(VERSION 2.8.12)
-cmake_policy(VERSION 2.8.12)
-
-include(ExternalProject)
-
-ExternalProject_Add(boost_pool_external
-  URL "${CMAKE_CURRENT_SOURCE_DIR}/boost_pool.tar.bz2"
-  CONFIGURE_COMMAND ""
-  BUILD_COMMAND ""
-  INSTALL_COMMAND ""
-)
-  
-ExternalProject_Get_Property(boost_pool_external source_dir)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/dumb.cpp" "namespace {void dumb(){}}")
-add_library(boost_pool STATIC "${CMAKE_CURRENT_BINARY_DIR}/dumb.cpp")
-
-target_include_directories(boost_pool INTERFACE ${source_dir})
-target_compile_definitions(boost_pool INTERFACE BOOST_DISABLE_THREADS)
-add_dependencies(boost_pool boost_pool_external)
-
+cmake_minimum_required(VERSION 3.8)
 
 include(../cmake/common.cmake)
 
@@ -27,7 +7,7 @@ crag_library(boost_pool_gmp_allocator
 )
 
 target_link_libraries(boost_pool_gmp_allocator
-  PRIVATE boost_pool
+  PRIVATE Boost::boost
   PRIVATE gmp
 )
 
