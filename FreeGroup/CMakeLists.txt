@@ -1,6 +1,4 @@
-#Specify the version being used aswell as the language
-cmake_minimum_required(VERSION 2.8.12)
-cmake_policy(VERSION 2.8.12)
+cmake_minimum_required(VERSION 3.8)
 
 include("../cmake/common.cmake")
 
@@ -29,7 +27,7 @@ crag_library(SLPv2
 )
 
 target_link_libraries(SLPv2
-  PUBLIC boost_pool
+  PUBLIC Boost::boost
   PUBLIC crag_general
   PUBLIC gmpxx
   PRIVATE gmp
