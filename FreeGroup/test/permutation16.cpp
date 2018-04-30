@@ -142,7 +142,7 @@ CONSTEXPR uint64_t factorial(uint64_t n)
 TEST(Permutation16, SmallRandom) {
   const size_t REPEAT = 10000000ul;
   const size_t PERMUTATION_SIZE = 6;
-  mt19937 generator(16);
+  std::mt19937 generator(16);
 
   std::unordered_map<Permutation16, size_t> hash_count;
   hash_count.reserve(factorial(PERMUTATION_SIZE));
@@ -163,7 +163,7 @@ TEST(Permutation16, SmallRandom) {
 TEST(Permutation16, LargeRandom) {
   const size_t REPEAT = 10000000ul;
   const size_t PERMUTATION_SIZE = 16;
-  mt19937 generator(16);
+  std::mt19937 generator(16);
 
   size_t image_count_0[PERMUTATION_SIZE] = {0};
   size_t image_count_15[PERMUTATION_SIZE] = {0};

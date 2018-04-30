@@ -10,7 +10,7 @@
 #include <algorithm>
 #include "ThLeftNormalForm.h"
 #include "ThRightNormalForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "Word.h"
 #include <time.h>
 
@@ -71,7 +71,7 @@ bool ThLeftNormalForm::operator==( const ThLeftNormalForm& rep ) const
 //---------------------------------------------------------------------------//
 
 
-ThLeftNormalForm::ThLeftNormalForm( const BraidGroup& G , const Word& w ) :
+ThLeftNormalForm::ThLeftNormalForm( const crag::braidgroup::BraidGroup& G , const Word& w ) :
   theRank( G.getRank( ) )
 {
   Word reversed_w;

@@ -145,7 +145,7 @@ void perturb( int N , list< vector< int > >& partition , int crit )
 quadruple< Permutation , set< Permutation > , Permutation , set< Permutation > > 
 generateKey( int N )
 {
-	quadruple< Permutation , set< Permutation > , Permutation , set< Permutation > > result;
+	//quadruple< Permutation , set< Permutation > , Permutation , set< Permutation > > result;
 
 	// generate initial setup
 	list< vector< int > > partition = generatePartition( N , 2 , 7 );

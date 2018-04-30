@@ -11,7 +11,7 @@ class LinkedBraidStructure;
 //! Attempt to reduce |w| using Dehornoy handle free form
 Word shortenBraid(int N, const Word &w);
 //! Attempt to reduce |w| using Dehornoy handle free form (for longer words)
-Word shortenBraid2(int N, const Word &w);
+Word shortenBraid2(int n, const Word &w);
 //! Compute normal form for w and then shorten the result
 Word shortBraidForm( int N , const Word& w );
 

@@ -11,7 +11,7 @@
 
 #include "RanlibCPP.h"
 #include "DehornoyForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 
 
 //---------------------------------------------------------------------------//

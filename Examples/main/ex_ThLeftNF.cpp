@@ -8,7 +8,7 @@
 
 #include "Word.h"
 #include "LinkedBraidStructure.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ThLeftNormalForm.h"
 #include "ShortBraidForm.h"
 

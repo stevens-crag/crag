@@ -1,0 +1,278 @@
+#pragma once
+
+#ifndef CRAG_FINITEFIELD_H
+#define CRAG_FINITEFIELD_H
+
+#include <boost/math/tools/polynomial.hpp>
+#include <boost/random/uniform_int_distribution.hpp>
+#include <iostream>
+#include <random>
+
+#include "GCD.h"
+
+namespace crag {
+namespace finitefield {
+
+//! Factor-field RingElement / Ideal. Ideal should be principal.
+template <typename Ideal>
+class FieldElement {
+public:
+  using RingElement = typename Ideal::RingElement;
+
+  FieldElement()
+      : ideal_()
+      , n_(0) {}
+
+  FieldElement(const RingElement& n)
+      : ideal_()
+      , n_(ideal_.getCanonicalForm(n)) {}
+
+  template <typename T, typename = typename std::enable_if<!std::is_same<T, RingElement>::value>::type>
+  explicit FieldElement(const T& n)
+      : ideal_()
+      , n_(ideal_.getCanonicalForm(RingElement(n))) {}
+
+  const FieldElement<Ideal>& operator+=(const FieldElement<Ideal>& rhs) {
+    n_ = ideal_.getCanonicalForm(n_ + rhs.n_);
+
+    return *this;
+  }
+
+  const FieldElement<Ideal>& operator-=(const FieldElement<Ideal>& rhs) {
+    n_ = ideal_.getCanonicalForm(n_ - rhs.n_);
+
+    return *this;
+  }
+
+  const FieldElement<Ideal>& operator*=(const FieldElement<Ideal>& rhs) {
+    n_ = ideal_.getCanonicalForm(n_ * rhs.n_);
+
+    return *this;
+  }
+
+  const FieldElement<Ideal>& operator/=(const FieldElement<Ideal>& rhs) {
+    return *this *= rhs.inverse();
+  }
+
+  FieldElement<Ideal> inverse() const {
+    if (n_ == RingElement(0)) {
+      throw std::logic_error("Division by zero");
+    }
+
+    RingElement x;
+    RingElement y;
+    const auto d = getGCD(n_, ideal_.getGenerator(), x, y);
+    const auto nd = getNormed(d);
+
+    x /= nd.second;
+
+    return FieldElement<Ideal>(ideal_.getCanonicalForm(x));
+  }
+
+  RingElement value() const {
+    return n_;
+  }
+
+  template <typename URNG>
+  static RingElement random(URNG& g) {
+    return Ideal::random(g);
+  }
+
+private:
+  Ideal ideal_;
+  RingElement n_;
+};
+
+
+template <typename Ideal>
+FieldElement<Ideal> operator+(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  auto res = lhs;
+  res += rhs;
+  return res;
+}
+
+
+template <typename Ideal>
+FieldElement<Ideal> operator-(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  auto res = lhs;
+  res -= rhs;
+  return res;
+}
+
+
+template <typename Ideal>
+FieldElement<Ideal> operator-(const FieldElement<Ideal>& elt) {
+  FieldElement<Ideal> res(0);
+  res -= elt;
+  return res;
+}
+
+
+template <typename Ideal>
+FieldElement<Ideal> operator*(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  auto res = lhs;
+  res *= rhs;
+  return res;
+}
+
+
+template <typename Ideal>
+FieldElement<Ideal> operator/(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  auto res = lhs;
+  res /= rhs;
+  return res;
+}
+
+
+template <typename Ideal>
+std::ostream& operator<<(std::ostream& os, const FieldElement<Ideal>& elt) {
+  os << elt.value();
+  return os;
+}
+
+
+template <typename Ideal>
+bool operator==(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  return lhs.value() == rhs.value();
+}
+
+
+template <typename Ideal>
+bool operator==(const typename Ideal::RingElement& lhs, const FieldElement<Ideal>& rhs) {
+  return FieldElement<Ideal>(lhs) == rhs;
+}
+
+
+template <typename Ideal>
+bool operator==(const FieldElement<Ideal>& lhs, const typename Ideal::RingElement& rhs) {
+  return lhs == FieldElement<Ideal>(rhs);
+}
+
+
+template <typename Ideal>
+bool operator!=(const FieldElement<Ideal>& lhs, const FieldElement<Ideal>& rhs) {
+  return !(lhs.value() == rhs.value());
+}
+
+
+template <typename Ideal>
+bool operator!=(const FieldElement<Ideal>& lhs, const typename Ideal::RingElement& rhs) {
+  return lhs != FieldElement<Ideal>(rhs);
+}
+
+
+template <typename Ideal>
+bool operator!=(const typename Ideal::RingElement& lhs, const FieldElement<Ideal>& rhs) {
+  return FieldElement<Ideal>(lhs) != rhs;
+}
+
+
+template <typename Ideal>
+FieldElement<Ideal> pwr(FieldElement<Ideal> x, int n) {
+  if (n < 0) {
+    x = x.inverse();
+    n = -n;
+  }
+
+  if (n == 0) {
+    return typename Ideal::RingElement(1);
+  }
+
+  FieldElement<Ideal> y(typename Ideal::RingElement(1));
+
+  while (n > 1) {
+    if (n % 2 == 0) {
+      x *= x;
+      n /= 2;
+    } else {
+      y *= x;
+      x *= x;
+      n = (n - 1) / 2;
+    }
+  }
+
+  return x * y;
+}
+
+
+//! Principal ideal in ring ZZ.
+template <int generator>
+class IdealGeneratedByInteger {
+public:
+  using RingElement = int;
+
+  //! Returns m s. t. m == n (mod p) and 0 <= m < p.
+  RingElement getCanonicalForm(int n) const {
+    auto m = n % generator;
+
+    if (m < 0) {
+      return m + generator;
+    }
+
+    return m;
+  }
+
+  int getGenerator() const {
+    return generator;
+  }
+
+  template <typename URNG>
+  static RingElement random(URNG& g) {
+    static boost::random::uniform_int_distribution<int> dist(0, generator - 1);
+
+    return dist(g);
+  }
+};
+
+
+//! Principal ideal in ring GroundField[x] generated by a polynomial.
+//! Here cs are the coefficients of the polynomial.
+template <typename GroundField, int... cs>
+class IdealGeneratedByPolynomial {
+public:
+  using RingElement = boost::math::tools::polynomial<GroundField>;
+
+  RingElement getCanonicalForm(const RingElement& n) const {
+    return n % getGenerator();
+  }
+
+  const RingElement& getGenerator() const {
+    static auto generator = RingElement(std::initializer_list<GroundField>{cs...});
+    return generator;
+  }
+
+  template <typename URNG>
+  static RingElement random(URNG& g) {
+    std::vector<GroundField> coeffs;
+
+    for (size_t i = 0; i < sizeof...(cs); ++i) {
+      coeffs.push_back(GroundField::random(g));
+    }
+
+    return RingElement(coeffs.begin(), coeffs.end());
+  }
+};
+
+//! Using for prime finite fields.
+template <int p>
+using ZZ = finitefield::FieldElement<finitefield::IdealGeneratedByInteger<p>>;
+
+//! Generates random field element not equal to 0 or 1.
+//! Doesn't work for ZZ<2>.
+template <typename T, typename URNG, typename = typename std::enable_if<!std::is_same<T, ZZ<2>>::value>::type>
+T generateNonZeroNonUnit(URNG& g) {
+  T zero(0);
+  T unit(1);
+
+  auto result = zero;
+
+  while ((result == zero) || (result == unit)) {
+    result = T::random(g);
+  }
+
+  return result;
+}
+} // namespace finitefield
+} // namespace crag
+
+#endif /* CRAG_FINITEFIELD_H */

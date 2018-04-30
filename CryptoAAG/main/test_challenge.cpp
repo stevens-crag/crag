@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "RanlibCPP.h"
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ThRightNormalForm.h"
 
 #include <sstream>

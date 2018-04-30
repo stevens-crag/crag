@@ -10,17 +10,18 @@
 #ifndef _ThLeftNormalForm_h_
 #define _ThLeftNormalForm_h_
 
+#include <vector>
+#include <list>
+#include <set>
+
 #include "tuples.h"
 #include "Permutation.h"
+#include "braid_group.h"
 
-#include "vector"
-#include "list"
 using namespace std;
 
 
 class ThRightNormalForm;
-class BraidGroup;
-class Word;
 
 
 
@@ -95,7 +96,7 @@ class ThLeftNormalForm
     theDecomposition( pr.third ) { }
 
   //! Constructs the normal form of a braid word w.
-  ThLeftNormalForm( const BraidGroup& G , const Word& w );
+  ThLeftNormalForm( const crag::braidgroup::BraidGroup& G , const Word& w );
 
 
   //! Construct a positive braid from a permutation

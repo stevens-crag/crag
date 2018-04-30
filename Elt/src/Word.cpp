@@ -180,3 +180,30 @@ Word operator"" _w(const char* str, size_t) {
 
   return w;
 }
+
+Word abelianization(const Word& w) {
+  std::map<int, int> m;
+
+  for (const auto l : w) {
+    if (l > 0) {
+      m[l] += 1;
+    } else {
+      m[-l] -= 1;
+    }
+  }
+
+  std::list<int> result;
+
+  for (const auto& p : m) {
+    const auto gen = p.first;
+    const auto exp = p.second;
+
+    if (exp == 0) {
+      continue;
+    }
+
+    result.insert(result.end(), std::abs(exp), (exp > 0) ? gen : -gen);
+  }
+
+  return Word(std::move(result));
+}

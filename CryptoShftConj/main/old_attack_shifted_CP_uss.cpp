@@ -7,7 +7,7 @@
 //
 
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "ThLeftNormalForm.h"
 #include "ShftConjKeyGeneration.h"

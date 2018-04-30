@@ -7,6 +7,7 @@
 
 #include "WordRep.h"
 
+#include <cmath>
 #include <sstream>
 
 WordRep::WordRep(std::list<int> gens)
@@ -56,6 +57,14 @@ WordRep::const_iterator WordRep::cbegin() const {
 
 WordRep::const_iterator WordRep::cend() const {
   return elements_.cend();
+}
+
+WordRep::const_reverse_iterator WordRep::rbegin() const {
+  return elements_.rbegin();
+}
+
+WordRep::const_reverse_iterator WordRep::rend() const {
+  return elements_.rend();
 }
 
 WordRep& WordRep::operator^=(int power) {
@@ -261,6 +270,23 @@ void WordRep::segment(size_t from, size_t to) {
 
   initialSegment(to);
   terminalSegment(from);
+}
+
+WordRep WordRep::subword(size_t from, size_t to) const {
+  if (from > to) {
+    throw std::invalid_argument("Bad subword.");
+  }
+
+  from = std::min(from, size());
+  to = std::min(to, size());
+
+  auto it_begin = elements_.begin();
+  std::advance(it_begin, from);
+
+  auto it_end = elements_.begin();
+  std::advance(it_end, to);
+
+  return WordRep(it_begin, it_end);
 }
 
 void WordRep::initialSegment(size_t to) {

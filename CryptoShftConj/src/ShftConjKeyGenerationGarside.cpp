@@ -8,7 +8,7 @@
 
 
 #include "RanlibCPP.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShftConjKeyGenerationGarside.h"
 
 

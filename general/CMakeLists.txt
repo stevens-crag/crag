@@ -16,8 +16,14 @@ crag_library(crag_general
   ConfigFile
   BalancedTree
   VectorEnumerator
+  parallel
 )
 
-target_link_libraries(crag_general PRIVATE ranlib)
+target_link_libraries(crag_general
+  PRIVATE ranlib
+)
 
 crag_main(mask crag_general ranlib)
+
+crag_test(test_permutation crag_general)
+crag_test(test_parallel crag_general)

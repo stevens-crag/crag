@@ -9,7 +9,7 @@
 #include <cassert>
 #include <fstream>
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "ThRightNormalForm.h"
 #include "ThLeftNormalForm.h"
@@ -75,7 +75,7 @@ ThRightNormalForm::operator ThLeftNormalForm( ) const
 //--------------------------- ThRightNormalForm -----------------------------//
 //---------------------------------------------------------------------------//
 
-ThRightNormalForm::ThRightNormalForm(const BraidGroup &G, const Word &w)
+ThRightNormalForm::ThRightNormalForm(const crag::braidgroup::BraidGroup &G, const Word &w)
     : theRank(G.getRank()), theOmegaPower(0) {
   const Permutation omega = Permutation::getHalfTwistPermutation(theRank);
 
@@ -106,7 +106,7 @@ ThRightNormalForm::ThRightNormalForm(const BraidGroup &G, const Word &w)
           theDecomposition.push_front(curMult);
           curMult = Permutation(theRank);
         }
-        swap(curMult[gen - 1], curMult[gen]);
+        curMult.change(gen - 1, gen);
         // trivialMult = false;
       }
       theDecomposition.push_front(curMult);
@@ -125,7 +125,7 @@ ThRightNormalForm::ThRightNormalForm(const BraidGroup &G, const Word &w)
           mult.push_front(curMult);
           curMult = Permutation(theRank);
         }
-        swap(curMult[gen - 1], curMult[gen]);
+        curMult.change(gen - 1, gen);
         // trivialMult = false;
       }
       mult.push_front(curMult);

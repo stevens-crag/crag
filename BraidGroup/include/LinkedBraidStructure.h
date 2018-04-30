@@ -14,8 +14,9 @@
 
 struct BraidNode {
 public:
-  BraidNode(int64_t num = 0, bool tp = true, BraidNode* l = nullptr, BraidNode* a = nullptr, BraidNode* r = nullptr,
-            BraidNode* bl = nullptr, BraidNode* b = nullptr, BraidNode* br = nullptr)
+  BraidNode(
+      int64_t num = 0, bool tp = true, BraidNode* l = nullptr, BraidNode* a = nullptr, BraidNode* r = nullptr,
+      BraidNode* bl = nullptr, BraidNode* b = nullptr, BraidNode* br = nullptr)
       : left(l)
       , ahead(a)
       , right(r)
@@ -59,8 +60,9 @@ struct LinkedBraidStructureTransform {
     CHANGE_TYPE,
   };
 
-  LinkedBraidStructureTransform(int64_t n, int64_t p, TRANSFORM tr, bool t = false, int64_t l = 0, int64_t a = 0,
-                                int64_t r = 0, int64_t bl = 0, int64_t b = 0, int64_t br = 0)
+  LinkedBraidStructureTransform(
+      int64_t n, int64_t p, TRANSFORM tr, bool t = false, int64_t l = 0, int64_t a = 0, int64_t r = 0, int64_t bl = 0,
+      int64_t b = 0, int64_t br = 0)
       : theTransform(tr)
       , left(l)
       , ahead(a)
@@ -122,6 +124,20 @@ public:
 private:
   using NODE = std::tuple<int64_t, int64_t, BraidNode*>;
 
+  struct NodeCompare {
+    using int64_triple = std::tuple<int64_t, int64_t, int64_t>;
+
+    bool operator()(const NODE& lhs, const NODE& rhs) const {
+      return std::less<int64_triple>()(toInt64Triple_(lhs), toInt64Triple_(rhs));
+    }
+
+    int64_triple toInt64Triple_(const NODE& n) const {
+      return std::make_tuple(std::get<0>(n), std::get<1>(n), std::get<2>(n)->theNumber);
+    }
+  };
+
+  using node_set = std::set<NODE, NodeCompare>;
+
   LinkedBraidStructureTransform make_EraseTransform(BraidNode* bn, int64_t pos) const;
   LinkedBraidStructureTransform make_AddTransform(BraidNode* bn, int64_t pos) const;
   LinkedBraidStructureTransform make_ChangeType(BraidNode* bn, int64_t pos) const;
@@ -129,8 +145,8 @@ private:
   int64_t checkIfStartsLeftHandle(int64_t pos, BraidNode* bn);
   int64_t checkIfStartsRightHandle(int64_t pos, BraidNode* bn);
 
-  void removeLeftHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
-  void removeRightHandle(NODE node, std::set<NODE>& to_check, std::list<LinkedBraidStructureTransform>* lst);
+  void removeLeftHandle(NODE node, node_set& to_check, std::list<LinkedBraidStructureTransform>* lst);
+  void removeRightHandle(NODE node, node_set& to_check, std::list<LinkedBraidStructureTransform>* lst);
 
   LinkedBraidStructureTransform removeNode(BraidNode* bn, int64_t pos);
 
@@ -153,5 +169,8 @@ private:
 
   int64_t max_node_number_;
 };
+
+//! Compares two braids using LinkedBraidStructure.
+bool areEqualBraids(size_t n, const Word& lhs, const Word& rhs);
 
 #endif // CRAG_LINKED_BRAID_STRUCTURE_H

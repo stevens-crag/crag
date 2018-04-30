@@ -3,7 +3,7 @@
 #include "ThRightNormalForm.h"
 #include "time.h"
 #include "stdlib.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 
 #include "ShortBraidForm.h"
 
@@ -18,7 +18,7 @@
 void test_conjugacy_uss( )
 {
   int rank = 30;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -59,7 +59,7 @@ void test_conjugacy_uss( )
 void test_ultra_summit_conjugators( )
 {
   int rank = 5;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -125,7 +125,7 @@ void test_ultra_summit_conjugators( )
 Permutation find_pullback( const ThLeftNormalForm& nf , const Permutation& s )
 {
   int rank = nf.getRank();
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   
   Permutation result( rank );
@@ -163,7 +163,7 @@ Permutation find_pullback( const ThLeftNormalForm& nf , const Permutation& s )
 void test_pullback( )
 {
   int rank = 10;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -229,7 +229,7 @@ void test_pullback( )
 void test_transport( )
 {
   int rank = 8;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -301,7 +301,7 @@ void test_transport( )
 void test_conjugacy( )
 {
   int rank = 6;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -339,7 +339,7 @@ void test_conjugacy( )
 void test_cast_right( )
 {
   int rank = 5;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   typedef ThRightNormalForm RNF;
   
@@ -375,7 +375,7 @@ void test_cast_right( )
 void test_simple_summit_conjugators( )
 {
   int rank = 3;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -461,7 +461,7 @@ void test_simple_summit_conjugators( )
 void test_sss_rep( )
 {
   int rank = 20;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -496,7 +496,7 @@ void test_sss_rep( )
 void test_cycling( )
 {
   int rank = 5;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -531,7 +531,7 @@ void test_cycling( )
 void test_decycling( )
 {
   int rank = 5;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -559,7 +559,7 @@ void test_decycling( )
 void test_WordProblem( )
 {
   int rank = 20;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   
   int exp = 100;
@@ -608,7 +608,7 @@ void test_WordProblem( )
 void test_inverse( )
 {
   int rank = 10;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -641,7 +641,7 @@ void test_inverse( )
 void test_multiplication( )
 {
   int rank = 10;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -676,7 +676,7 @@ void test_multiplication( )
 void test_nf( )
 {
   int rank = 10;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   
@@ -718,7 +718,7 @@ void test_nf( )
 void test_transport_gcd_properties( )
 {
   int rank = 5;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThLeftNormalForm NF;
   // typedef ThRightNormalForm NF;
   

@@ -31,6 +31,14 @@ TEST(Word, Basics) {
   EXPECT_EQ(1, *(it++));
   EXPECT_EQ(2, *(it++));
   EXPECT_EQ(3, *(it++));
+  EXPECT_EQ(w.end(), it);
+
+  auto rit = w.rbegin();
+
+  EXPECT_EQ(3, *(rit++));
+  EXPECT_EQ(2, *(rit++));
+  EXPECT_EQ(1, *(rit++));
+  EXPECT_EQ(w.rend(), rit);
 
   EXPECT_EQ(std::list<int>({1, 2, 3}), w.toList());
 }
@@ -330,5 +338,14 @@ TEST(Word, ReplaceGenerators_02) {
   };
 
   EXPECT_THROW({ w.replaceGenerators(map); }, std::invalid_argument);
+}
+
+TEST(Word, Abelianization) {
+  EXPECT_EQ(Word(), abelianization(Word()));
+  EXPECT_EQ(Word(1), abelianization(Word(1)));
+  EXPECT_EQ(Word({1, 2}), abelianization(Word({2, 1})));
+  EXPECT_EQ(Word({1, 3, 3}), abelianization(Word({2, 3, -2, 3, 1})));
+  EXPECT_EQ(Word({1, 1, 1, 2, 2, 2}), abelianization(Word({1, 2, 1, 2, 1, 2})));
+  EXPECT_EQ(Word(), abelianization(Word({1, 2, -1, -2})));
 }
 } // namespace

@@ -11,7 +11,7 @@
 #include <list>
 
 #include "AEProtocol.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "Permutation.h"
 #include "errormsgs.h"
@@ -131,13 +131,13 @@ void TTPTuple::shorten_parallel(int N) {
 
   for (int i = 0; i < WL.size(); ++i) {
     threads.emplace_back([this, N, i]() {
-      WL[i] = shortenBraid2(N, WL[i]);
+      WL[i] = shortenBraid(N, WL[i]);
     });
   }
 
   for (int i = 0; i < WR.size(); ++i) {
     threads.emplace_back([this, N, i]() {
-      WR[i] = shortenBraid2(N, WR[i]);
+      WR[i] = shortenBraid(N, WR[i]);
     });
   }
 
@@ -148,16 +148,16 @@ void TTPTuple::shorten_parallel(int N) {
 
 void TTPTuple::shorten(int N) {
   for (auto &w : WL) {
-    w = shortenBraid2(N, w);
+    w = shortenBraid(N, w);
   }
   for (auto &w : WR) {
-    w = shortenBraid2(N, w);
+    w = shortenBraid(N, w);
   }
 }
 
 bool TTPTuple::equivalent(int N, const TTPTuple &t) const {
   typedef ThLeftNormalForm NF;
-  BraidGroup B(N);
+  crag::braidgroup::BraidGroup B(N);
 
   vector<NF> L1, R1, L2, R2;
   for (int i = 0; i < WL.size(); ++i) {
@@ -195,7 +195,7 @@ bool TTPTuple::equivalent(int N, const TTPTuple &t) const {
 
 TTPTuple TTPTuple::takeModuloDeltaSQ(int N) const {
   typedef ThLeftNormalForm NF;
-  BraidGroup B(N);
+  crag::braidgroup::BraidGroup B(N);
 
   TTPTuple result = *this;
   for (int i = 0; i < result.WL.size(); ++i) {
@@ -229,7 +229,7 @@ static int anticipated_delta(int N, Word &w) {
 //! Find a power Delta^2p s.t. |Delta^2p*nf| is minimal in the <Delta^2>-coset
 static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool power_reset) {
   typedef ThLeftNormalForm NF;
-  BraidGroup B(N);
+  crag::braidgroup::BraidGroup B(N);
 
   int best_nf;
   map<int, Word> weights;
@@ -241,7 +241,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
     best_nf = anticipated_delta(N, w);
     ThLeftNormalForm nf2 = nf;
     nf2.setPower(nf.getPower() + 2 * best_nf);
-    weights[best_nf] = shortenBraid2(N, nf2.getReducedWord2());
+    weights[best_nf] = shortenBraid(N, nf2.getReducedWord2());
     w = weights[best_nf];
     cout << weights[best_nf].length() << ", ";
   }
@@ -260,7 +260,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
       if (weights.find(i) != weights.end())
         continue;
       const auto &cur_w = weights[i - 1];
-      const auto new_w = shortenBraid2(N, omegaWord.power(2) * cur_w);
+      const auto new_w = shortenBraid(N, omegaWord.power(2) * cur_w);
       weights[i] = new_w;
       if (weights[i].length() < weights[best_nf].length()) {
         progress = true;
@@ -275,7 +275,7 @@ static int multiplyByDeltaSQtoReduceLength(int N, Word &w, const int delta, bool
       if (weights.find(i) != weights.end())
         continue;
       const auto &cur_w = weights[i + 1];
-      const auto new_w = shortenBraid2(N, omegaWord.power(-2) * cur_w);
+      const auto new_w = shortenBraid(N, omegaWord.power(-2) * cur_w);
       weights[i] = new_w;
       if (weights[i].length() < weights[best_nf].length()) {
         progress = true;

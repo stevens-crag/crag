@@ -1,5 +1,5 @@
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "LinkedBraidStructure.h"
 #include "DehornoyForm.h"
 #include "ShortBraidForm.h"
@@ -145,7 +145,7 @@ void test_short_forms_correct( )
     Word w = Word::randomWord( N-1 , L );
     Word w1 = shortBraidForm( N , w );
 
-    BraidGroup B( N );
+    crag::braidgroup::BraidGroup B( N );
     ThRightNormalForm nf( B , w*-w1 );
     if( nf.isTrivial( ) )
       cout << "Correct: " << w.length( ) << ", " << w1.length( ) << endl;
@@ -203,7 +203,7 @@ void test_nf_shorten_efficiency( )
     cout << "a" << endl;
     Word w = Word::randomWord( N-1 , L );
     cout << "b" << endl;
-    BraidGroup B( N );
+    crag::braidgroup::BraidGroup B( N );
     ThRightNormalForm nf( B , w );
     cout << "c" << endl;
     DehornoyForm DF( N , nf.getShortWord( ) );
@@ -232,8 +232,8 @@ void test_deh_form_correct( )
     Word w = Word::randomWord( N-1 , 1000 );
     DehornoyForm DF( N , w );
     Word w1 = DF.getDehornoyForm( );
- 
-    BraidGroup B( N );
+
+    crag::braidgroup::BraidGroup B( N );
     ThRightNormalForm nf( B , w*-w1 );
     if( nf.isTrivial( ) )
       cout << "Correct: " << w.length( ) << ", " << w1.length( ) << endl;
@@ -376,7 +376,7 @@ int main( )
     // cout << w2 << endl;
 
 
-    BraidGroup B( N );
+    crag::braidgroup::BraidGroup B( N );
     ThRightNormalForm nf( B , w*-w1 );
     if( nf.isTrivial( ) )
       cout << "Correct: " << w.length( ) << ", " << w1.length( ) << endl;

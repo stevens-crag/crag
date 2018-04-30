@@ -30,6 +30,7 @@ private:
 public:
   using iterator = WordRep::iterator;
   using const_iterator = WordRep::const_iterator;
+  using const_reverse_iterator = WordRep::const_reverse_iterator;
 
   //! Default constructor (creates the empty word \f$w = \varepsilon\f$).
   Word()
@@ -141,6 +142,14 @@ public:
     return impl_ptr_->cend();
   }
 
+  const_reverse_iterator rbegin() const {
+    return impl_ptr_->rbegin();
+  }
+
+  const_reverse_iterator rend() const {
+    return impl_ptr_->rend();
+  }
+
   //! Returns reduced version of this word.
   Word freelyReduce() const {
     return freelyReduce(begin(), end());
@@ -164,13 +173,17 @@ public:
     return impl_ptr_->toList();
   }
 
-  //! Get the length of the word.
-  inline int length() const {
+  std::vector<int> toVector() const {
+    return impl_ptr_->toVector();
+  }
+
+    //! Get the length of the word.
+  inline size_t length() const {
     return impl_ptr_->length();
   }
 
   //! Get the length of the word.
-  inline int size() const {
+  inline size_t size() const {
     return impl_ptr_->size();
   }
 
@@ -315,6 +328,10 @@ public:
     return result;
   }
 
+  Word subword(size_t from, size_t to) const {
+    return Word(impl_ptr_->subword(from, to));
+  }
+
   inline int exponentSum(int gen) const {
     return impl_ptr_->exponentSum(gen);
   }
@@ -397,5 +414,7 @@ private:
 };
 
 Word operator"" _w(const char* str, size_t);
+
+Word abelianization(const Word& w);
 
 #endif // CRAG_WORD_H

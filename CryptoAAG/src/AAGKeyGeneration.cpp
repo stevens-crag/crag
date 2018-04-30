@@ -9,7 +9,7 @@
 #include "RanlibCPP.h"
 #include "AAGKeyGeneration.h"
 #include "ShortBraidForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 // #include "FreeGroup.h"
 #include "tuples.h"
 #include <set>
