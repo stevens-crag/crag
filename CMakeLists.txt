@@ -10,12 +10,14 @@ HunterGate(
 project(crag)
 
 ### Download dependencies ###
-hunter_add_package(Boost)
+hunter_add_package(Boost COMPONENTS program_options system thread)
 hunter_add_package(GTest)
+hunter_add_package(benchmark)
 
 ### Find dependencies ###
 find_package(GTest CONFIG REQUIRED) # GTest::main
-find_package(Boost CONFIG REQUIRED) # Boost::boost, header only libs
+find_package(Boost CONFIG REQUIRED program_options system thread) # Boost::boost, Boost::program_options, and so on ...
+find_package(benchmark CONFIG REQUIRED) # benchmark::benchmark
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
 
@@ -38,22 +40,9 @@ if(BUILD_SHARED_LIBS)
   message(FATAL_ERROR "Shared build is not supported")
 endif()
 
-IF(MSVC)
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -W3 -EHsc -nologo")
-  foreach (flag_var
-    CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-    CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-    if(NOT BUILD_SHARED_LIBS)
-      #force using static runtime
-      string(REPLACE "/MD" "-MT" ${flag_var} "${${flag_var}}")
-    endif()
-  endforeach()
-ENDIF(MSVC)
-
 set_property(GLOBAL PROPERTY USE_FOLDERS ON) #turn on folders for VS
 
 # Add subdirectories (All new directories should go here)
-add_subdirectory(3rdParty/argagg)
 add_subdirectory(3rdParty/gmp)
 add_subdirectory(Alphabet)
 add_subdirectory(BraidGroup)
@@ -65,6 +54,7 @@ add_subdirectory(CryptoTripleDecomposition)
 add_subdirectory(Elt)
 add_subdirectory(Equation)
 add_subdirectory(Examples)
+add_subdirectory(FiniteField)
 add_subdirectory(FreeGroup)
 add_subdirectory(general)
 add_subdirectory(Graph)
@@ -76,3 +66,7 @@ add_subdirectory(ranlib)
 add_subdirectory(StringSimilarity)
 add_subdirectory(SbgpFG)
 add_subdirectory(TheGrigorchukGroup)
+add_subdirectory(Polynomial)
+add_subdirectory(Matrix)
+add_subdirectory(Random)
+add_subdirectory(Walnut)

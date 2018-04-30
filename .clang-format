@@ -1,9 +1,15 @@
-BasedOnStyle: Google
+BasedOnStyle: llvm
 
 IndentWidth: 2
 AccessModifierOffset: -2
 
 ColumnLimit: 120
+
+AlignAfterOpenBracket: AlwaysBreak
+BinPackArguments: false
+BinPackParameters: false
+
+AlwaysBreakTemplateDeclarations: true
 
 AllowShortFunctionsOnASingleLine: Empty
 
@@ -17,3 +23,5 @@ MaxEmptyLinesToKeep: 2
 PointerAlignment: Left
 SpaceAfterCStyleCast: true
 SpacesBeforeTrailingComments: 1
+
+BreakStringLiterals: true

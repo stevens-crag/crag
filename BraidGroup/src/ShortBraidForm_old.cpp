@@ -7,7 +7,7 @@
 //
 
 #include "ShortBraidForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "DehornoyForm.h"
 #include "ThRightNormalForm.h"
 

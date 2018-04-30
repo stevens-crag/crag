@@ -265,7 +265,7 @@ LinkedBraidStructureTransform LinkedBraidStructure::push_front(int g) {
 void LinkedBraidStructure::removeLeftHandles(list<LinkedBraidStructureTransform>* result) {
   // set of nodes to check (1st value = number of uppercrossings, 2nd value =
   // -position in the Linked Structure)
-  std::set<NODE> to_check;
+  node_set to_check;
 
   // form the initial set of nodes to check (all nodes from the Linked
   // Structure)
@@ -339,8 +339,23 @@ int64_t LinkedBraidStructure::checkIfStartsLeftHandle(int64_t pos, BraidNode* bn
   return counter;
 }
 
-void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
-                                            std::list<LinkedBraidStructureTransform>* lst) {
+namespace {
+struct PairCmp {
+  using pair_t = std::pair<int64_t, BraidNode*>;
+  using int64_pair = std::pair<int64_t, int64_t>;
+
+  bool operator()(const pair_t& lhs, const pair_t& rhs) const {
+    return std::less<int64_pair>()(toInt64Pair(lhs), toInt64Pair(rhs));
+  }
+
+  int64_pair toInt64Pair(const pair_t& p) const {
+    return std::make_pair(p.first, p.second->theNumber);
+  }
+};
+} // namespace
+
+void LinkedBraidStructure::removeLeftHandle(
+    NODE node, node_set& to_check, std::list<LinkedBraidStructureTransform>* lst) {
   const auto pos = std::get<1>(node);
 
   BraidNode* n1 = std::get<2>(node);
@@ -353,7 +368,7 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
 
   // Removal of a handle can introduce new handles. Here we store some nodes to
   // check. A few will be added later.
-  std::set<std::pair<int64_t, BraidNode*>> to_check2;
+  std::set<std::pair<int64_t, BraidNode*>, PairCmp> to_check2;
 
   if (n1->ahead) {
     to_check2.insert(std::make_pair(pos, n1->ahead));
@@ -429,7 +444,7 @@ void LinkedBraidStructure::removeLeftHandle(NODE node, std::set<NODE>& to_check,
 void LinkedBraidStructure::removeRightHandles(list<LinkedBraidStructureTransform>* result) {
   // set of nodes to check (1st value = number of uppercrossings, 2nd value =
   // position in the Linked Structure)
-  set<NODE> to_check;
+  node_set to_check;
 
   // form the initial set of nodes to check (all nodes from the Linked
   // Structure)
@@ -503,9 +518,9 @@ int64_t LinkedBraidStructure::checkIfStartsRightHandle(int64_t pos, BraidNode* b
   return counter;
 }
 
-void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check,
-                                             list<LinkedBraidStructureTransform>* lst) {
+void LinkedBraidStructure::removeRightHandle(NODE node, node_set& to_check, list<LinkedBraidStructureTransform>* lst) {
   const auto pos = std::get<1>(node);
+
   BraidNode* n1 = std::get<2>(node);
   BraidNode* n2 = n1->back;
 
@@ -516,7 +531,7 @@ void LinkedBraidStructure::removeRightHandle(NODE node, std::set<NODE>& to_check
 
   // Removal of a handle can introduce new handles. Here we store some nodes to
   // check. A few will be added later.
-  std::set<std::pair<int64_t, BraidNode*>> to_check2;
+  std::set<std::pair<int64_t, BraidNode*>, PairCmp> to_check2;
 
   if (n1->ahead) {
     to_check2.insert(std::make_pair(pos, n1->ahead));
@@ -777,6 +792,7 @@ BraidNode* LinkedBraidStructure::insertBackRight(BraidNode* bn, int64_t pos, boo
   // B. create a new node and link it to other nodes
   BraidNode& newNode = the_nodes_[max_node_number_] =
       BraidNode(max_node_number_, type, bn, right, nullptr, back_right_left, back_right, right_back_right);
+
   max_node_number_++;
 
   bn->back_right = &newNode;
@@ -934,4 +950,11 @@ void LinkedBraidStructure::undo(const LinkedBraidStructureTransform& lbst) {
   } else if (lbst.theTransform == LinkedBraidStructureTransform::CHANGE_TYPE) {
     the_nodes_[lbst.theNumber].type = lbst.type;
   }
+}
+
+bool areEqualBraids(size_t n, const Word& lhs, const Word& rhs) {
+  LinkedBraidStructure lbs(n - 1, -lhs * rhs);
+  lbs.removeLeftHandles();
+
+  return lbs.size() == 0;
 }

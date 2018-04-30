@@ -7,7 +7,7 @@
 //
 
 #include "TripleDecompositionKeyGeneration.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ThRightNormalForm.h"
 
 

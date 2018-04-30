@@ -1,14 +1,14 @@
 
 #include "time.h"
 #include "stdlib.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ThRightNormalForm.h"
 
 
 void test_centr( )
 {
   int rank = 60;
-  BraidGroup B( rank );
+  crag::braidgroup::BraidGroup B( rank );
   typedef ThRightNormalForm NF;
   
   int exp = 1;
@@ -25,7 +25,7 @@ void test_centr( )
 
 void test_NF_computation() {
   int rank = 4;
-  BraidGroup B(rank);
+  crag::braidgroup::BraidGroup B(rank);
   typedef ThRightNormalForm NF;
 
   int exp = 10;

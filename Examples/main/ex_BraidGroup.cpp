@@ -7,7 +7,7 @@
 //
 
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 
 
 int main( )

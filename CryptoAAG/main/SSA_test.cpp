@@ -1,5 +1,5 @@
 #include "Word.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "AAGKeyGeneration.h"
 #include "braid.h"

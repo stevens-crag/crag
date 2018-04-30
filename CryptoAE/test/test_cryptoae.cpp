@@ -2,7 +2,7 @@
 #include "TTPAttack.h"
 #include "Word.h"
 #include "gtest/gtest.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "LinkedBraidStructure.h"
 

@@ -22,6 +22,7 @@ private:
 public:
   using iterator = storage_t::iterator;
   using const_iterator = storage_t::const_iterator;
+  using const_reverse_iterator = storage_t::const_reverse_iterator;
 
   WordRep() {}
 
@@ -47,6 +48,10 @@ public:
   const_iterator cbegin() const;
 
   const_iterator cend() const;
+
+  const_reverse_iterator rbegin() const;
+
+  const_reverse_iterator rend() const;
 
   int front() const {
     return elements_.front();
@@ -153,6 +158,9 @@ public:
   //! Replaces this word with its segment [from, to).
   void segment(size_t from, size_t to);
 
+  //! Returns subword [from, to).
+  WordRep subword(size_t from, size_t to) const;
+
   //! Replaces this word with its prefix [0, to).
   void initialSegment(size_t to);
 
@@ -215,6 +223,10 @@ public:
 
   std::list<int> toList() const {
     return elements_;
+  }
+
+  std::vector<int> toVector() const {
+    return std::vector<int>(elements_.begin(), elements_.end());
   }
 
 private:

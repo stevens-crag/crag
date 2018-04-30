@@ -12,7 +12,7 @@
 #include <time.h>
 
 #include "TTPAttack.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include "Permutation.h"
 #include "errormsgs.h"
@@ -87,7 +87,7 @@ static bool fixDeltas(int n, TTPTuple &t) {
   for (int i = 0; i < t.WL.size(); ++i) {
     const auto p = deltaPredictor(n, t.WL[i]);
     if (p != 0) {
-      t.WL[i] = shortenBraid2(n, t.WL[i] * omegaWord.power(-2 * p));
+      t.WL[i] = shortenBraid(n, t.WL[i] * omegaWord.power(-2 * p));
       t.deltaSQL[i] -= p;
       result = true;
     }
@@ -95,7 +95,7 @@ static bool fixDeltas(int n, TTPTuple &t) {
   for (int i = 0; i < t.WR.size(); ++i) {
     const auto p = deltaPredictor(n, t.WR[i]);
     if (p != 0) {
-      t.WR[i] = shortenBraid2(n, t.WR[i] * omegaWord.power(-2 * p));
+      t.WR[i] = shortenBraid(n, t.WR[i] * omegaWord.power(-2 * p));
       t.deltaSQR[i] -= p;
       result = true;
     }
@@ -407,7 +407,7 @@ bool TTPLBA::reduce(int N, const BSets &bs, const TTPTuple &theTuple,
 ///////////////////////////////////////////////////////////////////////////////////////
 
 bool TTPAttack::run(const TTPTuple &original_tuple) {
-  BraidGroup B(N);
+  crag::braidgroup::BraidGroup B(N);
   typedef ThLeftNormalForm NF;
   const Word& original_z = original_tuple.origZ;
 
@@ -465,7 +465,7 @@ bool TTPAttack::LBA(int NWL, int NWR, const TTPTuple &t, const Word &z) {
 
   // (debug) If LBA minimization is successful, then check correctness of computations and check if we got the original z
   if (red_res) {
-    cout << "Same z: |z*z'^-1| = " << shortenBraid2(N, z * red_T.z).length() << endl;
+    cout << "Same z: |z*z'^-1| = " << shortenBraid(N, z * red_T.z).length() << endl;
     // Checking correctness of computations (check if red_T.z is the conjugator)
     if (!t.equivalent(N, red_T)) {
       cout << "Internal LBA check failed" << endl;

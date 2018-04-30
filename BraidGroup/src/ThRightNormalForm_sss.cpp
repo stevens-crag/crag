@@ -11,7 +11,7 @@
 
 
 #include "ThRightNormalForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "Word.h"
 
 

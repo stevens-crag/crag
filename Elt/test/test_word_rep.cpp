@@ -29,6 +29,14 @@ TEST(WordRep, Basics) {
   EXPECT_EQ(1, *(it++));
   EXPECT_EQ(2, *(it++));
   EXPECT_EQ(3, *(it++));
+  EXPECT_EQ(w.end(), it);
+
+  auto rit = w.rbegin();
+
+  EXPECT_EQ(3, *(rit++));
+  EXPECT_EQ(2, *(rit++));
+  EXPECT_EQ(1, *(rit++));
+  EXPECT_EQ(w.rend(), rit);
 
   auto u = w;
 
@@ -221,18 +229,22 @@ TEST(WordRep, TerminalSegment) {
 
 TEST(WordRep, Segment) {
   WordRep w({1, 2, 3, 4, 5, 6, 7});
+  EXPECT_EQ(WordRep(), w.subword(0, 0));
   w.segment(0, 0);
   EXPECT_EQ(WordRep(), w);
 
   w = WordRep({1, 2, 3, 4, 5, 6, 7});
+  EXPECT_EQ(WordRep(), w.subword(7, 10));
   w.segment(7, 10);
   EXPECT_EQ(WordRep(), w);
 
   w = WordRep({1, 2, 3, 4, 5, 6, 7});
+  EXPECT_EQ(WordRep({6, 7}), w.subword(5, 100));
   w.segment(5, 100);
   EXPECT_EQ(WordRep({6, 7}), w);
 
   w = WordRep({1, 2, 3, 4, 5, 6, 7});
+  EXPECT_EQ(WordRep({2, 3}), w.subword(1, 3));
   w.segment(1, 3);
   EXPECT_EQ(WordRep({2, 3}), w);
 }

@@ -6,6 +6,8 @@
 
 #include "EndomorphismSLP.h"
 
+#include <set>
+
 namespace crag {
 
 EndomorphismSLP EndomorphismSLP::inverse() const {

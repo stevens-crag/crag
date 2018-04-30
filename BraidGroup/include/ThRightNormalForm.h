@@ -9,16 +9,16 @@
 #ifndef _ThRightNormalForm_h_
 #define _ThRightNormalForm_h_
 
+#include <vector>
+#include <list>
+#include <set>
+
 #include "tuples.h"
 #include "Permutation.h"
+#include "braid_group.h"
 
-#include "vector"
-#include "list"
 using namespace std;
 
-
-class BraidGroup;
-class Word;
 class ThLeftNormalForm;
 
 
@@ -88,7 +88,7 @@ public:
     
     
   //! Constructs the normal form of a braid word w.
-  ThRightNormalForm( const BraidGroup& G , const Word& w );
+  ThRightNormalForm( const crag::braidgroup::BraidGroup& G , const Word& w );
   
   
   //! Construct a positive braid from a permutation

@@ -2,22 +2,23 @@
 #include <iostream>
 #include <iterator>
 #include <algorithm>
-#include <argagg/argagg.hpp>
 #include "AEProtocol.h"
 #include "TTPAttack.h"
 #include "RanlibCPP.h"
 #include "ProgressBar.h"
 #include "ThLeftNormalForm.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ShortBraidForm.h"
 #include <time.h>
 #include <fstream>
+#include <boost/program_options.hpp>
 
 using namespace std;
+namespace po = boost::program_options;
 
 void getAnticipatedDeltaPowerIdea() {
   for (int n = 5; n <= 30; n += 5) {
-    BraidGroup B(n);
+    crag::braidgroup::BraidGroup B(n);
     for (int l = 40; l <= 800; l += 40) {
       int total_delta = 0;
       int total_dec = 0;
@@ -38,7 +39,7 @@ static bool wayToSort(int i, int j) { return i > j; }
 void getDecompositionDetails() {
   const int n = 16;
   const int l = 1000;
-  const BraidGroup B(n);
+  const crag::braidgroup::BraidGroup B(n);
   const auto w = Word::randomWord(n - 1, l);
   ThLeftNormalForm nf(B, w);
   vector<int> sizes;
@@ -60,7 +61,7 @@ void getDecompositionDetails() {
 void compareGenerateWordFunctions() {
   const int n = 16;
   const int l = 10000;
-  const BraidGroup B(n);
+  const crag::braidgroup::BraidGroup B(n);
   for (int i = 0; i < 100; ++i) {
     const auto w = Word::randomWord(n - 1, l);
     ThLeftNormalForm nf(B, w);
@@ -87,7 +88,7 @@ static int abelinization(const Word& w) {
 void abelinizationTest() {
   const int n = 16;
   const int l = 2000;
-  const BraidGroup B(n);
+  const crag::braidgroup::BraidGroup B(n);
   for (int i = 0; i < 1000; ++i) {
     const auto w = Word::randomWord(n - 1, l);
     cout << abelinization(w) << ", ";
@@ -99,7 +100,7 @@ void abelinizationTest() {
 void test_shortenBraid2() {
   const int n = 16;
   typedef ThLeftNormalForm NF;
-  BraidGroup B(n);
+  crag::braidgroup::BraidGroup B(n);
 
   const int l = 200;
   for (int i = 0; i < 100; ++i) {
@@ -227,31 +228,34 @@ void prepareTableOfLengths() {
 // std::ios_base::sync_with_stdio(false);
 
 int main(int argc, char* argv[]) {
-  argagg::parser argparser{{
-      {"n", {"-n"}, "Group rank", 1},
-      {"z", {"-z"}, "|z|", 1},
-      {"w", {"-w"}, "|w| (default: |z|)", 1},
-  }};
+  // Declare the supported options.
+  po::options_description desc("Allowed options");
+  desc.add_options()
+      ("help", "produces help message")
+      ("n", po::value<int>()->default_value(12), "n for B_n")
+      ("z", po::value<int>()->default_value(100), "length of |z|")
+      ("w", po::value<int>()->default_value(100), "length of |w|");
 
-  argagg::parser_results args;
+  po::variables_map vm;
+
   try {
-    args = argparser.parse(argc, argv);
+    po::store(po::parse_command_line(argc, argv, desc), vm);
   } catch (const std::exception& e) {
     std::cerr << e.what() << std::endl;
     return EXIT_FAILURE;
   }
 
-  if (!args["n"]) {
-    std::cerr << "-n is required" << std::endl;
+  po::notify(vm);
+
+  if (vm.count("help")) {
+    std::cout << desc << std::endl;
     return EXIT_FAILURE;
   }
 
-  if (!args["z"]) {
-    std::cerr << "-z is required" << std::endl;
-    return EXIT_FAILURE;
-  }
-
-  // std::ios_base::sync_with_stdio(false);
+  std::cout << "Using n = " << vm["n"].as<int>()
+            << ", |z| = " << vm["z"].as<int>()
+            << ", |w| = " << vm["w"].as<int>()
+            << std::endl;
 
   RandLib::ur.reset();
   long s1, s2;
@@ -275,14 +279,14 @@ int main(int argc, char* argv[]) {
   //
   // ttp_conf.len_z  = 500; // 18;  // Conjugator's length
   // ttp_conf.len_w  = 500;  // Word's length
-  auto arg_n = args["n"].as<int>();
+  auto arg_n = vm["n"].as<int>();
   ttp_conf.nBL = arg_n / 2 - 1;                 // 5;     // # Generators in BL
   ttp_conf.nBR = arg_n / 2 - 1;                 // 5;     // # Generators in BR
   ttp_conf.N = ttp_conf.nBL + ttp_conf.nBR + 2; // 12;    // Group rank
   ttp_conf.nGamma = 10;                         // Tuple size
 
-  ttp_conf.len_z = args["z"].as<int>();               // 18;  // Conjugator's length
-  ttp_conf.len_w = args["w"].as<int>(ttp_conf.len_z); // Word's length
+  ttp_conf.len_z = vm["z"].as<int>();               // 18;  // Conjugator's length
+  ttp_conf.len_w = vm["w"].as<int>();               // Word's length
 
   cout << ttp_conf << endl;
 

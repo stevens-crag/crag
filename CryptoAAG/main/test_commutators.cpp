@@ -1,7 +1,7 @@
 
 #include "time.h"
 #include "stdlib.h"
-#include "BraidGroup.h"
+#include "braid_group.h"
 #include "ThRightNormalForm.h"
 #include "ShortBraidForm.h"
 

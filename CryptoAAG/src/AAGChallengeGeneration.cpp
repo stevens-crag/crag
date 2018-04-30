@@ -1,5 +1,5 @@
 
-#include "BraidGroup.h"
+#include "braid_group.h"
 
 #include <iterator>
 #include <iostream>

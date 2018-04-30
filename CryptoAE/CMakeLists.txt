@@ -14,6 +14,6 @@ target_link_libraries(CryptoAE
   PRIVATE ranlib
 )
 
-crag_main(test_TTP CryptoAE ranlib argagg)
+crag_main(test_TTP CryptoAE ranlib Boost::program_options)
 
 crag_test(test_cryptoae CryptoAE)
