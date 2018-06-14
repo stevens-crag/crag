@@ -39,26 +39,26 @@ std::vector<size_t> randomPartition(size_t n, size_t min_value, size_t max_value
 std::vector<size_t> calculateRs(const std::vector<size_t>& p, size_t init = 1);
 
 /// Returns y-generators as words in b-gens (see the paper). p is a partition, n is the number of strands.
-std::vector<Word> calculateYGensInBGens(const std::vector<size_t>& p);
+std::vector<std::vector<int>> calculateYGensInBGens(const std::vector<size_t>& p);
 
 /// Returns b-gens as words in y-gens (see the paper). p is a partition, n is the number of strands.
-std::vector<Word> calculateBGensInYGens(const std::vector<size_t>& p);
+std::vector<std::vector<int>> calculateBGensInYGens(const std::vector<size_t>& p);
 
 /// Expreses w as a word in y_gens;
-Word expressInYGens(const Word& w, const std::vector<Word>& b_gens);
+std::vector<int> expressInYGens(const std::vector<int>& w, const std::vector<std::vector<int>>& b_gens);
 
 /// Returns the set yRel(P).
-std::vector<Word> calculateYRelations(const std::vector<size_t>& p);
+std::vector<std::vector<int>> calculateYRelations(const std::vector<size_t>& p);
 
 /// Returns the additional relations.
-std::vector<Word> calculateAdditionalRelations(const std::vector<size_t>& p);
+std::vector<std::vector<int>> calculateAdditionalRelations(const std::vector<size_t>& p);
 
 /// Returns SRel(p).
-std::vector<Word> calculateSRelations(const std::vector<size_t>& p);
+std::vector<std::vector<int>> calculateSRelations(const std::vector<size_t>& p);
 
 
 /// Returns rewriting rules u -> {w1, ..., wn}. where |u| == 2.
-std::multimap<Word, Word> calculateRewritingRules(const std::vector<size_t>& p);
+std::multimap<std::vector<int>, std::vector<int>> calculateRewritingRules(const std::vector<size_t>& p);
 
 
 /// Returns beginnings of subwords us, |u| == 2.
@@ -77,20 +77,32 @@ std::vector<size_t> selectSubwords(const std::vector<size_t>& blocks, URNG& g) {
 }
 
 
+// v = v * u
+template <typename Iter>
+void append(std::vector<int>& v, Iter b, Iter e) {
+  for (auto i = b; i != e; ++i) {
+    if (v.size() > 0 && v.back() == -*i) {
+      v.pop_back();
+    } else {
+      v.push_back(*i);
+    }
+  }
+}
+
+
 // Performs one iteration of rewriting process.
 template <typename URNG>
-Word rewrite(
-    const Word& w, size_t min_block_size, size_t max_block_size, const std::multimap<Word, Word>& rules, URNG& g) {
-  const auto blocks = randomPartition(w.length(), min_block_size, max_block_size, g);
+std::vector<int> rewrite(
+    const std::vector<int>& v, size_t min_block_size, size_t max_block_size, const std::multimap<vector<int>, vector<int>>& rules, URNG& g) {
+  const auto blocks = randomPartition(v.size(), min_block_size, max_block_size, g);
   const auto subwords = selectSubwords(blocks, g);
 
-  std::vector<int> v = w.toVector();
   std::vector<int> result;
 
   size_t segment_begin = 0;
 
   for (size_t i = 0; i < subwords.size(); ++i) {
-    const auto subword = Word({v[subwords[i]], v[subwords[i] + 1]});
+    const std::vector<int> subword{v[subwords[i]], v[subwords[i] + 1]};
     const auto appropriate_rules_count = rules.count(subword);
     if (appropriate_rules_count > 0) {
       boost::random::uniform_int_distribution<int> dist(0, appropriate_rules_count - 1);
@@ -99,18 +111,23 @@ Word rewrite(
       std::advance(it, dist(g));
       const auto new_subword = it->second;
 
-      result.insert(result.end(), v.begin() + segment_begin, v.begin() + subwords[i]);
-      result.insert(result.end(), new_subword.begin(), new_subword.end());
+      append(result, v.begin() + segment_begin, v.begin() + subwords[i]);
+      append(result, new_subword.begin(), new_subword.end());
 
       segment_begin = subwords[i] + 2;
     }
   }
 
-  result.insert(result.end(), v.begin() + segment_begin, v.end());
+  append(result, v.begin() + segment_begin, v.end());
 
-  return Word(result).freelyReduce();
+  return result;
 }
 
+std::vector<int> replaceGenerators(const std::vector<int>& w, const std::vector<std::vector<int>>& images);
+
+std::vector<int> invert(const std::vector<int>& w);
+
+std::vector<int> cyclicLeftShift(const std::vector<int>& w);
 
 // Stochastic rewriting.
 template <typename URNG>
@@ -118,18 +135,16 @@ Word stochasticRewrite(
     const Word& w, const std::vector<size_t>& partition, size_t min_block_size, size_t max_block_size, size_t iter_num,
     URNG& g) {
   const auto b_gens = calculateBGensInYGens(partition);
-
-  auto w_y = w.replaceGenerators(b_gens);
-
   const auto rules = calculateRewritingRules(partition);
+  const auto y_gens = calculateYGensInBGens(partition);
+
+  auto w_y = replaceGenerators(w.toVector(), b_gens);
 
   for (size_t i = 0; i < iter_num; ++i) {
     w_y = rewrite(w_y, min_block_size, max_block_size, rules, g);
   }
-
-  const auto y_gens = calculateYGensInBGens(partition);
-
-  return w_y.replaceGenerators(y_gens);
+  
+  return Word(replaceGenerators(w_y, y_gens));
 }
 
 } // namespace stochasticrewrite

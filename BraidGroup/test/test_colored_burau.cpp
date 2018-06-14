@@ -254,6 +254,9 @@ TEST(Permutation, Ex_01) {
   const auto sigma2 = permutation(n, w2);
 
   EXPECT_EQ(permutation(n, w1 * w2), sigma1 * sigma2);
+
+  EXPECT_EQ(Permutation(n), permutation(n, w1.inverse()) * sigma1);
+  EXPECT_EQ(Permutation(n), sigma1 * permutation(n, w1.inverse()));
 }
 } // namespace
 } // namespace coloredburau

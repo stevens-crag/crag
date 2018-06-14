@@ -953,7 +953,11 @@ void LinkedBraidStructure::undo(const LinkedBraidStructureTransform& lbst) {
 }
 
 bool areEqualBraids(size_t n, const Word& lhs, const Word& rhs) {
-  LinkedBraidStructure lbs(n - 1, -lhs * rhs);
+  return isTrivialBraid(n, -lhs * rhs);
+}
+
+bool isTrivialBraid(size_t n, const Word& w) {
+  LinkedBraidStructure lbs(n - 1, w);
   lbs.removeLeftHandles();
 
   return lbs.size() == 0;

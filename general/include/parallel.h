@@ -3,6 +3,8 @@
 #ifndef CRAG_PARALLEL_H
 #define CRAG_PARALLEL_H
 
+#include <boost/container/vector.hpp>
+
 #include <atomic>
 #include <thread>
 #include <vector>
@@ -31,7 +33,7 @@ void forEach(size_t n, Function fn) {
     }
   };
 
-  const auto threads_count = getHardwareConcurrency();
+  const auto threads_count = std::min(n, getHardwareConcurrency());
 
   std::vector<std::thread> threads;
   threads.reserve(threads_count);
@@ -60,7 +62,11 @@ void forEach(const std::vector<T>& items, Function fn) {
 //! Function is of type
 //!     TOut fn(const TIn&) or
 //!     TOut fn(TIn)
-template <typename TIn, typename TOut, typename Function>
+template <
+    typename TIn,
+    typename TOut,
+    typename Function,
+    typename = typename std::enable_if<!std::is_same<TOut, bool>::value>::type>
 std::vector<TOut> map(const std::vector<TIn>& items, Function fn) {
   std::vector<TOut> result(items.size());
 
@@ -69,11 +75,21 @@ std::vector<TOut> map(const std::vector<TIn>& items, Function fn) {
   return result;
 }
 
+//! Workaround for std::vector<bool>
+template <typename T, typename Function>
+boost::container::vector<bool> bmap(const std::vector<T>& items, Function fn) {
+  boost::container::vector<bool> result(items.size());
+
+  forEach(items.size(), [&](size_t i) { result[i] = fn(items[i]); });
+
+  return result;
+}
+
 //! Parallel map, T must be default constructible.
 //! Function is of type
 //!     T fn(const T&) or
 //!     T fn(T)
-template <typename T, typename Function>
+template <typename T, typename Function, typename = typename std::enable_if<!std::is_same<T, bool>::value>::type>
 std::vector<T> map(const std::vector<T>& items, Function fn) {
   return map<T, T>(items, std::move(fn));
 }
@@ -81,7 +97,7 @@ std::vector<T> map(const std::vector<T>& items, Function fn) {
 //! Parallel map, T must be default constructible.
 //! Function is of type
 //!     T fn(size_t)
-template <typename T, typename Function>
+template <typename T, typename Function, typename = typename std::enable_if<!std::is_same<T, bool>::value>::type>
 std::vector<T> map(size_t n, Function fn) {
   std::vector<T> result(n);
 

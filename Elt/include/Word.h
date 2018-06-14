@@ -9,6 +9,7 @@
 
 #include <string>
 #include <set>
+#include <map>
 #include <memory>
 #include <tuple>
 
@@ -37,12 +38,12 @@ public:
     : impl_ptr_(std::make_shared<WordRep>()) {}
 
   //! Constructs a word by its presentation (if the word defined in gens is not reduced then it reduces it).
-  explicit Word(const std::vector<int>& gens)
-    : impl_ptr_(std::make_shared<WordRep>(gens.begin(), gens.end())) {}
+  explicit Word(std::vector<int> gens)
+    : impl_ptr_(std::make_shared<WordRep>(std::move(gens))) {}
 
   //! Constructs a word by its presentation (if the word defined in gens is not reduced then it reduces it).
-  explicit Word(std::list<int> gens)
-    : impl_ptr_(std::make_shared<WordRep>(std::move(gens))) {}
+  explicit Word(const std::list<int>& gens)
+    : impl_ptr_(std::make_shared<WordRep>(gens)) {}
 
   explicit Word(std::initializer_list<int> gens)
     : impl_ptr_(std::make_shared<WordRep>(gens)) {}
@@ -64,7 +65,7 @@ public:
 
   //! Comparison operator
   bool operator>(const Word& other) const {
-    return other > *this;
+    return other < *this;
   }
 
   //! Comparison operator
@@ -173,7 +174,7 @@ public:
     return impl_ptr_->toList();
   }
 
-  std::vector<int> toVector() const {
+  const std::vector<int>& toVector() const {
     return impl_ptr_->toVector();
   }
 
@@ -416,5 +417,9 @@ private:
 Word operator"" _w(const char* str, size_t);
 
 Word abelianization(const Word& w);
+
+//! For a word w returns a map m such that for i > 0
+//! m[i] is the number of occurrences of x_{i}^{+/- 1} in w.
+std::map<size_t, size_t> occurrences(const Word& w);
 
 #endif // CRAG_WORD_H
