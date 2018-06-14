@@ -20,6 +20,7 @@ crag_library(crag_general
 )
 
 target_link_libraries(crag_general
+  PUBLIC Boost::boost
   PRIVATE ranlib
 )
 

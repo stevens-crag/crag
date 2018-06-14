@@ -173,4 +173,6 @@ private:
 //! Compares two braids using LinkedBraidStructure.
 bool areEqualBraids(size_t n, const Word& lhs, const Word& rhs);
 
+bool isTrivialBraid(size_t n, const Word& w);
+
 #endif // CRAG_LINKED_BRAID_STRUCTURE_H

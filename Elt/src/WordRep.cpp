@@ -10,11 +10,18 @@
 #include <cmath>
 #include <sstream>
 
-WordRep::WordRep(std::list<int> gens)
+WordRep::WordRep(const std::list<int>& gens)
+  : elements_(gens.begin(), gens.end()) {
+  validate_();
+  freelyReduce();
+}
+
+WordRep::WordRep(std::vector<int> gens)
   : elements_(std::move(gens)) {
   validate_();
   freelyReduce();
 }
+
 
 WordRep::WordRep(int g)
   : elements_({g}) {
@@ -111,7 +118,7 @@ void WordRep::cyclicLeftShift() {
   }
 
   reduced_push_back_(elements_.front());
-  elements_.pop_front();
+  elements_.erase(elements_.begin());
 }
 
 void WordRep::cyclicRightShift() {
@@ -165,6 +172,7 @@ int WordRep::exponentSum(int gen) const {
 
 WordRep WordRep::inverse() const {
   storage_t elements;
+  elements.reserve(size());
 
   for (auto it = elements_.rbegin(); it != elements_.rend(); ++it) {
     elements.push_back(-*it);
@@ -259,7 +267,8 @@ void WordRep::cyclicallyPermute(int n) {
   auto middle = elements_.begin();
   std::advance(middle, n);
 
-  elements_.splice(elements_.end(), elements_, elements_.begin(), middle);
+  std::rotate(elements_.begin(), middle, elements_.end());
+
   freelyReduce();
 }
 
@@ -309,6 +318,7 @@ void WordRep::terminalSegment(size_t from) {
 WordRep WordRep::cyclicallyReduce() {
   WordRep conjugator;
 
+  // TODO: rewrite using iterators to avoid erase
   while (elements_.size() > 1) {
     const auto b = elements_.front();
     const auto e = elements_.back();
@@ -318,9 +328,9 @@ WordRep WordRep::cyclicallyReduce() {
     }
 
     elements_.pop_back();
-    elements_.pop_front();
+    elements_.erase(elements_.begin());
 
-    conjugator.elements_.push_front(e);
+    conjugator.elements_.insert(conjugator.elements_.begin(), e);
   }
 
   return conjugator;
@@ -431,20 +441,21 @@ void WordRep::freelyReduce() {
 }
 
 void WordRep::freelyReduce(iterator begin, iterator end) {
-  // cut prefix
-  storage_t prefix;
-  prefix.splice(prefix.begin(), elements_, elements_.begin(), begin);
-
   // cut suffix
-  storage_t suffix;
-  suffix.splice(suffix.begin(), elements_, end, elements_.end());
+  storage_t suffix(end, elements_.end());
+  elements_.erase(end, elements_.end());
+
+  // cut prefix
+  storage_t prefix(elements_.begin(), begin);
+  elements_.erase(elements_.begin(), begin);
+
 
   // reduce the remaining part
   freelyReduce();
 
   // put prefix and suffix back
-  elements_.splice(elements_.begin(), prefix, prefix.begin(), prefix.end());
-  elements_.splice(elements_.end(), suffix, suffix.begin(), suffix.end());
+  elements_.insert(elements_.begin(), prefix.begin(), prefix.end());
+  elements_.insert(elements_.end(), suffix.begin(), suffix.end());
 }
 
 void WordRep::reduced_push_back_(int g) {
@@ -475,9 +486,9 @@ void WordRep::reduced_push_front_(int g) {
   const int first_el = elements_.front();
 
   if (first_el + g == 0) {
-    elements_.pop_front();
+    elements_.erase(elements_.begin());
   } else {
-    elements_.push_front(g);
+    elements_.insert(elements_.begin(), g);
   }
 }
 

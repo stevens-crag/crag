@@ -18,16 +18,16 @@ std::vector<size_t> calculateRs(const std::vector<size_t>& p, size_t init) {
 }
 
 
-std::vector<Word> calculateYGensInBGens(const std::vector<size_t>& p) {
+std::vector<std::vector<int>> calculateYGensInBGens(const std::vector<size_t>& p) {
   const auto rs = calculateRs(p);
 
-  std::vector<Word> result;
+  std::vector<std::vector<int>> result;
 
   for (size_t i = 1; i < rs.size(); ++i) {
     for (size_t j = rs[i - 1]; j < rs[i]; ++j) {
       std::vector<int> w(rs[i] - j);
       std::iota(w.begin(), w.end(), j);
-      result.push_back(Word(w));
+      result.push_back(w);
     }
   }
 
@@ -35,25 +35,25 @@ std::vector<Word> calculateYGensInBGens(const std::vector<size_t>& p) {
 }
 
 
-std::vector<Word> calculateBGensInYGens(const std::vector<size_t>& p) {
+std::vector<std::vector<int>> calculateBGensInYGens(const std::vector<size_t>& p) {
   const auto rs = calculateRs(p);
 
-  std::vector<Word> result;
+  std::vector<std::vector<int>> result;
 
   for (size_t i = 1; i < rs.size(); ++i) {
     for (int j = static_cast<int>(rs[i - 1]); j < static_cast<int>(rs[i]) - 1; ++j) {
-      result.push_back(Word({j, -(j + 1)}));
+      result.push_back({j, -(j + 1)});
     }
 
-    result.push_back(Word({static_cast<int>(rs[i]) - 1}));
+    result.push_back({static_cast<int>(rs[i]) - 1});
   }
 
   return result;
 }
 
 
-std::vector<Word> calculateYRelations(const std::vector<size_t>& p) {
-  std::vector<Word> result;
+std::vector<std::vector<int>> calculateYRelations(const std::vector<size_t>& p) {
+  std::vector<std::vector<int>> result;
 
   const auto rs = calculateRs(p);
   const auto n = rs.back();
@@ -63,22 +63,22 @@ std::vector<Word> calculateYRelations(const std::vector<size_t>& p) {
   const auto b_gens = calculateBGensInYGens(p);
 
   for (const auto& r : rels) {
-    result.push_back(r.replaceGenerators(b_gens));
+    result.push_back(replaceGenerators(r.toVector(), b_gens));
   }
 
   return result;
 }
 
 
-std::vector<Word> calculateAdditionalRelations(const std::vector<size_t>& p) {
+std::vector<std::vector<int>> calculateAdditionalRelations(const std::vector<size_t>& p) {
   const auto rs = calculateRs(p);
 
-  std::vector<Word> result;
+  std::vector<std::vector<int>> result;
 
   for (size_t k = 1; k < rs.size(); ++k) {
     for (int i = rs[k - 1]; i < static_cast<int>(rs[k]); ++i) {
       for (int j = i + 1; j <= static_cast<int>(rs[k]) - 1; ++j) {
-        result.push_back(Word({j, i, static_cast<int>(rs[k]) - 1, 1 - j, -i}));
+        result.push_back({j, i, static_cast<int>(rs[k]) - 1, 1 - j, -i});
       }
     }
   }
@@ -87,8 +87,8 @@ std::vector<Word> calculateAdditionalRelations(const std::vector<size_t>& p) {
 }
 
 
-std::vector<Word> calculateSRelations(const std::vector<size_t>& p) {
-  std::vector<Word> result;
+std::vector<std::vector<int>> calculateSRelations(const std::vector<size_t>& p) {
+  std::vector<std::vector<int>> result;
 
   const auto y_relations = calculateYRelations(p);
   const auto additional_relations = calculateAdditionalRelations(p);
@@ -98,10 +98,9 @@ std::vector<Word> calculateSRelations(const std::vector<size_t>& p) {
 
   for (const auto& r : relations) {
     result.push_back(r);
-    for (size_t i = 1; i < r.length(); ++i) {
+    for (size_t i = 1; i < r.size(); ++i) {
       auto t = result.back();
-      t.cyclicLeftShift();
-      result.push_back(t);
+      result.push_back(cyclicLeftShift(result.back()));
     }
   }
 
@@ -109,15 +108,59 @@ std::vector<Word> calculateSRelations(const std::vector<size_t>& p) {
 }
 
 
-std::multimap<Word, Word> calculateRewritingRules(const std::vector<size_t>& p) {
-  std::multimap<Word, Word> result;
+std::multimap<std::vector<int>, std::vector<int>> calculateRewritingRules(const std::vector<size_t>& p) {
+  std::multimap<std::vector<int>, std::vector<int>> result;
 
   const auto rels = calculateSRelations(p);
 
   for (const auto& r : rels) {
-    result.emplace(r.segment(0, 2), r.terminalSegment(2) ^ -1);
-    result.emplace(r.segment(0, 2) ^ -1, r.terminalSegment(2));
+    std::vector<int> beg{r[0], r[1]};
+    std::vector<int> rest(r.begin() + 2, r.end());
+
+    result.emplace(beg, invert(rest));
+    result.emplace(invert(beg), rest);
   }
+
+  return result;
+}
+
+
+std::vector<int> replaceGenerators(const std::vector<int>& w, const std::vector<std::vector<int>>& images) {
+  std::vector<int> result;
+
+  std::vector<std::vector<int>> inv_images;
+
+  for (const auto& image : images) {
+    inv_images.push_back(invert(image));
+  }
+
+  for (auto a : w) {
+    if (a > 0) {
+      append(result, images[a - 1].begin(), images[a - 1].end());
+    } else {
+      append(result, inv_images[-a - 1].begin(), inv_images[-a - 1].end());
+    }
+  }
+
+  return result;
+}
+
+
+std::vector<int> invert(const std::vector<int>& w) {
+  std::vector<int> result;
+
+  for (int i = w.size() - 1; i >= 0; --i) {
+    result.push_back(-w[i]);
+  }
+
+  return result;
+}
+
+
+std::vector<int> cyclicLeftShift(const std::vector<int>& w) {
+  auto result = w;
+  
+  std::rotate(result.begin(), result.begin() + 1, result.end());
 
   return result;
 }

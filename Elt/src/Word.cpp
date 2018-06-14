@@ -207,3 +207,19 @@ Word abelianization(const Word& w) {
 
   return Word(std::move(result));
 }
+
+std::map<size_t, size_t> occurrences(const Word& w) {
+  std::map<size_t, size_t> result;
+
+  for (const auto gen : w) {
+    const auto abs_gen = std::abs(gen);
+
+    if (result.count(abs_gen) == 0) {
+      result[abs_gen] = 0;
+    }
+
+    result[abs_gen] += 1;
+  }
+
+  return result;
+}

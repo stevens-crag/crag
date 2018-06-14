@@ -15,6 +15,10 @@ Word shortenBraid2(int n, const Word &w);
 //! Compute normal form for w and then shorten the result
 Word shortBraidForm( int N , const Word& w );
 
+Word dehornoy(int N, const Word& w);
+
+Word garsideDehornoy(int N, const Word& w);
+
 vector<Word> shortBraidSbgpForm(int N, const vector<Word> &w);
 
 LinkedBraidStructure shortenLBS(LinkedBraidStructure &lbs);

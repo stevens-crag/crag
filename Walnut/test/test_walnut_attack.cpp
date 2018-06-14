@@ -112,17 +112,17 @@ TEST(WalnutAttack, AvailableFlips) {
     const auto without_v = sig.v1() * -private_key.w1() * sig.encodedMessageHash() * private_key.w2() * sig.v2();
     const auto without_v2 = sig.signature() * -sig.v2();
 
-    const auto is_without_v1 = parallel::map<std::pair<size_t, Word>, bool>(
+    const auto is_without_v1 = parallel::bmap(
         flips, [&](const std::pair<size_t, Word>& f) {
           return !checker.isNonTrivial(-f.second * without_v1);
         });
 
-    const auto is_without_v = parallel::map<std::pair<size_t, Word>, bool>(
+    const auto is_without_v = parallel::bmap(
         flips, [&](const std::pair<size_t, Word>& f) {
           return !checker.isNonTrivial(-f.second * without_v);
         });
 
-    const auto is_without_v2 = parallel::map<std::pair<size_t, Word>, bool>(
+    const auto is_without_v2 = parallel::bmap(
         flips, [&](const std::pair<size_t, Word>& f) {
           return !checker.isNonTrivial(-f.second * without_v2);
         });

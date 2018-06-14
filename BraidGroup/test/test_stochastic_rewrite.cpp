@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <random>
 
 #include "LinkedBraidStructure.h"
 
@@ -34,21 +35,21 @@ TEST(StochasticRewriteTest, TestCalculateYGens) {
 
   ASSERT_EQ(15, y_gens.size());
 
-  EXPECT_EQ(y_gens[0], Word({1, 2, 3}));
-  EXPECT_EQ(y_gens[1], Word({2, 3}));
-  EXPECT_EQ(y_gens[2], Word({3}));
-  EXPECT_EQ(y_gens[3], Word({4, 5, 6, 7}));
-  EXPECT_EQ(y_gens[4], Word({5, 6, 7}));
-  EXPECT_EQ(y_gens[5], Word({6, 7}));
-  EXPECT_EQ(y_gens[6], Word({7}));
-  EXPECT_EQ(y_gens[7], Word({8, 9, 10}));
-  EXPECT_EQ(y_gens[8], Word({9, 10}));
-  EXPECT_EQ(y_gens[9], Word({10}));
-  EXPECT_EQ(y_gens[10], Word({11, 12, 13, 14, 15}));
-  EXPECT_EQ(y_gens[11], Word({12, 13, 14, 15}));
-  EXPECT_EQ(y_gens[12], Word({13, 14, 15}));
-  EXPECT_EQ(y_gens[13], Word({14, 15}));
-  EXPECT_EQ(y_gens[14], Word({15}));
+  EXPECT_EQ(y_gens[0], std::vector<int>({1, 2, 3}));
+  EXPECT_EQ(y_gens[1], std::vector<int>({2, 3}));
+  EXPECT_EQ(y_gens[2], std::vector<int>({3}));
+  EXPECT_EQ(y_gens[3], std::vector<int>({4, 5, 6, 7}));
+  EXPECT_EQ(y_gens[4], std::vector<int>({5, 6, 7}));
+  EXPECT_EQ(y_gens[5], std::vector<int>({6, 7}));
+  EXPECT_EQ(y_gens[6], std::vector<int>({7}));
+  EXPECT_EQ(y_gens[7], std::vector<int>({8, 9, 10}));
+  EXPECT_EQ(y_gens[8], std::vector<int>({9, 10}));
+  EXPECT_EQ(y_gens[9], std::vector<int>({10}));
+  EXPECT_EQ(y_gens[10], std::vector<int>({11, 12, 13, 14, 15}));
+  EXPECT_EQ(y_gens[11], std::vector<int>({12, 13, 14, 15}));
+  EXPECT_EQ(y_gens[12], std::vector<int>({13, 14, 15}));
+  EXPECT_EQ(y_gens[13], std::vector<int>({14, 15}));
+  EXPECT_EQ(y_gens[14], std::vector<int>({15}));
 }
 
 
@@ -59,21 +60,21 @@ TEST(StochasticRewriteTest, TestCalculateBGens) {
 
   ASSERT_EQ(15, b_gens.size());
 
-  EXPECT_EQ(b_gens[0], Word({1, -2}));
-  EXPECT_EQ(b_gens[1], Word({2, -3}));
-  EXPECT_EQ(b_gens[2], Word({3}));
-  EXPECT_EQ(b_gens[3], Word({4, -5}));
-  EXPECT_EQ(b_gens[4], Word({5, -6}));
-  EXPECT_EQ(b_gens[5], Word({6, -7}));
-  EXPECT_EQ(b_gens[6], Word({7}));
-  EXPECT_EQ(b_gens[7], Word({8, -9}));
-  EXPECT_EQ(b_gens[8], Word({9, -10}));
-  EXPECT_EQ(b_gens[9], Word({10}));
-  EXPECT_EQ(b_gens[10], Word({11, -12}));
-  EXPECT_EQ(b_gens[11], Word({12, -13}));
-  EXPECT_EQ(b_gens[12], Word({13, -14}));
-  EXPECT_EQ(b_gens[13], Word({14, -15}));
-  EXPECT_EQ(b_gens[14], Word({15}));
+  EXPECT_EQ(b_gens[0], std::vector<int>({1, -2}));
+  EXPECT_EQ(b_gens[1], std::vector<int>({2, -3}));
+  EXPECT_EQ(b_gens[2], std::vector<int>({3}));
+  EXPECT_EQ(b_gens[3], std::vector<int>({4, -5}));
+  EXPECT_EQ(b_gens[4], std::vector<int>({5, -6}));
+  EXPECT_EQ(b_gens[5], std::vector<int>({6, -7}));
+  EXPECT_EQ(b_gens[6], std::vector<int>({7}));
+  EXPECT_EQ(b_gens[7], std::vector<int>({8, -9}));
+  EXPECT_EQ(b_gens[8], std::vector<int>({9, -10}));
+  EXPECT_EQ(b_gens[9], std::vector<int>({10}));
+  EXPECT_EQ(b_gens[10], std::vector<int>({11, -12}));
+  EXPECT_EQ(b_gens[11], std::vector<int>({12, -13}));
+  EXPECT_EQ(b_gens[12], std::vector<int>({13, -14}));
+  EXPECT_EQ(b_gens[13], std::vector<int>({14, -15}));
+  EXPECT_EQ(b_gens[14], std::vector<int>({15}));
 }
 
 
@@ -82,12 +83,11 @@ TEST(StochasticRewriteTest, TestYRelations) {
 
   const auto y_rels = calculateYRelations(partition);
 
-
   ASSERT_EQ(3, y_rels.size());
 
-  EXPECT_EQ(y_rels[0], Word({1, -3, 1, -2, 3, -1, 3, -2}));
-  EXPECT_EQ(y_rels[1], Word({1, -2, 3, 2, -1, -3}));
-  EXPECT_EQ(y_rels[2], Word({2, 2, -3, -2, -3}));
+  EXPECT_EQ(y_rels[0], std::vector<int>({1, -3, 1, -2, 3, -1, 3, -2}));
+  EXPECT_EQ(y_rels[1], std::vector<int>({1, -2, 3, 2, -1, -3}));
+  EXPECT_EQ(y_rels[2], std::vector<int>({2, 2, -3, -2, -3}));
 }
 
 
@@ -97,18 +97,18 @@ TEST(StochasticRewriteTest, TestAdditionalRelations) {
   const auto a_rels = calculateAdditionalRelations(partition);
 
   ASSERT_EQ(12, a_rels.size());
-  EXPECT_EQ(a_rels[0], Word({2, 1, 4, -1, -1}));
-  EXPECT_EQ(a_rels[1], Word({3, 1, 4, -2, -1}));
-  EXPECT_EQ(a_rels[2], Word({4, 1, 4, -3, -1}));
-  EXPECT_EQ(a_rels[3], Word({3, 2, 4, -2, -2}));
-  EXPECT_EQ(a_rels[4], Word({4, 2, 4, -3, -2}));
-  EXPECT_EQ(a_rels[5], Word({4, 3, 4, -3, -3}));
-  EXPECT_EQ(a_rels[6], Word({6, 5, 8, -5, -5}));
-  EXPECT_EQ(a_rels[7], Word({7, 5, 8, -6, -5}));
-  EXPECT_EQ(a_rels[8], Word({8, 5, 8, -7, -5}));
-  EXPECT_EQ(a_rels[9], Word({7, 6, 8, -6, -6}));
-  EXPECT_EQ(a_rels[10], Word({8, 6, 8, -7, -6}));
-  EXPECT_EQ(a_rels[11], Word({8, 7, 8, -7, -7}));
+  EXPECT_EQ(a_rels[0], std::vector<int>({2, 1, 4, -1, -1}));
+  EXPECT_EQ(a_rels[1], std::vector<int>({3, 1, 4, -2, -1}));
+  EXPECT_EQ(a_rels[2], std::vector<int>({4, 1, 4, -3, -1}));
+  EXPECT_EQ(a_rels[3], std::vector<int>({3, 2, 4, -2, -2}));
+  EXPECT_EQ(a_rels[4], std::vector<int>({4, 2, 4, -3, -2}));
+  EXPECT_EQ(a_rels[5], std::vector<int>({4, 3, 4, -3, -3}));
+  EXPECT_EQ(a_rels[6], std::vector<int>({6, 5, 8, -5, -5}));
+  EXPECT_EQ(a_rels[7], std::vector<int>({7, 5, 8, -6, -5}));
+  EXPECT_EQ(a_rels[8], std::vector<int>({8, 5, 8, -7, -5}));
+  EXPECT_EQ(a_rels[9], std::vector<int>({7, 6, 8, -6, -6}));
+  EXPECT_EQ(a_rels[10], std::vector<int>({8, 6, 8, -7, -6}));
+  EXPECT_EQ(a_rels[11], std::vector<int>({8, 7, 8, -7, -7}));
 }
 
 
@@ -152,7 +152,7 @@ TEST(StochasticRewriteTest, TestSelectSubwords) {
 TEST(StochasticRewriteTest, TestRewrite) {
   const std::vector<size_t> partition{3, 4};
 
-  const Word w({1, 2, 1, 2, 3});
+  const std::vector<int> w{1, 2, 1, 2, 3};
 
   std::mt19937 g(1234);
 
@@ -160,7 +160,7 @@ TEST(StochasticRewriteTest, TestRewrite) {
 
   const auto rewritten = rewrite(w, 3, 6, rules, g);
 
-  EXPECT_EQ(Word({3, 1, 3, 1, 2, 3}), rewritten);
+  EXPECT_EQ(std::vector<int>({3, 1, 3, 1, 2, 3}), rewritten);
 }
 
 
@@ -200,6 +200,21 @@ TEST(StochasticRewriteTest, TestStochasticRewrite2) {
 
     EXPECT_TRUE(compareBraids(n, w, rewritten));
   }
+}
+
+
+TEST(StochasticRewriteTest, TestStochasticRewrite3) {
+  const size_t n = 16;
+
+  std::mt19937 g(1234);
+
+  const auto partition = randomPartition(n - 1, 3, n - 1, g);
+
+  const auto w = random::randomWord(n - 1, 20000, g);
+
+  const auto rewritten = stochasticRewrite(w, partition, 5, 10, 3, g);
+
+  EXPECT_TRUE(compareBraids(n, w, rewritten));
 }
 } // namespace
 } // namespace stochasticrewrite

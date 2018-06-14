@@ -18,6 +18,19 @@ LinkedBraidStructure shortenLBS(LinkedBraidStructure& lbs) {
   return result;
 }
 
+Word dehornoy(int N, const Word& w) {
+  LinkedBraidStructure df(N - 1, w);
+  df.removeLeftHandles();
+  return df.translateIntoWord();
+}
+
+Word garsideDehornoy(int N, const Word& w) {
+  crag::braidgroup::BraidGroup B(N);
+  ThRightNormalForm NF(B, w);
+  const auto w1 = NF.getShortWord();
+  return dehornoy(N, w1);
+}
+
 Word shortenBraid(int N, const Word& w) {
   LinkedBraidStructure df(N - 1, w);
   LinkedBraidStructure result = df;

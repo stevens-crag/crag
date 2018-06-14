@@ -17,7 +17,7 @@
 //! Usually a word is kept reduced, except for the cases when insert/replace functions are used.
 class WordRep {
 private:
-  using storage_t = std::list<int>;
+  using storage_t = std::vector<int>;
 
 public:
   using iterator = storage_t::iterator;
@@ -28,7 +28,9 @@ public:
 
   explicit WordRep(int g);
 
-  explicit WordRep(std::list<int> gens);
+  explicit WordRep(const std::list<int>& gens);
+
+  explicit WordRep(std::vector<int> gens);
 
   explicit WordRep(std::initializer_list<int> gens);
 
@@ -218,15 +220,15 @@ public:
   }
 
   void pop_front() {
-    elements_.pop_front();
+    elements_.erase(elements_.begin());
   }
 
   std::list<int> toList() const {
-    return elements_;
+    return std::list<int>(elements_.begin(), elements_.end());
   }
 
-  std::vector<int> toVector() const {
-    return std::vector<int>(elements_.begin(), elements_.end());
+  const std::vector<int>& toVector() const {
+    return elements_;
   }
 
 private:

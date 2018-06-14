@@ -220,7 +220,7 @@ TEST(Word, ExponentSums) {
   EXPECT_THROW({ w.exponentSum(0); }, std::invalid_argument);
 }
 
-TEST(Word, Occurrences) {
+TEST(Word, Occurrences_1) {
   const Word w({1, 1, 2, 3, -1, -2});
 
   EXPECT_EQ(3, w.isIn(1));
@@ -228,6 +228,26 @@ TEST(Word, Occurrences) {
   EXPECT_EQ(1, w.isIn(3));
 
   EXPECT_THROW({ w.isIn(0); }, std::invalid_argument);
+}
+
+TEST(Word, Occurrences_2) {
+  using map = std::map<size_t, size_t>;
+
+  EXPECT_EQ(map({
+      {1, 1},
+  }), occurrences(Word({1})));
+
+  EXPECT_EQ(map({
+      {1, 2},
+      {2, 1},
+  }), occurrences(Word({1, 2, -1})));
+
+  EXPECT_EQ(map({
+      {1, 2},
+      {2, 2},
+      {3, 1},
+      {4, 2},
+  }), occurrences(Word({1, 2, 4, -2, -4, -1, 3})));
 }
 
 TEST(Word, Insert_01) {

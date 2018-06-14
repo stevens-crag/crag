@@ -10,13 +10,13 @@ HunterGate(
 project(crag)
 
 ### Download dependencies ###
-hunter_add_package(Boost COMPONENTS program_options system thread)
+hunter_add_package(Boost COMPONENTS program_options)
 hunter_add_package(GTest)
 hunter_add_package(benchmark)
 
 ### Find dependencies ###
 find_package(GTest CONFIG REQUIRED) # GTest::main
-find_package(Boost CONFIG REQUIRED program_options system thread) # Boost::boost, Boost::program_options, and so on ...
+find_package(Boost CONFIG REQUIRED program_options) # Boost::boost, Boost::program_options
 find_package(benchmark CONFIG REQUIRED) # benchmark::benchmark
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
@@ -69,4 +69,5 @@ add_subdirectory(TheGrigorchukGroup)
 add_subdirectory(Polynomial)
 add_subdirectory(Matrix)
 add_subdirectory(Random)
+add_subdirectory(Kayawood)
 add_subdirectory(Walnut)

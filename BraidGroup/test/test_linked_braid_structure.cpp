@@ -33,5 +33,18 @@ TEST(LinkedBraidStructure, Equivalence) {
     EXPECT_TRUE(areEqualBraids(n, w, w_short));
   }
 }
+
+TEST(LinkedBraidStructure, LongWords) {
+  const size_t n = 16;
+
+  std::mt19937_64 g(0);
+
+  for (size_t i = 0; i < 5; ++i) {
+    const auto w = random::randomWord(n - 1, 20000, g);
+    const auto w_short = shortenBraid2(n, w);
+
+    EXPECT_TRUE(areEqualBraids(n, w, w_short));
+  }
+}
 } // namespace
 } // namespace crag
