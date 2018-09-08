@@ -42,6 +42,44 @@ TEST(Walnut, Encoding_3) {
   EXPECT_TRUE(sigma.isTrivial());
 }
 
+TEST(Walnut, AdvancedEncoding_1) {
+  const auto n = 8;
+  const auto encoder = AdvancedEncoder(
+      n,
+      16,
+      {
+          {1, 3, 2, 7},
+          {4, 6, 1, 6},
+          {3, 5, 2, 4},
+      });
+
+  const msg_hash_t msg_hash = {0b00101101, 0b10010011};
+
+  const auto g_1 = getFreePureBraidSubgroupGen(n, 1);
+  const auto g_2 = getFreePureBraidSubgroupGen(n, 2);
+  const auto g_3 = getFreePureBraidSubgroupGen(n, 3);
+  const auto g_4 = getFreePureBraidSubgroupGen(n, 4);
+  const auto g_5 = getFreePureBraidSubgroupGen(n, 5);
+  const auto g_6 = getFreePureBraidSubgroupGen(n, 6);
+  const auto g_7 = getFreePureBraidSubgroupGen(n, 7);
+
+  EXPECT_EQ(g_1 * g_1 * g_4 * g_3 * g_1 * g_5 * g_1 * g_6, encoder(msg_hash));
+}
+
+TEST(Walnut, AdvancedEncoding_2) {
+  const auto n = 12;
+  const auto k = 9;
+  const auto hash_size = 512;
+  std::mt19937_64 g(0);
+
+  const auto encoder = randomAdvancedEncoder(n, k, hash_size, g);
+  const auto msg_hash = randomMessageHash(hash_size, g);
+
+  const auto w = encoder(msg_hash);
+
+  EXPECT_TRUE(coloredburau::permutation(n, w).isTrivial());
+}
+
 TEST(Walnut, FreePureBraidSubgroupGen) {
   EXPECT_EQ(Word({6, 6}), getFreePureBraidSubgroupGen(7, 6));
   EXPECT_EQ(Word({6, 5, 4, 4, -5, -6}), getFreePureBraidSubgroupGen(7, 4));

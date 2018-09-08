@@ -201,11 +201,11 @@ removeLeftCloakingElementsForPair(size_t n, size_t a, size_t b, const Word& sig1
     return lhs.first < rhs.first;
   };
 
-  // consider only flips in the FIRST half of sig1
+  // consider only flips in the FIRST third of sig1
   const auto it1 = std::lower_bound(flips1.begin(), flips1.end(), std::make_pair(sig1.size() / 3, Word()), cmp);
   flips1.erase(it1, flips1.end());
 
-  // consider only flips in the FIRST half of sig2
+  // consider only flips in the FIRST third of sig2
   const auto it2 = std::lower_bound(flips2.begin(), flips2.end(), std::make_pair(sig2.size() / 3, Word()), cmp);
   flips2.erase(it2, flips2.end());
 
@@ -232,16 +232,6 @@ removeLeftCloakingElementsForPair(size_t n, size_t a, size_t b, const Word& sig1
 
   const auto it = std::min_element(lengths.begin(), lengths.end());
   const auto idx = std::distance(lengths.begin(), it);
-
-  //cout << endl;
-  //for (int i = 0; i < flips1.size(); ++i) {
-  //  for (int j = 0; j < flips2.size(); ++j) {
-  //    size_t k = i * flips2.size() + j;
-  //    cout << lengths[k] << ",";
-  //  }
-  //  cout << endl;
-  //}
-  //cout << "   min = " << *it << endl;
 
   // unwrap indices
   size_t i, j;
@@ -279,11 +269,11 @@ removeRightCloakingElementsForPair(size_t n, size_t a, size_t b, const Word& sig
     return lhs.first < rhs.first;
   };
 
-  // consider only flips in the SECOND half of sig1
+  // consider only flips in the LAST third of sig1
   const auto it1 = std::upper_bound(flips1.begin(), flips1.end(), std::make_pair(sig1.size() / 3, Word()), cmp);
   flips1.erase(flips1.begin(), it1);
 
-  // consider only flips in the SECOND half of sig2
+  // consider only flips in the LAST third of sig2
   const auto it2 = std::upper_bound(flips2.begin(), flips2.end(), std::make_pair(sig2.size() / 3, Word()), cmp);
   flips2.erase(flips2.begin(), it2);
 
@@ -337,11 +327,12 @@ std::vector<Word> removeRightCloakingElements(size_t n, size_t a, size_t b, cons
   return result;
 }
 
-//!
+//! Precise test for properly uncloaked signatures, only for diagnostics.
 bool isUncloakedCorrectly(size_t n, const PrivateKey& private_key, const Signature& s, const Word& s_uncloaked) {
   return areEqualBraids(n, s_uncloaked, (-private_key.w1() * s.encodedMessageHash() * private_key.w2()));
 }
 
+//! Heuristic test for properly uncloaked signatures available for the attack.
 bool areUncloakedCorrectly(
     size_t n, const Signature& s1, const Signature& s2, const Word& s1_uncloaked, const Word& s2_uncloaked) {
   static braidgroup::FastConjugacyChecker<FF> conjugacy_checker(n, 0);
@@ -413,32 +404,43 @@ boost::optional<std::pair<Word, Word>> removeCloakingElements(
   return boost::none;
 }
 
-pair<size_t, size_t> range(const vector<Word>& v) {
-  size_t least = -1;
-  size_t greatest = -1;
-  for (const auto w : v) {
-    for (const auto l : w) {
-      size_t ind = abs(l);
-      if (least == -1 || least > ind) {
-        least = ind;
-      }
-      if (greatest == -1 || greatest < ind) {
-        greatest = ind;
-      }
+//! Returns minimal and maximal indices of generators in a vector of words.
+std::pair<size_t, size_t> range(const vector<Word>& words) {
+  size_t min_index = std::numeric_limits<size_t>::max();
+  size_t max_index = 0;
+
+  for (const auto& word : words) {
+    for (const auto g : word) {
+      const auto index_abs = static_cast<size_t>(std::abs(g));
+
+      min_index = std::min(min_index, index_abs);
+      max_index = std::max(max_index, index_abs);
     }
   }
-  return make_pair(least, greatest);
+
+  return std::make_pair(min_index, max_index);
 }
 
-vector<Word> conjugateBySmallDelta(const vector<Word>& v, size_t delta) {
-  vector<Word> result;
-  for (const auto& w : v) {
-    Word new_w;
-    for (const auto& l : w) {
-      new_w.push_back(l > 0 ? l - delta : l + delta);
-    }
-    result.push_back(new_w);
+//! Conjugates a word by small delta in degree = k.
+Word conjugateBySmallDelta(const Word& word, size_t k) {
+  std::vector<int> result;
+
+  for (const auto g : word) {
+    result.push_back(g > 0 ? g - k : g + k);
   }
+
+  return Word(std::move(result));
+}
+
+//! Conjugates a tuple of words by small delta in degree = k.
+vector<Word> conjugateBySmallDelta(const vector<Word>& words, size_t k) {
+  vector<Word> result;
+  result.reserve(words.size());
+
+  for (const auto& w : words) {
+    result.push_back(conjugateBySmallDelta(w, k));
+  }
+
   return result;
 }
 
@@ -454,60 +456,34 @@ vector<Word> conjugateByDelta(const vector<Word>& v, size_t max_index) {
   return result;
 }
 
-boost::optional<vector<Word>> pushToLowerRank(size_t n, const vector<Word>& v) {
-  const auto r = range(v);
-  {
-    vector<Word> left_handle_free;
-    bool lower_index_free = true;
-    bool greater_index_free = true;
-    for (const auto& w : v) {
-      LinkedBraidStructure lbs(n - 1, w);
-      lbs.removeLeftHandles();
-      const auto w1 = lbs.translateIntoWord();
-      left_handle_free.push_back(w1);
-      for (auto l : w1) {
-        if (abs(l) == r.first) {
-          lower_index_free = false;
-        }
-        if (abs(l) == r.second) {
-          greater_index_free = false;
-        }
-      }
-      if (!lower_index_free && !greater_index_free) {
-        break;
-      }
-    }
-    if (lower_index_free || greater_index_free) {
-      return left_handle_free;
-    }
-  }
-  {
-    vector<Word> handle_free;
-    bool lower_index_free = true;
-    bool greater_index_free = true;
-    for (const auto& w : v) {
-      LinkedBraidStructure lbs(n - 1, w);
-      lbs.removeRightHandles();
-      const auto w1 = lbs.translateIntoWord();
-      handle_free.push_back(w1);
-      for (auto l : w1) {
-        if (abs(l) == r.first) {
-          lower_index_free = false;
-        }
-        if (abs(l) == r.second) {
-          greater_index_free = false;
-        }
-      }
-      if (!lower_index_free && !greater_index_free) {
-        break;
-      }
-    }
-    if (lower_index_free || greater_index_free) {
-      return handle_free;
-    }
+boost::optional<vector<Word>> pushToLowerRank(size_t n, const vector<Word>& words) {
+  const auto r = range(words);
+
+  const auto left_handle_free_words = parallel::map(words, [&](const Word& w) {
+    LinkedBraidStructure lbs(n - 1, w);
+    lbs.removeLeftHandles();
+    return lbs.translateIntoWord();
+  });
+
+  auto new_range = range(left_handle_free_words);
+
+  if (new_range.first > r.first || new_range.second < r.second) {
+    return left_handle_free_words;
   }
 
-  return boost::none;
+  const auto right_handle_free_words = parallel::map(words, [&](const Word& w) {
+    LinkedBraidStructure lbs(n - 1, w);
+    lbs.removeRightHandles();
+    return lbs.translateIntoWord();
+  });
+
+  new_range = range(right_handle_free_words);
+
+  if (new_range.first > r.first || new_range.second < r.second) {
+    return right_handle_free_words;
+  }
+
+  return {};
 }
 
 void resetEnumeration(
@@ -525,22 +501,77 @@ void resetEnumeration(
   unchecked_elts[new_hash] = make_pair(y, totalLength(v));
 }
 
+// Returns fundamental braid for BKL form.
+// Conjugation by it shifts indices: i -> i - 1.
 Word smallDelta(size_t n) {
-  Word delta;
-  for (int i = 1; i < n; ++i)
+  std::vector<int> delta;
+  delta.reserve(n);
+
+  for (int i = 1; i < n; ++i) {
     delta.push_back(i);
-  return delta;
+  }
+
+  return Word(std::move(delta));
 }
 
-vector<Word> constructConjugators(size_t n) {
-  vector<Word> result;
+std::vector<Word> constructConjugators(size_t n) {
+  std::vector<Word> result;
+  result.reserve(2 * n);
+
+
   for (int i = 1; i < n; ++i) {
     result.push_back(Word(i));
     result.push_back(Word(-i));
   }
+
   return result;
 }
 
+//! For a vector of words returns a vector of shortened conjugates.
+std::vector<Word> conjugate(size_t n, const std::vector<Word>& words, const Word& c) {
+  std::vector<Word> conjugated_words;
+  conjugated_words.reserve(words.size());
+
+  for (const auto& w : words) {
+    conjugated_words.push_back(shortenBraid2(n, (-c) * w * c));
+  }
+
+  return conjugated_words;
+}
+
+//! For a vector of words returns a vector of conjugates.
+std::vector<Word> conjugateWithoutShortening(const std::vector<Word>& words, const Word& c) {
+  std::vector<Word> conjugated_words;
+  conjugated_words.reserve(words.size());
+
+  for (const auto& w : words) {
+    conjugated_words.push_back((-c) * w * c);
+  }
+
+  return conjugated_words;
+}
+
+std::vector<std::vector<Word>> shortenTuplesParallel(size_t n, const std::vector<std::vector<Word>>& tuples) {
+  if (tuples.empty()) {
+    return tuples;
+  }
+
+  const auto tuples_count = tuples.size();
+  const auto tuple_size = tuples.front().size();
+
+  std::vector<std::vector<Word>> result(tuples_count, std::vector<Word>(tuple_size));
+
+  const auto words_count = tuples_count * tuple_size;
+
+  parallel::forEach(words_count, [&](size_t i) {
+    const auto tuple_idx = i / tuple_size;
+    const auto word_idx = i % tuple_size;
+
+    result[tuple_idx][word_idx] = shortenBraid2(n, tuples[tuple_idx][word_idx]);
+  });
+
+  return result;
+}
 
 boost::optional<braid_hash_t> generateNewElts(
     size_t n,
@@ -564,7 +595,7 @@ boost::optional<braid_hash_t> generateNewElts(
 
   // 2. If cur_vec does not involve x1, then conjugate by delta and reduce all indices
   if (size_t delta = r.first - 1) {
-    cout << "Reduce range!!!" << endl;
+    cout << "Reducing range..." << endl;
     const auto c = smallDelta(n).power(delta);
     resetEnumeration(
         conjugateBySmallDelta(cur_vec, r.first - 1), cur_y * c, hash_values, checked_elts, unchecked_elts, hasher);
@@ -573,6 +604,7 @@ boost::optional<braid_hash_t> generateNewElts(
 
   if (r.second > 4) {
     if (const auto new_vec = pushToLowerRank(n, cur_vec)) {
+      cout << "Pushing to lower rank..." << endl;
       resetEnumeration(new_vec.get(), cur_y, hash_values, checked_elts, unchecked_elts, hasher);
       return boost::none;
     }
@@ -580,50 +612,51 @@ boost::optional<braid_hash_t> generateNewElts(
 
   // 3. Form a set of transformations
   vector<Word> generators;
-  if (init_segments_as_conjugators) {
-    const int expected_conjugator_length = 250;
-    for (auto i = 0u; i < 10; i += 2) {
-      if (cur_vec.size() > i)
-        generators.push_back(cur_vec[i].initialSegment(expected_conjugator_length));
+  generators.reserve(2 * n + cur_vec.size());
+
+  if (!init_segments_as_conjugators) {
+    for (int i = 1; i < r.second + 1; ++i) {
+      generators.push_back(Word(i));
+      generators.push_back(Word(-i));
     }
-  } else {
-    generators = constructConjugators(r.second + 1);
-    for (auto i = 0u; i < 10; i += 2) {
-      if (cur_vec.size() > i)
-        generators.push_back(cur_vec[i].initialSegment(10));
-    }
+  }
+
+  const auto l = init_segments_as_conjugators ? 250 : 10;
+
+  for (size_t i = 0; i < cur_vec.size(); ++i) {
+    generators.push_back(cur_vec[i].subword(0, l));
   }
 
   // 4. Apply transformations
-  std::vector<std::future<vector<Word>>> fut(generators.size());
-  for (auto i = 0; i < generators.size(); ++i) {
-    fut[i] = std::async(multiplyVectorByWordsOnBothSides, n, cur_vec, -generators[i], generators[i]);
-  }
-  vector<pair<vector<Word>, Word>> new_vectors;
-  for (auto i = 0; i < generators.size(); ++i) {
-    const auto new_vec = fut[i].get();
-    new_vectors.push_back(make_pair(new_vec, generators[i]));
-    // const auto ed = easyDescend(n, new_vec);
-    // if (ed.second.length() != 0) {
-    //  new_vectors.push_back(make_pair(ed.first, generators[i] * ed.second));
-    //}
+  //  const auto conjugated_words =
+  //      parallel::map<Word, std::vector<Word>>(generators, [&](const Word& c) { return conjugate(n, cur_vec, c); });
+
+  std::vector<std::vector<Word>> conjugated_words;
+  conjugated_words.reserve(generators.size());
+
+  for (const auto& c : generators) {
+    conjugated_words.push_back(conjugateWithoutShortening(cur_vec, c));
   }
 
-  for (auto i = 0; i < new_vectors.size(); ++i) {
-    const auto& conj = new_vectors[i].second;
-    const auto& new_vec = new_vectors[i].first;
+  conjugated_words = shortenTuplesParallel(n, conjugated_words);
+
+  for (size_t i = 0; i < conjugated_words.size(); ++i) {
+    const auto& conj = generators[i];
+    const auto& new_vec = conjugated_words[i];
     const auto new_hash = hasher(new_vec);
     const auto new_vec2 = conjugateByDelta(new_vec, r.second);
     const auto new_hash2 = hasher(new_vec2);
     const auto new_cur_y = cur_y * conj;
-    // cout << totalLength(new_vec) << endl;
+
     if (hash_values.find(new_hash) == hash_values.end() && hash_values.find(new_hash2) == hash_values.end()) {
       hash_values[new_hash] = new_vec;
       unchecked_elts[new_hash] = make_pair(new_cur_y, totalLength(new_vec));
+
       if (hash_values2.find(new_hash) != hash_values2.end()) {
         cout << "We've done it 1!!!" << endl;
         return new_hash;
       }
+
       if (hash_values2.find(new_hash2) != hash_values2.end()) {
         cout << "We've done it 2!!!" << endl;
         Word delta_word = Word(Permutation::getHalfTwistPermutation(r.second + 1).geodesicWord());
@@ -633,9 +666,9 @@ boost::optional<braid_hash_t> generateNewElts(
       }
     }
   }
-  return boost::none;
-}
 
+  return {};
+}
 
 // Check if some components perform poorly (happens due to poorly removed cloaking elements)
 bool drop_poor_performing_components(
@@ -657,31 +690,26 @@ bool drop_poor_performing_components(
   auto t2 = checked_elts2[h2];
   vector<int> length_change;
   vector<int> length_diff;
-  std::ofstream OF("walnut.txt", std::ios::app);
-  OF << "    ";
   for (auto i = 0u; i < v1.size(); ++i) {
     const int d = vec1[i].length() - v1[i].length();
     length_change.push_back(d);
-    int diff = (int)vec1[i].length() - (int)vec2[i].length();
+    int diff = (int) vec1[i].length() - (int) vec2[i].length();
     length_diff.push_back(abs(diff));
     cout << d << " | ";
-    OF << d << " | ";
   }
   cout << endl;
-  OF << endl;
   const int min_elt = *std::min_element(length_change.begin(), length_change.end());
   const int max_elt = *std::max_element(length_diff.begin(), length_diff.end());
   for (int i = 0; i < v1.size(); ++i) {
     const auto d = vec1[i].length() - v1[i].length();
     int diff = abs((int) vec1[i].length() - (int) vec2[i].length());
     if (d == min_elt) {
-    // if (diff == max_elt) {
+      // if (diff == max_elt) {
       v1.erase(v1.begin() + i);
       v2.erase(v2.begin() + i);
       vec1.erase(vec1.begin() + i);
       vec2.erase(vec2.begin() + i);
       cout << "    Drop component #" << i << endl;
-      OF << "    Drop component #" << i << endl;
       resetEnumeration(v1, std::get<Word>(t1), hash_values1, checked_elts1, unchecked_elts1, hasher);
       resetEnumeration(v2, std::get<Word>(t2), hash_values2, checked_elts2, unchecked_elts2, hasher);
       return true;
@@ -696,7 +724,6 @@ boost::optional<PrivateKey> attack(
     const PrivateKey& private_key,
     const PublicKey<T>& public_key,
     URNG& g) {
-  // 1. Prepare parameters
   const auto n = p.publicParameters().n();
   const auto hash_size = p.encoder().hashSize();
 
@@ -704,12 +731,15 @@ boost::optional<PrivateKey> attack(
   static const crag::braidgroup::BraidHasher<FF> hasher(n);
 
   const size_t signatures_pairs_count = 3;
+  const size_t signatures_count = 2 * signatures_pairs_count;
 
+  // S_i
   std::vector<Signature> signatures;
-  signatures.reserve(2 * signatures_pairs_count);
+  signatures.reserve(signatures_count);
 
+  // P_i
   std::vector<Word> reduced_signatures;
-  reduced_signatures.reserve(2 * signatures_pairs_count);
+  reduced_signatures.reserve(signatures_count);
 
   size_t uncloaked_pairs = 0;
   size_t pair_index = 0;
@@ -736,59 +766,52 @@ boost::optional<PrivateKey> attack(
     }
   }
 
-  std::ofstream OF("walnut.txt", std::ios::app);
-
-  std::cout << "Cloaking elements success|";
-  OF << "  Cloaking elements success|";
-
-  const auto& w1 = private_key.w1();
-  const auto& w2 = private_key.w2();
-
-  for (size_t i = 0; i < reduced_signatures.size(); ++i) {
-    if (checker.isNonTrivial(-reduced_signatures[i] * -w1 * signatures[i].encodedMessageHash() * w2)) {
-      OF << "X";
-      std::cout << "X";
-    } else {
-      OF << "+";
-      std::cout << "+";
-    }
+  // DIAGNOSTICS
+  std::cout << "Cloaking elements success: ";
+  for (const auto b : parallel::bmap(signatures_count, [&](size_t i) {
+         return isUncloakedCorrectly(n, private_key, signatures[i], reduced_signatures[i]);
+       })) {
+    std::cout << (b ? "+" : "X");
   }
-
-  OF << std::endl;
-
   std::cout << std::endl;
 
-  // 5a. Prepare 1st set of data for enumeration
-  std::vector<Word> vec1; // = reduced_signatures;
-  for (size_t i = 1; i < reduced_signatures.size(); ++i) {
-    vec1.push_back(reduced_signatures[i - 1] * -reduced_signatures[i]);
+  // solve system of conjugacy equations
+  std::vector<Word> vec_lhs;
+  vec_lhs.reserve(signatures_count);
+
+  std::vector<Word> vec_rhs;
+  vec_rhs.reserve(signatures_count);
+
+  for (size_t i = 1; i < signatures_count; ++i) {
+    // P_{i-1} * P_i^{-1}
+    vec_lhs.push_back(reduced_signatures[i - 1] * -reduced_signatures[i]);
+
+    // E(H(m_{i-1})) * E(H(m_{i}))^{-1}
+    vec_rhs.push_back(signatures[i - 1].encodedMessageHash() * -signatures[i].encodedMessageHash());
   }
 
-  // 5b. Prepare 1st set of data for enumeration
-  std::vector<Word> vec2;
-  for (size_t i = 1; i < signatures.size(); ++i) {
-    vec2.push_back(signatures[i - 1].encodedMessageHash() * -signatures[i].encodedMessageHash());
-  }
+  vec_lhs = parallel::map(vec_lhs, [&](const Word& w) { return shortenBraid2(n, w); });
+  vec_rhs = parallel::map(vec_rhs, [&](const Word& w) { return shortenBraid2(n, w); });
 
   std::map<braid_hash_t, std::vector<Word>> hash_values1;
   std::map<braid_hash_t, std::pair<Word, size_t>> checked_elts1;
   std::map<braid_hash_t, std::pair<Word, size_t>> unchecked_elts1;
-  const auto h1 = hasher(vec1);
-  hash_values1[h1] = vec1;
-  unchecked_elts1[h1] = std::make_pair(Word(), totalLength(vec1));
+  const auto h1 = hasher(vec_lhs);
+  hash_values1[h1] = vec_lhs;
+  unchecked_elts1[h1] = std::make_pair(Word(), totalLength(vec_lhs));
 
   std::map<braid_hash_t, std::vector<Word>> hash_values2;
   std::map<braid_hash_t, std::pair<Word, size_t>> checked_elts2;
   std::map<braid_hash_t, std::pair<Word, size_t>> unchecked_elts2;
-  const auto h2 = hasher(vec2);
-  hash_values2[h2] = vec2;
-  unchecked_elts2[h2] = std::make_pair(Word(), totalLength(vec2));
+  const auto h2 = hasher(vec_rhs);
+  hash_values2[h2] = vec_rhs;
+  unchecked_elts2[h2] = std::make_pair(Word(), totalLength(vec_rhs));
 
   // One special iteration to drop the length
   generateNewElts(n, hash_values1, hash_values2, checked_elts1, unchecked_elts1, hasher, true);
 
   // 5. Start enumeration
-  for (int step = 0; step < 60; ++step) {
+  for (int step = 0; step < 200; ++step) {
     auto t = std::time(nullptr);
     auto tm = *std::localtime(&t);
 
@@ -806,12 +829,12 @@ boost::optional<PrivateKey> attack(
       t2 = unchecked_elts2[hash];
     } else {
       // Drop bad components. This eliminates signatures where we did poor job on removing cloaking elements
-      if (step >= 5 && step % 5 == 0 && vec1.size() > 3 && !checked_elts1.empty() && !checked_elts2.empty()) {
+      if (step >= 5 && step % 5 == 0 && vec_lhs.size() > 3 && !checked_elts1.empty() && !checked_elts2.empty()) {
         drop_poor_performing_components(
             n,
             hasher,
-            vec1,
-            vec2,
+            vec_lhs,
+            vec_rhs,
             hash_values1,
             checked_elts1,
             unchecked_elts1,
@@ -825,8 +848,8 @@ boost::optional<PrivateKey> attack(
     // Check correctness of the obtained keys
     const Word w1_ = std::get<0>(t2) * -std::get<0>(t1);
     const Word w2_ = -signatures[0].encodedMessageHash() * w1_ * reduced_signatures[0];
-    const auto h1 = hasher(multiplyVectorByWordsOnBothSides_noreduction(vec2, -w1_, w1_));
-    const auto h2 = hasher(vec1);
+    const auto h1 = hasher(multiplyVectorByWordsOnBothSides_noreduction(vec_rhs, -w1_, w1_));
+    const auto h2 = hasher(vec_lhs);
 
     if (h1 != h2) {
       std::cout << "Conjugator is not correct!!!!" << std::endl;
@@ -898,9 +921,6 @@ bool checkFakePrivateKey(
   sig_cmp << std::endl;
   sig_length << std::endl;
 
-  std::ofstream("walnut.txt", ios::app) << sig_length.str() << sig_cmp.str() << "Same signatures = " << std::boolalpha
-                                        << same_signatures << std::endl;
-
   std::cout << sig_length.str() << sig_cmp.str() << "Same signatures = " << std::boolalpha << same_signatures
             << std::endl;
 
@@ -919,13 +939,14 @@ using GF256 =
     finitefield::FieldElement<finitefield::IdealGeneratedByPolynomial<finitefield::ZZ<2>, 1, 1, 0, 1, 1, 0, 0, 0, 1>>;
 
 template <typename Stabilizer = StabilizerSquare>
-Protocol<GF32, GarsideDehornoyObfuscator, DefaultEncoder, Stabilizer> getProtocolFor128BitsSecurity(size_t seed) {
+auto getProtocolFor128BitsSecurity(size_t seed) {
   const size_t n = 8;
   const size_t hash_size = 256;
   const size_t L = 15;
 
   const auto random_parameters = randomParameters<GF32, Stabilizer>(n, seed).wMinLength(132).wMaxLength(150);
   const auto random_encoder = randomEncoder(n, hash_size, seed);
+  //  const auto random_encoder = randomAdvancedEncoder(n, n, hash_size, seed);
 
   // corresponding to parameters generator of elements from a stabilizer
   const auto stabilizer = Stabilizer(random_parameters, L);
@@ -934,13 +955,14 @@ Protocol<GF32, GarsideDehornoyObfuscator, DefaultEncoder, Stabilizer> getProtoco
 }
 
 template <typename Stabilizer = StabilizerSquare>
-Protocol<GF256, GarsideDehornoyObfuscator, DefaultEncoder, Stabilizer> getProtocolFor256BitsSecurity(size_t seed) {
+auto getProtocolFor256BitsSecurity(size_t seed) {
   const size_t n = 8;
   const size_t hash_size = 512;
   const size_t L = 30;
 
   const auto random_parameters = randomParameters<GF256, Stabilizer>(n, seed).wMinLength(287).wMaxLength(300);
   const auto random_encoder = randomEncoder(n, hash_size, seed);
+  //  const auto random_encoder = randomAdvancedEncoder(n, n, hash_size, seed);
 
   // corresponding to parameters generator of elements from a stabilizer
   const auto stabilizer = Stabilizer(random_parameters, L);
@@ -949,15 +971,14 @@ Protocol<GF256, GarsideDehornoyObfuscator, DefaultEncoder, Stabilizer> getProtoc
 }
 
 template <typename Stabilizer = StabilizerDoubleSquare>
-Protocol<GF256, GarsideDehornoyObfuscator, DefaultEncoder, Stabilizer>
-getProtocolFor256BitsSecurityN11(size_t seed) {
+auto getProtocolFor256BitsSecurityN11(size_t seed) {
   const size_t n = 11;
   const size_t hash_size = 512;
   const size_t L = 30;
 
-  const auto random_parameters =
-      randomParameters<GF256, Stabilizer>(n, seed).wMinLength(287).wMaxLength(300);
+  const auto random_parameters = randomParameters<GF256, Stabilizer>(n, seed).wMinLength(287).wMaxLength(300);
   const auto random_encoder = randomEncoder(n, hash_size, seed);
+  //  const auto random_encoder = randomAdvancedEncoder(n, n, hash_size, seed);
 
   // corresponding to parameters generator of elements from a stabilizer
   const auto stabilizer = Stabilizer(random_parameters, L);

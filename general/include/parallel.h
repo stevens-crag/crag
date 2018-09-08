@@ -85,6 +85,16 @@ boost::container::vector<bool> bmap(const std::vector<T>& items, Function fn) {
   return result;
 }
 
+//! Workaround for std::vector<bool>
+template <typename Function>
+boost::container::vector<bool> bmap(size_t n, Function fn) {
+  boost::container::vector<bool> result(n);
+
+  forEach(n, [&](size_t i) { result[i] = fn(i); });
+
+  return result;
+}
+
 //! Parallel map, T must be default constructible.
 //! Function is of type
 //!     T fn(const T&) or

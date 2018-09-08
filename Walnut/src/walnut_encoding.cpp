@@ -6,8 +6,8 @@ namespace crag {
 namespace walnut {
 
 Word getFreePureBraidSubgroupGen(size_t n, size_t i) {
-  if (i + 1 > n) {
-    throw std::invalid_argument("Index i is too large.");
+  if ((i == 0) || (i + 1 > n)) {
+    throw std::invalid_argument("Index i is out of range.");
   }
 
   Word prefix;
@@ -132,6 +132,69 @@ std::vector<Word> DefaultEncoder::getFreeSubgroupGens_(size_t n, const std::vect
 DefaultEncoder randomEncoder(size_t n, size_t hash_size, size_t seed) {
   std::mt19937_64 g(seed);
   return randomEncoder(n, hash_size, g);
+}
+
+AdvancedEncoder::AdvancedEncoder(size_t n, size_t hash_size, const std::vector<std::vector<size_t>>& generator_indices)
+    : gen_matrix_(getFreeGenerators_(n, generator_indices))
+    , hash_size_(hash_size) {}
+
+Word AdvancedEncoder::operator()(const msg_hash_t& msg_hash) const {
+  if (hash_size_ / 8 != msg_hash.size()) {
+    throw std::invalid_argument("Invalid message hash size.");
+  }
+
+  Word result;
+
+  const auto k = gen_matrix_.size();
+  size_t i = 0;
+
+  for (const auto b : msg_hash) {
+    for (const auto idx : this->encode(b)) {
+      result *= gen_matrix_[i % k][idx];
+      ++i;
+    }
+  }
+
+  return result;
+}
+
+size_t AdvancedEncoder::hashSize() const {
+  return hash_size_;
+}
+
+std::vector<std::vector<Word>>
+AdvancedEncoder::getFreeGenerators_(size_t n, const std::vector<std::vector<size_t>>& generator_indices) const {
+  std::vector<std::vector<Word>> result;
+  result.reserve(generator_indices.size());
+
+  for (const auto& v : generator_indices) {
+    if (v.size() != 4) {
+      throw std::invalid_argument("Invalid number of indices.");
+    }
+
+    result.push_back({
+        getFreePureBraidSubgroupGen(n, v[0]),
+        getFreePureBraidSubgroupGen(n, v[1]),
+        getFreePureBraidSubgroupGen(n, v[2]),
+        getFreePureBraidSubgroupGen(n, v[3]),
+    });
+  }
+
+  return result;
+}
+
+std::vector<size_t> AdvancedEncoder::encode(uint8_t b) const {
+  return {
+      static_cast<size_t>((b >> 6) & 0b11),
+      static_cast<size_t>((b >> 4) & 0b11),
+      static_cast<size_t>((b >> 2) & 0b11),
+      static_cast<size_t>(b & 0b11),
+  };
+}
+
+AdvancedEncoder randomAdvancedEncoder(size_t n, size_t k, size_t hash_size, size_t seed) {
+  std::mt19937_64 g(seed);
+  return randomAdvancedEncoder(n, k, hash_size, g);
 }
 } // namespace walnut
 } // namespace crag
