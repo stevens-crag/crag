@@ -59,6 +59,7 @@ Word encode(const msg_hash_t& msg_hash);
 //! Encodes message hash in Walnut and replaces generators 1,...,4 with pure braids with specific indices.
 Word encode(size_t n, const msg_hash_t& msg_hash, const std::vector<size_t>& encoding_indices);
 
+//! Message hash encoder from Walnut specification
 class DefaultEncoder {
 public:
   DefaultEncoder(size_t n, std::vector<size_t> encoding_indices, size_t hash_size);
@@ -84,6 +85,42 @@ DefaultEncoder randomEncoder(size_t n, size_t hash_size, URNG& g) {
 }
 
 DefaultEncoder randomEncoder(size_t n, size_t hash_size, size_t seed);
+
+//! Encoder suggested in
+//! https://csrc.nist.gov/CSRC/media/Projects/Post-Quantum-Cryptography/documents/round-1/official-comments/WalnutDSA-official-comment.pdf
+//! in the message on Friday, February 02, 2018 1:33 PM
+class AdvancedEncoder {
+public:
+  AdvancedEncoder(size_t n, size_t hash_size, const std::vector<std::vector<size_t>>& generator_indices);
+
+  Word operator()(const msg_hash_t& msg_hash) const;
+
+  size_t hashSize() const;
+
+private:
+  // k x 4 matrix of free subgroup generators of the forms g_{i, n}
+  std::vector<std::vector<Word>> gen_matrix_;
+  size_t hash_size_;
+
+  std::vector<std::vector<Word>>
+  getFreeGenerators_(size_t n, const std::vector<std::vector<size_t>>& generator_indices) const;
+
+  std::vector<size_t> encode(uint8_t b) const;
+};
+
+template <typename URNG>
+AdvancedEncoder randomAdvancedEncoder(size_t n, size_t k, size_t hash_size, URNG& g) {
+  std::vector<std::vector<size_t>> indices;
+  indices.reserve(k);
+
+  for (size_t i = 0; i < k; ++i) {
+    indices.push_back(random::subsetVector<size_t>(4, 1, n - 1, g));
+  }
+
+  return AdvancedEncoder(n, hash_size, indices);
+}
+
+AdvancedEncoder randomAdvancedEncoder(size_t n, size_t k, size_t hash_size, size_t seed);
 } // namespace walnut
 } // namespace crag
 
