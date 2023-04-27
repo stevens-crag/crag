@@ -1,6 +1,6 @@
 #include <gtest/gtest.h>
 #include <random>
-
+#include <algorithm>
 #include "parallel.h"
 
 namespace crag {

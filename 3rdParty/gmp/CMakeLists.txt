@@ -6,9 +6,8 @@ include(ExternalProject)
 
 if(UNIX)
   ExternalProject_Add(m4
-    URL http://ftp.gnu.org/gnu/m4/m4-1.4.18.tar.bz2 
-    URL_HASH MD5=199fff9c87f1c920dab5c8757811e146
-    PATCH_COMMAND patch -p0 -d "<SOURCE_DIR>" < "${CMAKE_CURRENT_LIST_DIR}/secure_snprintf.patch"
+    URL http://ftp.gnu.org/gnu/m4/m4-1.4.19.tar.bz2
+    URL_HASH MD5=a8ff6fc3235eab3a4adb53611fdddacd
     CONFIGURE_COMMAND "<SOURCE_DIR>/configure" "--prefix=<INSTALL_DIR>"
   )
   

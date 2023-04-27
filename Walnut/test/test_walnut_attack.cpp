@@ -34,7 +34,7 @@ TEST(WalnutAttack, CloakingElementsRemoval1) {
 
     const auto without_cloaking_els = removeCloakingElements(protocol, private_key, public_key, s1, s2);
 
-    EXPECT_NE(boost::none, without_cloaking_els) << "case " << i << " failed";
+    EXPECT_TRUE(boost::none != without_cloaking_els) << "case " << i << " failed";
 
     if (without_cloaking_els) {
       EXPECT_TRUE(isUncloakedCorrectly(n, private_key, s1, without_cloaking_els->first)) << "1st case " << i;
@@ -67,7 +67,7 @@ TEST(WalnutAttack, CloakingElementsRemoval2) {
 
     const auto without_cloaking_els = removeCloakingElements(protocol, private_key, public_key, s1, s2);
 
-    EXPECT_NE(boost::none, without_cloaking_els) << "case " << i << "failed";
+    EXPECT_TRUE(boost::none != without_cloaking_els) << "case " << i << "failed";
 
     if (without_cloaking_els) {
       EXPECT_TRUE(isUncloakedCorrectly(n, private_key, s1, without_cloaking_els->first)) << "1st case " << i;

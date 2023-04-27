@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.8)
 ### Hunter snapshot that will be used ###
 include("cmake/HunterGate.cmake")
 HunterGate(
-  URL "https://github.com/ruslo/hunter/archive/v0.20.9.tar.gz"
-  SHA1 "8f7cf6d719d05c49224a4ebeba90c6bb90b90f4a"
+  URL "https://github.com/cpp-pm/hunter/archive/refs/tags/v0.24.16.tar.gz"
+  SHA1 "09668c254f01afeca1b3d3d2e4692ed5e0e39dcc"
 )
 
 project(crag)
@@ -15,7 +15,7 @@ hunter_add_package(GTest)
 hunter_add_package(benchmark)
 
 ### Find dependencies ###
-find_package(GTest CONFIG REQUIRED) # GTest::main
+find_package(GTest CONFIG REQUIRED) # GTest
 find_package(Boost CONFIG REQUIRED program_options) # Boost::boost, Boost::program_options
 find_package(benchmark CONFIG REQUIRED) # benchmark::benchmark
 
