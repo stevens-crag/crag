@@ -42,48 +42,48 @@ elseif(MSVC)
     message( FATAL_ERROR "Please, build with 64-bit VS generator" )
   endif()
 
-  ExternalProject_Add(_mpir_external
-    PREFIX mpir
-    URL http://mpir.org/mpir-2.7.0.tar.bz2
-    URL_HASH MD5=4aec04108dd24c49d45beb959d837b40
-    SOURCE_DIR "src/mpir"
+  ExternalProject_Add(MPIR__EXTERNAL
+    URL "https://github.com/BrianGladman/mpir/archive/4f6d27d18ab767f44f57641c51bc0fedc5d165dc.zip"
+    URL_HASH "MD5=a469b0fc50de12eec779aa537797698d"
     CONFIGURE_COMMAND ""
     BUILD_IN_SOURCE 1
-    BUILD_COMMAND "${CMAKE_COMMAND}" ARGS -E chdir "<SOURCE_DIR>/build.vc14" "${CMAKE_MAKE_PROGRAM}" "lib_mpir_gc\\lib_mpir_gc.vcxproj"  "/p:SolutionDir=<SOURCE_DIR>\\build.vc14\\x" "/p:configuration=Debug" "/p:platform=x64"
-	  COMMAND "${CMAKE_COMMAND}" ARGS -E chdir "<SOURCE_DIR>/build.vc14" "${CMAKE_MAKE_PROGRAM}" "lib_mpir_gc\\lib_mpir_gc.vcxproj"  "/p:SolutionDir=<SOURCE_DIR>\\build.vc14\\x" "/p:configuration=Release" "/p:platform=x64"
-	  COMMAND "${CMAKE_COMMAND}" ARGS -E chdir "<SOURCE_DIR>/build.vc14" "${CMAKE_MAKE_PROGRAM}" "lib_mpir_cxx\\lib_mpir_cxx.vcxproj"  "/p:SolutionDir=<SOURCE_DIR>\\build.vc14\\x" "/p:configuration=Debug" "/p:platform=x64"
-	  COMMAND "${CMAKE_COMMAND}" ARGS -E chdir "<SOURCE_DIR>/build.vc14" "${CMAKE_MAKE_PROGRAM}" "lib_mpir_cxx\\lib_mpir_cxx.vcxproj"  "/p:SolutionDir=<SOURCE_DIR>\\build.vc14\\x" "/p:configuration=Release" "/p:platform=x64"
-	INSTALL_DIR "mpir"
-    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/xx64/Debug/mpir.h <INSTALL_DIR>/include/mpir.h
-	  COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/xx64/Debug/gmp.h <INSTALL_DIR>/include/gmp.h
-      COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/lib/xx64/Debug/gmpxx.h <INSTALL_DIR>/include/gmpxx.h
-      COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/lib/xx64/Debug <INSTALL_DIR>/lib/x64/Debug
-      COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/lib/xx64/Release <INSTALL_DIR>/lib/x64/Release
+    BUILD_COMMAND "${CMAKE_COMMAND}" ARGS -E chdir "<SOURCE_DIR>/msvc/vs19" "${CMAKE_MAKE_PROGRAM}" "dll_mpir_gc\\dll_mpir_gc.vcxproj"  "/p:SolutionDir=<SOURCE_DIR>\\msvc\\vs19\\" "/p:configuration=$<CONFIG>" "/p:platform=x64" "/p:TargetName=mpir$<$<CONFIG:Debug>:d>"
+    INSTALL_DIR "${GRD_EXTERNAL_INSTALL_DIR}"
+    INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/dll/x64/$<CONFIG>/gmp.h <INSTALL_DIR>/include/gmp.h
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/dll/x64/$<CONFIG>/gmpxx.h <INSTALL_DIR>/include/gmpxx.h
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different <SOURCE_DIR>/dll/x64/$<CONFIG>/mpir.h <INSTALL_DIR>/include/mpir.h
+    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/msvc/vs19/dll_mpir_gc/x64/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.dll <INSTALL_DIR>/lib/mpir$<$<CONFIG:Debug>:d>.dll
+    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/msvc/vs19/dll_mpir_gc/x64/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.lib <INSTALL_DIR>/lib/mpir$<$<CONFIG:Debug>:d>.lib
+    # needed because SOURCE_DIR is cleared when another config is built
+    COMMAND ${CMAKE_COMMAND} -E copy_directory <SOURCE_DIR>/dll/x64/$<CONFIG>/ <INSTALL_DIR>/lib/mpir-build/$<CONFIG>/
+    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/msvc/vs19/dll_mpir_gc/x64/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.dll <INSTALL_DIR>/lib/mpir-build/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.dll
+    COMMAND ${CMAKE_COMMAND} -E copy <SOURCE_DIR>/msvc/vs19/dll_mpir_gc/x64/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.lib <INSTALL_DIR>/lib/mpir-build/$<CONFIG>/mpir$<$<CONFIG:Debug>:d>.lib
   )
 
-  add_library(gmp STATIC IMPORTED GLOBAL)
-  add_dependencies(gmp _mpir_external)
+  set_target_properties(MPIR__EXTERNAL PROPERTIES FOLDER "3rdParty/gmp")
 
-  ExternalProject_Get_Property(_mpir_external install_dir)
+  ExternalProject_Get_Property(MPIR__EXTERNAL install_dir)
 
   file(MAKE_DIRECTORY "${install_dir}/include")
-  
+
+  add_library(gmp STATIC IMPORTED GLOBAL)
+  add_dependencies(gmp MPIR__EXTERNAL)  
   set_target_properties(gmp PROPERTIES
     IMPORTED_CONFIGURATIONS "Debug;Release"
-    IMPORTED_LOCATION_DEBUG "${install_dir}/lib/x64/Debug/mpir.lib"
-	IMPORTED_LOCATION_RELEASE "${install_dir}/lib/x64/Release/mpir.lib"
+    IMPORTED_LOCATION_DEBUG "${install_dir}/lib/mpird.lib"
+    IMPORTED_LOCATION_RELEASE "${install_dir}/lib/mpir.lib"
     INTERFACE_INCLUDE_DIRECTORIES "${install_dir}/include"
-	IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+    IMPORTED_LINK_INTERFACE_LANGUAGES "C"
   )
 
   add_library(gmpxx STATIC IMPORTED GLOBAL)
-  add_dependencies(gmpxx _mpir_external)
+  add_dependencies(gmpxx MPIR__EXTERNAL )
   set_target_properties(gmpxx PROPERTIES
     IMPORTED_CONFIGURATIONS "Debug;Release"
-    IMPORTED_LOCATION_DEBUG "${install_dir}/lib/x64/Debug/mpirxx.lib"
-	IMPORTED_LOCATION_RELEASE "${install_dir}/lib/x64/Release/mpirxx.lib"
+    IMPORTED_LOCATION_DEBUG "${install_dir}/lib/mpird.lib"
+    IMPORTED_LOCATION_RELEASE "${install_dir}/lib/mpir.lib"
     INTERFACE_INCLUDE_DIRECTORIES "${install_dir}/include"
-	IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
+    IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
   )
 ELSE()
    message( FATAL_ERROR "You should use UNIX or MSVC" )
