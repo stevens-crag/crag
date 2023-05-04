@@ -13,7 +13,7 @@ crag_library(SLPv1
 
 target_link_libraries(SLPv1
   PUBLIC Elt
-  PRIVATE gmpxx
+  PUBLIC gmpxx
   PUBLIC Maps
   PRIVATE SbgpFG
 )
