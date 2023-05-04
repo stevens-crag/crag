@@ -75,7 +75,7 @@ int main() {
     auto result = MatchingTable().matches(pattern, text);
   }
 
-  auto end = std::chrono::system_clock::now();
+  auto end = std::chrono::high_resolution_clock::now();
   std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count() << std::endl;
 }
 
