@@ -400,73 +400,75 @@ namespace Graphs
     The graph is not folded if there is a vertex and two different edges leaving it equally labelled.
     In that event "fold" pinches end-points of these edges.
   */
-  template < class LabelledGraph >
-    void fold( LabelledGraph& G , set< int > candidates , 
-	       list< FoldDetails< typename LabelledGraph::vertex_type , typename LabelledGraph::edge_type > >* details = NULL )
-    {
+    template <class LabelledGraph>
+    void fold(
+        LabelledGraph& G,
+        set<int> candidates,
+        list<FoldDetails<typename LabelledGraph::vertex_type, typename LabelledGraph::edge_type>>* details = NULL) {
       typedef typename LabelledGraph::vertex_type vertex_type;
       typedef typename LabelledGraph::edge_type edge_type;
-      typedef FoldDetails< vertex_type , edge_type > FD;
-      const map< int , vertex_type >& theVertices = G.getVertices( );
+      typedef FoldDetails<vertex_type, edge_type> FD;
+      const map<int, vertex_type>& theVertices = G.getVertices();
 
 
-      while( !candidates.empty( ) ) {
-	int v = *candidates.begin( );
-	candidates.erase( v );
-	if( theVertices.find(v)==theVertices.end( ) ) continue;
-	const vertex_type& V = (*theVertices.find( v )).second;
+      while (!candidates.empty()) {
+        int v = *candidates.begin();
+        candidates.erase(v);
+        if (theVertices.find(v) == theVertices.end())
+          continue;
+        const vertex_type& V = (*theVertices.find(v)).second;
 
-	const set< edge_type >& out = V.out;
-	typename set< edge_type >::const_iterator e_it = out.begin( );
-	for( ; e_it!=out.end( ) ; ++e_it ) {
-	  typename set< edge_type >::const_iterator e_it2 = e_it;
-	  ++e_it2;
-	  if( e_it2==out.end( ) )
-	    break;
-	  if( (*e_it).theLabel==(*e_it2).theLabel ) {
-	    int t1 = (*e_it).theTarget;
-	    int t2 = (*e_it2).theTarget;
-	    if( details ) {
-	      const vertex_type& V1 = (*theVertices.find( t1 )).second;
-	      const vertex_type& V2 = (*theVertices.find( t2 )).second;
-	      if( t1<t2 )
-		details->push_back( FD( v , *e_it , *e_it2 , V1 , V2 ) );
-	      else 
-		details->push_back( FD( v , *e_it2 , *e_it , V2 , V1 ) );
-	    }
-	    G.pinch( t1 , t2 );
-	    candidates.insert( t1<t2 ? t1:t2 );
-	    candidates.insert( v );
-	    break;
-	  }
-	}
+        const set<edge_type>& out = V.out;
+        typename set<edge_type>::const_iterator e_it = out.begin();
+        for (; e_it != out.end(); ++e_it) {
+          typename set<edge_type>::const_iterator e_it2 = e_it;
+          ++e_it2;
+          if (e_it2 == out.end())
+            break;
+          if ((*e_it).theLabel == (*e_it2).theLabel) {
+            int t1 = (*e_it).theTarget;
+            int t2 = (*e_it2).theTarget;
+            if (details) {
+              const vertex_type& V1 = (*theVertices.find(t1)).second;
+              const vertex_type& V2 = (*theVertices.find(t2)).second;
+              if (t1 < t2)
+                details->push_back(FD(v, *e_it, *e_it2, V1, V2));
+              else
+                details->push_back(FD(v, *e_it2, *e_it, V2, V1));
+            }
+            G.pinch(t1, t2);
+            candidates.insert(t1 < t2 ? t1 : t2);
+            candidates.insert(v);
+            break;
+          }
+        }
       }
-      
     }
 
-  template < class LabelledGraph >
-    void fold( const LabelledGraph& G , int candidate , 
-	       list< FoldDetails< typename LabelledGraph::vertex_type , typename LabelledGraph::edge_type > >* details = NULL )
-    {
-      set< int > candidates;
-      candidates.insert( candidate );
-      fold( G , candidates , details );
+  template <class LabelledGraph>
+    void fold(
+        LabelledGraph& G,
+        int candidate,
+        list<FoldDetails<typename LabelledGraph::vertex_type, typename LabelledGraph::edge_type>>* details = NULL) {
+      set<int> candidates;
+      candidates.insert(candidate);
+      fold(G, candidates, details);
     }
 
-  template < class LabelledGraph >
-    void fold( const LabelledGraph& G , 
-	       list< FoldDetails< typename LabelledGraph::vertex_type , typename LabelledGraph::edge_type > >* details = NULL )
-    {
+  template <class LabelledGraph>
+    void fold(
+        LabelledGraph& G,
+        list<FoldDetails<typename LabelledGraph::vertex_type, typename LabelledGraph::edge_type>>* details = NULL) {
       typedef typename LabelledGraph::vertex_type vertex_type;
       typedef typename LabelledGraph::edge_type edge_type;
-      
-      set< int > candidates;
-      const map< int , vertex_type >& theVertices = G.getVertices( );
-      typename map< int , vertex_type >::const_iterator v_it = theVertices.begin( );
-      for( ; v_it!=theVertices.end( ) ; ++v_it )
-	candidates.insert( *v_it );
 
-      fold( G , candidates , details );
+      set<int> candidates;
+      const map<int, vertex_type>& theVertices = G.getVertices();
+      typename map<int, vertex_type>::const_iterator v_it = theVertices.begin();
+      for (; v_it != theVertices.end(); ++v_it)
+        candidates.insert(*v_it);
+
+      fold(G, candidates, details);
     }
   
   

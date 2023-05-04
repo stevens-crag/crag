@@ -169,10 +169,11 @@ public:
 public:
   
   //! Assignement operator.
-  StraightLineProgramWord& operator= ( const StraightLineProgramWord& SLP ) {
-    theRoot      = SLP.theRoot;
-    theRules     = SLP.theRules;
+  StraightLineProgramWord& operator=(const StraightLineProgramWord& SLP) {
+    theRoot = SLP.theRoot;
+    theRules = SLP.theRules;
     theTerminals = SLP.theTerminals;
+    return *this;
   }
 
   

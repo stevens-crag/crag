@@ -214,31 +214,32 @@ namespace Graphs
       
       // add V into the graph
       theVertices[v] = V;
-      
+
       // link new edges incoming to V and leaving V
-      set< edge_type >  in = V. in;
-      set< edge_type > out = V.out;
-      typename set< edge_type >::iterator it;
+      set<edge_type> in = V.in;
+      set<edge_type> out = V.out;
+      typename set<edge_type>::iterator it;
 
       // V <- *it
-      for( it=in.begin( ) ; it!=in.end( ) ; ++it ) {
-	edge_type edge = *it;
-	int origin = edge.theTarget;
-	if( origin!=v ) {
-	  edge.theTarget = v;
-	  theVertices[origin].out.insert( edge );
-	}
+      for (it = in.begin(); it != in.end(); ++it) {
+        edge_type edge = *it;
+        int origin = edge.theTarget;
+        if (origin != v) {
+          edge.theTarget = v;
+          theVertices[origin].out.insert(edge);
+        }
       }
 
       // V -> *it
-      for( it=out.begin( ) ; it!=out.end( ) ; ++it ) {
-	edge_type edge = *it;
-	int target = edge.theTarget;
-	if( target!=v ) {
-	  edge.theTarget = v;
-	  theVertices[target].in.insert( edge );
-	}
+      for (it = out.begin(); it != out.end(); ++it) {
+        edge_type edge = *it;
+        int target = edge.theTarget;
+        if (target != v) {
+          edge.theTarget = v;
+          theVertices[target].in.insert(edge);
+        }
       }
+      return v;
     }
 
     
