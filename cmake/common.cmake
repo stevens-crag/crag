@@ -37,6 +37,18 @@ function(crag_main name)
 
 endfunction()
 
+function(crag_exe_path_with_dll_env target return_var)
+  if(MSVC)
+    set("${return_var}" "${CMAKE_COMMAND}" -E env
+        "PATH=%PATH%$<SEMICOLON>${MPIR_INSTALL_DIR}"
+        "$<TARGET_FILE:${target}>"
+        PARENT_SCOPE)
+   else()
+    set("${return_var}" "$<TARGET_FILE:${target}>" PARENT_SCOPE)
+  endif()
+endfunction()
+
+
 function(crag_test name)
   get_filename_component(LIBNAME ${CMAKE_CURRENT_SOURCE_DIR} NAME)
 
@@ -57,5 +69,7 @@ function(crag_test name)
     target_compile_options("${LIBNAME}_test_${name}" PRIVATE -Wall)
   endif()
 
-endfunction()
+  crag_exe_path_with_dll_env("${LIBNAME}_test_${name}" test_path)
+  add_test(NAME ${name} COMMAND ${test_path})
 
+endfunction()
