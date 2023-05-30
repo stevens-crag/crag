@@ -58,6 +58,7 @@ function(crag_test name)
   set_target_properties("${LIBNAME}_test_${name}" PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY test
     OUTPUT_NAME ${name}
+    VS_DEBUGGER_ENVIRONMENT "PATH=${MPIR_INSTALL_DIR}"
   )
 
   list(REMOVE_AT ARGV 0)
