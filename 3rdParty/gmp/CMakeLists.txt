@@ -86,7 +86,7 @@ elseif(MSVC)
     IMPORTED_LINK_INTERFACE_LANGUAGES "CXX"
   )
   
-  set(MPIR_INSTALL_DIR ${install_dir}/lib)
+  set(MPIR_INSTALL_DIR ${install_dir}/lib PARENT_SCOPE)
 ELSE()
    message( FATAL_ERROR "You should use UNIX or MSVC" )
 ENDIF()
