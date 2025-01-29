@@ -14,8 +14,8 @@ if(UNIX)
   ExternalProject_Get_Property(m4 install_dir)
   ExternalProject_Add(gmp_external
     DEPENDS m4
-    URL http://ftp.gnu.org/gnu/gmp/gmp-6.1.2.tar.bz2
-    URL_HASH MD5=8ddbb26dc3bd4e2302984debba1406a5
+    URL http://ftp.gnu.org/gnu/gmp/gmp-6.3.0.tar.bz2
+    URL_HASH MD5=c1cd6ef33085e9cb818b9b08371f9000
     CONFIGURE_COMMAND M4="${install_dir}/bin/m4" "<SOURCE_DIR>/configure" --enable-shared=off "--prefix=<INSTALL_DIR>" --enable-cxx
   )
 
