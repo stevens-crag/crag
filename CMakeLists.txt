@@ -3,8 +3,8 @@ cmake_minimum_required(VERSION 3.8)
 ### Hunter snapshot that will be used ###
 include("cmake/HunterGate.cmake")
 HunterGate(
-  URL "https://github.com/cpp-pm/hunter/archive/refs/tags/v0.24.16.tar.gz"
-  SHA1 "09668c254f01afeca1b3d3d2e4692ed5e0e39dcc"
+  URL "https://github.com/cpp-pm/hunter/archive/refs/heads/master.zip"
+  SHA1 "90cb83da9a08f7ba0acf5028f6c48deaffff1760"
 )
 
 project(crag)
